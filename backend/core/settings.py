@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     GESTURE_DUALHAND_DATA_PATH: str = os.path.join(DATA_DIR, 'gesture_dualhand.csv')
     MODEL_PATH: str = os.path.join(AI_DIR, 'gesture_model.tflite')
     MODEL_DUAL_PATH: str = os.path.join(AI_DIR, 'gesture_model_dual.tflite')
+    SCALER_PATH: str = os.path.join(AI_DIR, 'scaler.pkl')
+    ENCODER_PATH: str = os.path.join(AI_DIR, 'label_encoder.pkl')
     METRICS_PATH: str = os.path.join(AI_DIR, 'training_metrics.json')
     RESULTS_DIR: str = os.path.join(AI_DIR, 'results')
     
