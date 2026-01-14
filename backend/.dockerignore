@@ -1,0 +1,14 @@
+__pycache__/
+*.csv
+*.zip
+*.tar
+*.h5
+*.tflite
+*.pkl
+data/
+checkpoints/
+.env
+.venv/
+*.log
+*.db
+node_modules/

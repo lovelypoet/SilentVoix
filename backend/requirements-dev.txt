@@ -1,0 +1,15 @@
+# Development dependencies (optional)
+# Install with: pip install -r requirements-dev.txt
+
+# Linting and code quality
+flake8==6.1.0
+black==23.12.1
+isort==5.13.2
+
+# Security scanning (compatible with pydantic 2.9.2)
+bandit==1.7.5
+
+# Note: safety is excluded due to pydantic version conflicts
+# If you need security scanning, consider using:
+# - pip-audit (alternative to safety)
+# - Or upgrade to pydantic 2.10+ when safety supports it 

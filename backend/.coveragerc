@@ -1,0 +1,10 @@
+[run]
+omit =
+    *_smoke.py
+    *_ping_mongo.py
+    run_tests.py
+    run_simple_tests.py
+    run_working_tests.py
+    test_admin.py
+    test_system.py
+    /tests

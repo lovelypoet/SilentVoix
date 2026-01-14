@@ -1,0 +1,209 @@
+{
+  "esp32_config": {
+    "sd_card": {
+      "mount_point": "/sd",
+      "tts_base_path": "/sd/tts",
+      "max_file_size_mb": 5,
+      "supported_formats": ["mp3", "wav"],
+      "default_format": "mp3"
+    },
+    "audio_playback": {
+      "volume": 100,
+      "sample_rate": 16000,
+      "bit_depth": 16,
+      "channels": 1
+    }
+  },
+  "language_configs": {
+    "en": {
+      "folder": "/sd/tts/en",
+      "gestures": {
+        "Class 0": {
+          "text": "Hello",
+          "filename": "hello.mp3",
+          "file_path": "/sd/tts/en/hello.mp3"
+        },
+        "Class 1": {
+          "text": "Yes",
+          "filename": "yes.mp3",
+          "file_path": "/sd/tts/en/yes.mp3"
+        },
+        "Class 2": {
+          "text": "No",
+          "filename": "no.mp3",
+          "file_path": "/sd/tts/en/no.mp3"
+        },
+        "Class 3": {
+          "text": "Thank you",
+          "filename": "thankyou.mp3",
+          "file_path": "/sd/tts/en/thankyou.mp3"
+        },
+        "Class 4": {
+          "text": "Please",
+          "filename": "please.mp3",
+          "file_path": "/sd/tts/en/please.mp3"
+        },
+        "Class 5": {
+          "text": "Sorry",
+          "filename": "sorry.mp3",
+          "file_path": "/sd/tts/en/sorry.mp3"
+        },
+        "Class 6": {
+          "text": "Goodbye",
+          "filename": "goodbye.mp3",
+          "file_path": "/sd/tts/en/goodbye.mp3"
+        },
+        "Class 7": {
+          "text": "Help",
+          "filename": "help.mp3",
+          "file_path": "/sd/tts/en/help.mp3"
+        },
+        "Class 8": {
+          "text": "Water",
+          "filename": "water.mp3",
+          "file_path": "/sd/tts/en/water.mp3"
+        },
+        "Class 9": {
+          "text": "Food",
+          "filename": "food.mp3",
+          "file_path": "/sd/tts/en/food.mp3"
+        },
+        "Class 10": {
+          "text": "Emergency",
+          "filename": "emergency.mp3",
+          "file_path": "/sd/tts/en/emergency.mp3"
+        }
+      }
+    },
+    "vn": {
+      "folder": "/sd/tts/vn",
+      "gestures": {
+        "Class 0": {
+          "text": "Xin chào",
+          "filename": "xin_chao.mp3",
+          "file_path": "/sd/tts/vn/xin_chao.mp3"
+        },
+        "Class 1": {
+          "text": "Có",
+          "filename": "co.mp3",
+          "file_path": "/sd/tts/vn/co.mp3"
+        },
+        "Class 2": {
+          "text": "Không",
+          "filename": "khong.mp3",
+          "file_path": "/sd/tts/vn/khong.mp3"
+        },
+        "Class 3": {
+          "text": "Cảm ơn",
+          "filename": "cam_on.mp3",
+          "file_path": "/sd/tts/vn/cam_on.mp3"
+        },
+        "Class 4": {
+          "text": "Làm ơn",
+          "filename": "lam_on.mp3",
+          "file_path": "/sd/tts/vn/lam_on.mp3"
+        },
+        "Class 5": {
+          "text": "Xin lỗi",
+          "filename": "xin_loi.mp3",
+          "file_path": "/sd/tts/vn/xin_loi.mp3"
+        },
+        "Class 6": {
+          "text": "Tạm biệt",
+          "filename": "tam_biet.mp3",
+          "file_path": "/sd/tts/vn/tam_biet.mp3"
+        },
+        "Class 7": {
+          "text": "Giúp đỡ",
+          "filename": "giup_do.mp3",
+          "file_path": "/sd/tts/vn/giup_do.mp3"
+        },
+        "Class 8": {
+          "text": "Nước",
+          "filename": "nuoc.mp3",
+          "file_path": "/sd/tts/vn/nuoc.mp3"
+        },
+        "Class 9": {
+          "text": "Thức ăn",
+          "filename": "thuc_an.mp3",
+          "file_path": "/sd/tts/vn/thuc_an.mp3"
+        },
+        "Class 10": {
+          "text": "Khẩn cấp",
+          "filename": "khan_cap.mp3",
+          "file_path": "/sd/tts/vn/khan_cap.mp3"
+        }
+      }
+    },
+    "fr": {
+      "folder": "/sd/tts/fr",
+      "gestures": {
+        "Class 0": {
+          "text": "Bonjour",
+          "filename": "bonjour.mp3",
+          "file_path": "/sd/tts/fr/bonjour.mp3"
+        },
+        "Class 1": {
+          "text": "Oui",
+          "filename": "oui.mp3",
+          "file_path": "/sd/tts/fr/oui.mp3"
+        },
+        "Class 2": {
+          "text": "Non",
+          "filename": "non.mp3",
+          "file_path": "/sd/tts/fr/non.mp3"
+        },
+        "Class 3": {
+          "text": "Merci",
+          "filename": "merci.mp3",
+          "file_path": "/sd/tts/fr/merci.mp3"
+        },
+        "Class 4": {
+          "text": "S'il vous plaît",
+          "filename": "sil_vous_plait.mp3",
+          "file_path": "/sd/tts/fr/sil_vous_plait.mp3"
+        },
+        "Class 5": {
+          "text": "Désolé",
+          "filename": "desole.mp3",
+          "file_path": "/sd/tts/fr/desole.mp3"
+        },
+        "Class 6": {
+          "text": "Au revoir",
+          "filename": "au_revoir.mp3",
+          "file_path": "/sd/tts/fr/au_revoir.mp3"
+        },
+        "Class 7": {
+          "text": "Aide",
+          "filename": "aide.mp3",
+          "file_path": "/sd/tts/fr/aide.mp3"
+        },
+        "Class 8": {
+          "text": "Eau",
+          "filename": "eau.mp3",
+          "file_path": "/sd/tts/fr/eau.mp3"
+        },
+        "Class 9": {
+          "text": "Nourriture",
+          "filename": "nourriture.mp3",
+          "file_path": "/sd/tts/fr/nourriture.mp3"
+        },
+        "Class 10": {
+          "text": "Urgence",
+          "filename": "urgence.mp3",
+          "file_path": "/sd/tts/fr/urgence.mp3"
+        }
+      }
+    }
+  },
+  "ai_training_config": {
+    "web_interface": {
+      "language_selection": true,
+      "gesture_customization": true,
+      "training_data_management": true
+    },
+    "training_languages": ["en", "vn", "fr"],
+    "default_training_language": "en"
+  },
+  "description": "ESP32 + SD Card TTS Configuration for Sign Glove System. TTS audio files are stored locally on the ESP32's SD card and played based on AI model predictions."
+} 

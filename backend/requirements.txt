@@ -1,0 +1,80 @@
+# ===============================
+# Core ML / TensorFlow (LOCKED)
+# ===============================
+tensorflow==2.19.1
+keras==3.10.0
+tensorboard==2.19.0
+tensorflowjs==3.15.0
+
+numpy==1.26.4
+scipy==1.15.3
+scikit-learn==1.7.0
+pandas==2.3.0
+
+ml_dtypes==0.5.1
+opt_einsum==3.4.0
+wrapt==1.17.2
+flatbuffers==25.2.10
+protobuf==4.25.8
+h5py==3.14.0
+
+# ===============================
+# Visualization
+# ===============================
+matplotlib==3.10.3
+seaborn==0.13.2
+pillow==11.2.1
+
+# ===============================
+# Packaging (CRITICAL PIN)
+# ===============================
+packaging==23.2
+
+# ===============================
+# FastAPI Backend
+# ===============================
+fastapi==0.104.1
+starlette==0.27.0
+uvicorn==0.34.3
+
+pydantic==2.9.2
+pydantic_core==2.23.4
+pydantic_settings==2.5.2
+typing_extensions==4.14.0
+
+# ===============================
+# Auth / Database
+# ===============================
+motor==3.7.1
+pymongo==4.13.2
+
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==4.0.1
+fastapi-jwt-auth==0.5.0
+
+# ===============================
+# Networking / Utils
+# ===============================
+requests==2.32.4
+urllib3==2.5.0
+httpx==0.27.0
+python-dotenv==1.1.1
+PyYAML==6.0.2
+
+# ===============================
+# Testing
+# ===============================
+pytest==8.2.0
+pytest-asyncio==0.24.0
+pytest-cov==5.0.0
+pytest-mock==3.14.0
+
+# ===============================
+# Audio / Misc (Optional)
+# ===============================
+pygame==2.5.2
+pyttsx3==2.90
+gtts==2.3.2
+edge-tts==6.1.9
+pyserial==3.5

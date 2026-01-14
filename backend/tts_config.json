@@ -1,0 +1,26 @@
+{
+  "gesture_mapping": {
+    "Class 0": "Hello",
+    "Class 1": "Yes",
+    "Class 2": "No",
+    "Class 3": "Thank you",
+    "Class 4": "Please",
+    "Class 5": "Sorry",
+    "Class 6": "Goodbye",
+    "Class 7": "Help",
+    "Class 8": "Water",
+    "Class 9": "Food",
+    "Class 10": "Emergency"
+  },
+  "idle_gestures": {
+    "hand_resting": ["rest", "idle", "neutral", "relaxed"],
+    "basic_movement": ["movement", "wave", "point", "gesture"],
+    "no_meaning": ["", "none", "unknown", "undefined"]
+  },
+  "tts_settings": {
+    "filter_idle_gestures": true,
+    "speak_confidence_threshold": 0.7,
+    "min_gesture_duration_ms": 500
+  },
+  "description": "Configuration for selective TTS in sign glove system. Only meaningful gestures trigger speech."
+} 

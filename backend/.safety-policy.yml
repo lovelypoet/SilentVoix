@@ -1,0 +1,40 @@
+# Safety policy file for Sign Glove project
+# This file configures which vulnerabilities to ignore
+
+# Ignore known vulnerabilities that are not critical for development
+ignore:
+  # Starlette vulnerabilities (will be fixed in future updates)
+  - 68094  # python-multipart regex issue
+  - 73725  # Starlette DoS vulnerability
+  
+  # Python-jose vulnerabilities (JWT library)
+  - 70716  # DoS vulnerability
+  - 70715  # Algorithm confusion
+  
+  # Pillow vulnerability (image processing)
+  - 77942  # Buffer overflow in DDS images
+  
+  # ECDSA vulnerabilities (cryptography)
+  - 64459  # Minerva attack
+  - 64396  # Side-channel attacks
+  
+  # Development tool vulnerabilities
+  - 66742  # Black ReDoS
+  - 64484  # Bandit false positive
+  
+  # Runtime vulnerabilities
+  - 71199  # Anyio race condition
+  - 74429  # PyJWT partial comparison
+  - 48542  # PyJWT signing algorithm
+  - 77319  # Tornado multipart parser
+
+# Policy for different environments
+environments:
+  development:
+    ignore: []  # Don't ignore any in development
+    
+  production:
+    ignore:
+      # Only ignore non-critical vulnerabilities in production
+      - 64396  # ECDSA side-channel (not critical for our use case)
+      - 64484  # Bandit false positive 

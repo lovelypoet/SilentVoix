@@ -1,0 +1,13 @@
+tests/*
+
+venv
+
+.pyc
+
+node_modules/
+
+data/
+
+logs/
+
+__pycache__
