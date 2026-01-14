@@ -32,4 +32,9 @@ if os.path.exists(env_file):
     print(f"MONGO_URI: {MONGO_URI}")
     print(f"DB_NAME: {DB_NAME}")
 else:
-    print("❌ .env file not found!")
+    with open(env_file, 'w') as f:
+        f.write(f"MONGO_URI={MONGO_URI}\n")
+        f.write(f"DB_NAME={DB_NAME}\n")
+    print("✅ .env file created with MongoDB Atlas credentials!")
+    print(f"MONGO_URI: {MONGO_URI}")
+    print(f"DB_NAME: {DB_NAME}")
