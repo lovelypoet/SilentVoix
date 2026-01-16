@@ -1,17 +1,21 @@
 <script setup>
+// Modified by Gemini CLI
 import { ref, watchEffect, computed } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
+import { useHandTracking } from '../composables/useHandTracking.js'
 
 const isTraining = ref(false)
 const showSettings = ref(false)
 const videoEl = ref(null)
+const canvasEl = ref(null)
 
 const { hasPermissions, isRequesting, error, stream, requestPermissions, stopStream } = useMediaPermissions()
 const { mirrorCamera, enableCamera } = useTrainingSettings()
+const { startHandTracking, stopHandTracking } = useHandTracking()
 
 const videoClasses = computed(() => {
   return [
@@ -37,6 +41,7 @@ const startTraining = async () => {
 
 const stopTraining = () => {
   stopStream()
+  stopHandTracking()
   isTraining.value = false
   showSettings.value = false
 }
@@ -47,6 +52,10 @@ const handlePermissionRequest = async () => {
         isTraining.value = true;
     }
 };
+
+const startDrawing = () => {
+  startHandTracking(videoEl.value, canvasEl.value, stream.value)
+}
 </script>
 
 <template>
@@ -79,6 +88,7 @@ const handlePermissionRequest = async () => {
             Camera is disabled
          </div>
          <video ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
+         <canvas ref="canvasEl" class="absolute inset-0 w-full h-full"></canvas>
          <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
              <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
                  <div class="text-xs text-slate-400">Detected Gesture</div>
@@ -94,6 +104,7 @@ const handlePermissionRequest = async () => {
       <div class="flex gap-4 mt-8">
         <BaseBtn variant="danger" @click="stopTraining">End Session</BaseBtn>
         <BaseBtn variant="secondary" @click="showSettings = true">Settings</BaseBtn>
+        <BaseBtn @click="startDrawing">Start Drawing</BaseBtn>
       </div>
     </div>
 
