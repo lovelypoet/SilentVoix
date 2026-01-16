@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watchEffect } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
@@ -8,9 +8,9 @@ const isTraining = ref(false)
 const videoEl = ref(null)
 const { hasPermissions, isRequesting, error, stream, requestPermissions, stopStream } = useMediaPermissions()
 
-watch(stream, (newStream) => {
-  if (newStream && videoEl.value) {
-    videoEl.value.srcObject = newStream
+watchEffect(() => {
+  if (stream.value && videoEl.value) {
+    videoEl.value.srcObject = stream.value
   }
 })
 
@@ -58,7 +58,7 @@ const handlePermissionRequest = async () => {
     <!-- Active Training Interface -->
     <div v-else-if="isTraining && hasPermissions" class="flex flex-col items-center">
       <div class="w-full aspect-video bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
-         <video ref="videoEl" autoplay playsinline class="w-full h-full object-cover"></video>
+         <video ref="videoEl" autoplay playsinline muted class="w-full h-full object-cover -scale-x-100"></video>
          <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
              <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
                  <div class="text-xs text-slate-400">Detected Gesture</div>
@@ -87,7 +87,7 @@ const handlePermissionRequest = async () => {
         <h3 class="text-xl font-bold text-white mb-2">Free Practice</h3>
         <p class="text-slate-400 text-sm mb-6">Practice any gesture freely with real-time analysis and feedback loop.</p>
         <BaseBtn class="w-full" :disabled="isRequesting">
-          {{ isRequesting ? 'Requesting...' : (hasPermissions ? 'Start Session' : 'Enable Camera & Mic') }}
+          {{ isRequesting ? 'Requesting...' : 'Start Session' }}
         </BaseBtn>
       </BaseCard>
 
