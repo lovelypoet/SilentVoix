@@ -15,18 +15,23 @@ watch(stream, (newStream) => {
 })
 
 const startTraining = async () => {
-  if (!hasPermissions.value) {
-    await requestPermissions()
-  }
+  await requestPermissions()
   if (hasPermissions.value) {
     isTraining.value = true
   }
 }
 
 const stopTraining = () => {
-  isTraining.value = false
   stopStream()
+  isTraining.value = false
 }
+
+const handlePermissionRequest = async () => {
+    await requestPermissions();
+    if (hasPermissions.value) {
+        isTraining.value = true;
+    }
+};
 </script>
 
 <template>
@@ -36,28 +41,18 @@ const stopTraining = () => {
       <p class="text-slate-400">Master your sign language gestures with real-time feedback</p>
     </div>
 
-    <div v-if="!isTraining" class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-      <!-- Quick Start -->
-      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer" @click="startTraining">
-        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-indigo-500 transition-colors">
-            <span class="text-5xl">▶</span>
-        </div>
-        <h3 class="text-xl font-bold text-white mb-2">Free Practice</h3>
-        <p class="text-slate-400 text-sm mb-6">Practice any gesture freely with real-time analysis and feedback loop.</p>
-        <BaseBtn class="w-full" :disabled="isRequesting">
-          {{ isRequesting ? 'Requesting...' : (hasPermissions ? 'Start Session' : 'Start Session') }}
-        </BaseBtn>
-      </BaseCard>
-
-      <!-- Guided Lesson -->
-      <BaseCard class="group opacity-50 cursor-not-allowed">
-        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-emerald-500 transition-colors">
-            <span class="text-5xl">★</span>
-        </div>
-        <h3 class="text-xl font-bold text-white mb-2">Guided Lessons</h3>
-        <p class="text-slate-400 text-sm mb-6">Step-by-step curriculum to learn basics to advanced signs.</p>
-        <BaseBtn variant="secondary" class="w-full" disabled>Start Lesson 1</BaseBtn>
-      </BaseCard>
+    <!-- Permissions Denied -->
+    <div v-if="error" class="text-center mt-12">
+        <BaseCard class="max-w-md mx-auto">
+            <h3 class="text-xl font-bold text-red-400 mb-2">Permissions Required</h3>
+            <p class="text-slate-400 mb-4">
+                Camera and microphone access is required for training. Please grant permissions in your browser settings.
+            </p>
+            <p class="text-xs text-slate-500">Error: {{ error.name }} - {{ error.message }}</p>
+            <BaseBtn @click="handlePermissionRequest" class="mt-4" :disabled="isRequesting">
+                {{ isRequesting ? 'Retrying...' : 'Retry' }}
+            </BaseBtn>
+        </BaseCard>
     </div>
 
     <!-- Active Training Interface -->
@@ -82,18 +77,29 @@ const stopTraining = () => {
       </div>
     </div>
 
-    <!-- Permissions Denied -->
-    <div v-if="error" class="text-center mt-12">
-        <BaseCard class="max-w-md mx-auto">
-            <h3 class="text-xl font-bold text-red-400 mb-2">Permissions Required</h3>
-            <p class="text-slate-400 mb-4">
-                Camera and microphone access is required for training. Please grant permissions in your browser settings.
-            </p>
-            <p class="text-xs text-slate-500">Error: {{ error.name }} - {{ error.message }}</p>
-            <BaseBtn @click="requestPermissions" class="mt-4" :disabled="isRequesting">
-                {{ isRequesting ? 'Retrying...' : 'Retry' }}
-            </BaseBtn>
-        </BaseCard>
+    <!-- Initial State -->
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+      <!-- Quick Start -->
+      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer" @click="startTraining">
+        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-indigo-500 transition-colors">
+            <span class="text-5xl">▶</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Free Practice</h3>
+        <p class="text-slate-400 text-sm mb-6">Practice any gesture freely with real-time analysis and feedback loop.</p>
+        <BaseBtn class="w-full" :disabled="isRequesting">
+          {{ isRequesting ? 'Requesting...' : (hasPermissions ? 'Start Session' : 'Enable Camera & Mic') }}
+        </BaseBtn>
+      </BaseCard>
+
+      <!-- Guided Lesson -->
+      <BaseCard class="group opacity-50 cursor-not-allowed">
+        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-emerald-500 transition-colors">
+            <span class="text-5xl">★</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Guided Lessons</h3>
+        <p class="text-slate-400 text-sm mb-6">Step-by-step curriculum to learn basics to advanced signs.</p>
+        <BaseBtn variant="secondary" class="w-full" disabled>Start Lesson 1</BaseBtn>
+      </BaseCard>
     </div>
   </div>
 </template>

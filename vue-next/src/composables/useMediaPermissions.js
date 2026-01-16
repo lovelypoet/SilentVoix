@@ -25,8 +25,8 @@ export function useMediaPermissions() {
     if (stream.value) {
       stream.value.getTracks().forEach(track => track.stop())
       stream.value = null
-      hasPermissions.value = false
     }
+    hasPermissions.value = false
   }
 
   onUnmounted(() => {
