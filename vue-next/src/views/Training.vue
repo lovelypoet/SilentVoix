@@ -1,12 +1,26 @@
 <script setup>
-import { ref, watchEffect } from 'vue'
+import { ref, watchEffect, computed } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import TrainingSettings from '../components/TrainingSettings.vue'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
+import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 
 const isTraining = ref(false)
+const showSettings = ref(false)
 const videoEl = ref(null)
+
 const { hasPermissions, isRequesting, error, stream, requestPermissions, stopStream } = useMediaPermissions()
+const { mirrorCamera, enableCamera } = useTrainingSettings()
+
+const videoClasses = computed(() => {
+  return [
+    'w-full',
+    'h-full',
+    'object-cover',
+    { '-scale-x-100': mirrorCamera.value },
+  ]
+})
 
 watchEffect(() => {
   if (stream.value && videoEl.value) {
@@ -24,6 +38,7 @@ const startTraining = async () => {
 const stopTraining = () => {
   stopStream()
   isTraining.value = false
+  showSettings.value = false
 }
 
 const handlePermissionRequest = async () => {
@@ -36,6 +51,8 @@ const handlePermissionRequest = async () => {
 
 <template>
   <div class="max-w-4xl mx-auto">
+    <TrainingSettings v-if="showSettings" @close="showSettings = false" />
+
     <div class="mb-8 text-center">
       <h1 class="text-3xl font-bold text-white mb-2">Training Center</h1>
       <p class="text-slate-400">Master your sign language gestures with real-time feedback</p>
@@ -58,7 +75,10 @@ const handlePermissionRequest = async () => {
     <!-- Active Training Interface -->
     <div v-else-if="isTraining && hasPermissions" class="flex flex-col items-center">
       <div class="w-full aspect-video bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
-         <video ref="videoEl" autoplay playsinline muted class="w-full h-full object-cover -scale-x-100"></video>
+         <div v-if="!enableCamera" class="absolute inset-0 flex items-center justify-center text-slate-500 bg-black">
+            Camera is disabled
+         </div>
+         <video ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
          <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
              <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
                  <div class="text-xs text-slate-400">Detected Gesture</div>
@@ -73,7 +93,7 @@ const handlePermissionRequest = async () => {
 
       <div class="flex gap-4 mt-8">
         <BaseBtn variant="danger" @click="stopTraining">End Session</BaseBtn>
-        <BaseBtn variant="secondary" disabled>Settings</BaseBtn>
+        <BaseBtn variant="secondary" @click="showSettings = true">Settings</BaseBtn>
       </div>
     </div>
 
