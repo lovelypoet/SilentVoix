@@ -1,0 +1,13 @@
+# backend/ingestion/streaming/config.yaml
+
+serial:
+  port: "COM6"                # ESP32 serial port
+  baud_rate: 115200
+  total_sensors: 11           # 5 flex + 6 IMU (acc+gyro)
+  reconnect_delay: 1          # seconds to wait before retrying serial connection
+
+backend:
+  url: "http://127.0.0.1:8000/gesture/predict"  # sequence POST endpoint
+  ws_url: "ws://127.0.0.1:8000/gesture/predict_ws"  # WebSocket endpoint
+  session_id: "demo"
+  send_interval: 1.5          # optional, mostly ignored with movement detector

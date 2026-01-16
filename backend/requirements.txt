@@ -29,6 +29,7 @@ pillow==11.2.1
 # Packaging (CRITICAL PIN)
 # ===============================
 packaging==23.2
+passlib==1.7.4
 
 # ===============================
 # FastAPI Backend

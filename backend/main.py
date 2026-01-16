@@ -79,7 +79,7 @@ app.add_middleware(
 
 # Mount routers
 app.include_router(auth_routes.router)
-app.include_router(gestures.router)
+app.include_router(gestures_predict.router)
 app.include_router(training_routes.router)
 app.include_router(sensor_routes.router)
 app.include_router(gestures_predict.router)
