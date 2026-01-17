@@ -40,6 +40,7 @@ export function useHandTracking(mirrorCameraRef) {
     console.log('[HandTracking] initialized (VIDEO mode)')
   }
 
+  
   const loop = () => {
     // no chay va landmark k bat -> end
     if (!running || !landmarker) return
@@ -63,20 +64,34 @@ export function useHandTracking(mirrorCameraRef) {
     }
 
     if (showLandmarks.value && results?.landmarks) {
-      const drawer = new DrawingUtils(ctx)
+  const drawer = new DrawingUtils(ctx)
 
-      for (const landmarks of results.landmarks) {
-        drawer.drawConnectors(
-          landmarks,
-          HandLandmarker.HAND_CONNECTIONS,
-          { lineWidth: 4 }
-        )
-        drawer.drawLandmarks(landmarks, { lineWidth: 4 })
+
+  // chinh mau o day cho de nhin
+  for (const landmarks of results.landmarks) {
+    drawer.drawConnectors(
+      landmarks,
+      HandLandmarker.HAND_CONNECTIONS,
+      {
+        color: 'green',
+        lineWidth: 6
       }
-    }
+    )
+
+    drawer.drawLandmarks(
+      landmarks,
+      {
+        color: '#fff700',
+        radius: 6,
+        lineWidth: 2
+      }
+    )
+  }
+}
+
 
     ctx.restore()
-
+    
     rafId = requestAnimationFrame(loop)
   }
 
@@ -133,4 +148,5 @@ export function useHandTracking(mirrorCameraRef) {
     stopHandTracking,
     showLandmarks
   }
+  
 }
