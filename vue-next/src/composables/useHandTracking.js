@@ -1,77 +1,69 @@
 import { ref, onUnmounted } from 'vue'
+// import media pipe library
 import {
   HandLandmarker,
   FilesetResolver,
   DrawingUtils
 } from '@mediapipe/tasks-vision'
 
-/**
- * Hand tracking composable
- * - Runs MediaPipe Hands in VIDEO mode
- * - Does NOT depend on UI settings
- * - Drawing is optional and can be toggled
- */
-export function useHandTracking() {
-  // MediaPipe instance (created once)
-  const handLandmarker = ref(null)
+export function useHandTracking(mirrorCameraRef) {
+  // MediaPipe instance
+  let landmarker = null
 
-  // DOM references
-  const video = ref(null)
-  const canvas = ref(null)
-  const ctx = ref(null)
+  // DOM
+  let videoEl = null
+  let canvasEl = null
+  let ctx = null
 
-  // Runtime flags
-  let animationFrameId = null
-  let isRunning = false
-  let isStarting = false
-
-  // UI-controlled flag (connect to Settings)
+  // Loop
+  let rafId = null
+  let running = false
   const showLandmarks = ref(true)
 
-  /**
-   * Initialize MediaPipe HandLandmarker ONCE
-   */
-  const initHandLandmarker = async () => {
-    if (handLandmarker.value) return
 
+  // init landmarker
+  const createLandmarker = async () => {
     const vision = await FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
     )
 
-    handLandmarker.value = await HandLandmarker.createFromOptions(vision, {
+    landmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath:
           'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
         delegate: 'GPU'
       },
-      runningMode: 'VIDEO',
+      runningMode: 'VIDEO', // ensure run mode is VIDEO
       numHands: 2
     })
 
-    console.log('[HandTracking] MediaPipe initialized')
+    console.log('[HandTracking] initialized (VIDEO mode)')
   }
 
-  /**
-   * Main prediction loop (requestAnimationFrame)
-   */
   const loop = () => {
-    if (!isRunning || !handLandmarker.value) return
+    // no chay va landmark k bat -> end
+    if (!running || !landmarker) return
 
-    // Video must be ready
-    if (video.value.videoWidth === 0) {
-      animationFrameId = requestAnimationFrame(loop)
+    if (!videoEl || videoEl.videoWidth === 0 || videoEl.videoHeight === 0) {
+      rafId = requestAnimationFrame(loop)
       return
     }
 
     const now = performance.now()
-    const results = handLandmarker.value.detectForVideo(video.value, now)
+    const results = landmarker.detectForVideo(videoEl, now)
 
-    // Clear canvas every frame
-    ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height)
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
 
-    // Draw landmarks ONLY if enabled
-    if (showLandmarks.value && results.landmarks) {
-      const drawer = new DrawingUtils(ctx.value)
+    ctx.save()
+
+    // MIRROR CANVAS IF VIDEO IS MIRRORED
+    if (mirrorCameraRef?.value) {
+      ctx.translate(canvasEl.width, 0)
+      ctx.scale(-1, 1)
+    }
+
+    if (showLandmarks.value && results?.landmarks) {
+      const drawer = new DrawingUtils(ctx)
 
       for (const landmarks of results.landmarks) {
         drawer.drawConnectors(
@@ -79,80 +71,66 @@ export function useHandTracking() {
           HandLandmarker.HAND_CONNECTIONS,
           { lineWidth: 4 }
         )
-        drawer.drawLandmarks(landmarks, { lineWidth: 2 })
+        drawer.drawLandmarks(landmarks, { lineWidth: 4 })
       }
     }
 
-    animationFrameId = requestAnimationFrame(loop)
+    ctx.restore()
+
+    rafId = requestAnimationFrame(loop)
   }
 
-  /**
-   * Start hand tracking
-   * - Expects an already approved MediaStream
-   */
-  const startHandTracking = async (videoEl, canvasEl, mediaStream) => {
-    if (isRunning || isStarting) return
-    isStarting = true
+  // ham chinh de goi trong training.vue
 
-    video.value = videoEl
-    canvas.value = canvasEl
-    ctx.value = canvas.value.getContext('2d')
+  const startHandTracking = async (video, canvas, mediaStream) => {
+    stopHandTracking() // reset toan bo ps
 
-    await initHandLandmarker()
+    videoEl = video
+    canvasEl = canvas
+    ctx = canvasEl.getContext('2d')
 
-    // Attach stream only once
-    if (video.value.srcObject !== mediaStream) {
-      video.value.srcObject = mediaStream
-    }
+    await createLandmarker()
 
-    // Wait for video metadata (dimensions)
+    videoEl.srcObject = mediaStream
+
     await new Promise((resolve) => {
-      if (video.value.readyState >= 2) {
-        resolve()
-      } else {
-        video.value.onloadedmetadata = () => resolve()
-      }
+      if (videoEl.readyState >= 2) resolve()
+      else videoEl.onloadedmetadata = () => resolve()
     })
 
-    await video.value.play()
+    await videoEl.play()
+    canvasEl.width = videoEl.videoWidth
+    canvasEl.height = videoEl.videoHeight
 
-    // Add a small delay to ensure video stream is fully active and MediaPipe is ready
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Match canvas size to video
-    canvas.value.width = video.value.videoWidth
-    canvas.value.height = video.value.height
-
-    isRunning = true
-    isStarting = false
-
+    running = true
     loop()
   }
 
-  /**
-   * Stop tracking loop (does NOT stop camera)
-   */
-  const stopHandTracking = () => {
-    isRunning = false
+  //stop
 
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId)
-      animationFrameId = null
+  const stopHandTracking = () => {
+    running = false
+
+    if (rafId) {
+      cancelAnimationFrame(rafId)
+      rafId = null
     }
 
-    if (ctx.value && canvas.value) {
-      ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height)
+    if (ctx && canvasEl) {
+      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
+    }
+
+    if (landmarker) {
+      landmarker.close?.()
+      landmarker = null
     }
   }
 
   onUnmounted(stopHandTracking)
 
   return {
-    // lifecycle
     startHandTracking,
     stopHandTracking,
-
-    // settings
     showLandmarks
   }
 }
