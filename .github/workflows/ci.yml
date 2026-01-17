@@ -2,9 +2,9 @@ name: CI pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, mediapipe, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, mediapie ]
 
 jobs:
   build:
