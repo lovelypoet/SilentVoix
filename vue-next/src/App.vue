@@ -13,9 +13,6 @@ const route = useRoute()
         <RouterLink to="/" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
           Dashboard
         </RouterLink>
-        <RouterLink to="/training" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
-          Training
-        </RouterLink>
         <RouterLink to="/library" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
           Library
         </RouterLink>
