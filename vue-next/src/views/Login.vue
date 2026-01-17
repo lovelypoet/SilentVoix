@@ -66,7 +66,7 @@ const handleLogin = async () => {
       </form>
       
       <div class="mt-6 text-center text-sm text-slate-500">
-        Demo Credentials: <span class="text-slate-400">admin@example.com / admin123</span>
+        Default Credentials: <span class="text-slate-400">admin@signglove.com / admin123</span>
       </div>
     </div>
   </div>
