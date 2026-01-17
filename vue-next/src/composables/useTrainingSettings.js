@@ -30,7 +30,7 @@ export function useTrainingSettings() {
       console.error('Error enumerating media devices:', e)
     }
   }
-
+  
   const resetSettings = () => {
     enableCamera.value = true
     resolution.value = 'Medium'

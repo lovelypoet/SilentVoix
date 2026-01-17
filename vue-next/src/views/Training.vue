@@ -23,8 +23,8 @@ const {
   stopStream
 } = useMediaPermissions()
 
-const { mirrorCamera, enableCamera } = useTrainingSettings()
-const { startHandTracking, stopHandTracking } = useHandTracking(mirrorCamera)
+const { mirrorCamera, enableCamera, showLandmarks } = useTrainingSettings()
+const { startHandTracking, stopHandTracking } = useHandTracking(mirrorCamera, showLandmarks)
 
 
 const videoClasses = computed(() => [

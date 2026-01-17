@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue'
+import { onUnmounted } from 'vue'
 // import media pipe library
 import {
   HandLandmarker,
@@ -6,7 +6,7 @@ import {
   DrawingUtils
 } from '@mediapipe/tasks-vision'
 
-export function useHandTracking(mirrorCameraRef) {
+export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   // MediaPipe instance
   let landmarker = null
 
@@ -18,7 +18,6 @@ export function useHandTracking(mirrorCameraRef) {
   // Loop
   let rafId = null
   let running = false
-  const showLandmarks = ref(true)
 
 
   // init landmarker
@@ -63,7 +62,7 @@ export function useHandTracking(mirrorCameraRef) {
       ctx.scale(-1, 1)
     }
 
-    if (showLandmarks.value && results?.landmarks) {
+    if (showLandmarksRef.value && results?.landmarks) {
   const drawer = new DrawingUtils(ctx)
 
 
@@ -146,7 +145,6 @@ export function useHandTracking(mirrorCameraRef) {
   return {
     startHandTracking,
     stopHandTracking,
-    showLandmarks
   }
   
 }
