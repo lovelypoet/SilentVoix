@@ -119,7 +119,16 @@ watch(
         <video ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
 
         <canvas ref="canvasEl" class="absolute inset-0 w-full h-full"></canvas>
-
+        <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
+          <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="text-xs text-slate-400">FPS</div>
+            <div class="text-2xl font-bold text-white">15</div>
+          </div>
+          <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="text-xs text-slate-400">Condition</div>
+            <div class="text-2xl font-bold text-slate-400">Too dark</div>
+          </div>
+        </div>
         <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Detected Gesture</div>
@@ -138,6 +147,9 @@ watch(
         </BaseBtn>
         <BaseBtn variant="secondary" @click="showSettings = true">
           Settings
+        </BaseBtn>
+        <BaseBtn variant="primary">
+          Start Training
         </BaseBtn>
       </div>
     </div>
