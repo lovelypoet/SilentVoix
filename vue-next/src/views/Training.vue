@@ -12,6 +12,44 @@ const isTraining = ref(false)
 const showSettings = ref(false)
 const videoEl = ref(null)
 const canvasEl = ref(null)
+const actualFps = ref(0)
+
+// FPS calculation
+let frameCount = 0
+let lastTime = performance.now()
+let fpsInterval = null
+
+const calculateFps = () => {
+  frameCount++
+  const currentTime = performance.now()
+  const elapsed = currentTime - lastTime
+  
+  // Update FPS every second
+  if (elapsed >= 1000) {
+    actualFps.value = Math.round((frameCount * 1000) / elapsed)
+    frameCount = 0
+    lastTime = currentTime
+  }
+}
+
+const startFpsCounter = () => {
+  frameCount = 0
+  lastTime = performance.now()
+  actualFps.value = 0
+  
+  fpsInterval = setInterval(() => {
+    calculateFps()
+  }, 100) // Check every 100ms for smoother updates
+}
+
+const stopFpsCounter = () => {
+  if (fpsInterval) {
+    clearInterval(fpsInterval)
+    fpsInterval = null
+  }
+  actualFps.value = 0
+  frameCount = 0
+}
 
 
 const {
@@ -23,8 +61,8 @@ const {
   stopStream
 } = useMediaPermissions()
 
-const { mirrorCamera, enableCamera, showLandmarks } = useTrainingSettings()
-const { startHandTracking, stopHandTracking } = useHandTracking(mirrorCamera, showLandmarks)
+const { mirrorCamera, enableCamera, showLandmarks, fps } = useTrainingSettings()
+const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
 
 const videoClasses = computed(() => [
@@ -51,6 +89,7 @@ const handlePermissionRequest = async () => {
 
 const stopTraining = () => {
   stopHandTracking()
+  stopFpsCounter()
   stopStream()
   isTraining.value = false
   showSettings.value = false
@@ -62,6 +101,7 @@ watch(
   async ([training, mediaStream, video, canvas, cameraEnabled]) => {
     if (!training || !cameraEnabled) {
       stopHandTracking()
+      stopFpsCounter()
       return
     }
 
@@ -74,6 +114,14 @@ watch(
     }
 
     startHandTracking(video, canvas, mediaStream)
+    startFpsCounter()
+    
+    // Hook into the hand tracking frame callback to count frames
+    if (onFrame) {
+      onFrame(() => {
+        frameCount++
+      })
+    }
   },
   { immediate: true }
 )
@@ -121,8 +169,10 @@ watch(
         <canvas ref="canvasEl" class="absolute inset-0 w-full h-full"></canvas>
         <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
-            <div class="text-xs text-slate-400">FPS</div>
-            <div class="text-2xl font-bold text-white">15</div>
+            <div class="text-xs text-slate-400">FPS (Target: {{ fps }})</div>
+            <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
+              {{ actualFps || '--' }}
+            </div>
           </div>
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Condition</div>
