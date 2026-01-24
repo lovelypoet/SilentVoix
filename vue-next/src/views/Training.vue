@@ -6,6 +6,7 @@ import TrainingSettings from '../components/TrainingSettings.vue'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 import { useHandTracking } from '../composables/useHandTracking.js'
+import { useCollectData } from '../composables/useCollectData.js'
 
 
 const isTraining = ref(false)
@@ -64,6 +65,18 @@ const {
 const { mirrorCamera, enableCamera, showLandmarks, fps } = useTrainingSettings()
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
+// Data collection
+const {
+  collectedLandmarks,
+  isCollecting,
+  currentGestureName,
+  startCollecting,
+  stopCollecting,
+  addLandmark,
+  downloadCSV,
+  clearData
+} = useCollectData()
+
 
 const videoClasses = computed(() => [
   'w-full',
@@ -116,12 +129,16 @@ watch(
     startHandTracking(video, canvas, mediaStream)
     startFpsCounter()
     
-    // Hook into the hand tracking frame callback to count frames
-    if (onFrame) {
-      onFrame(() => {
-        frameCount++
-      })
-    }
+    onFrame((results) => {
+      frameCount++
+      
+      // Collect landmarks nếu đang recording
+      if (results.landmarks && results.landmarks.length > 0) {
+        const landmarks = results.landmarks[0] // First hand
+        const handedness = results.handedness?.[0]?.[0]?.categoryName || 'Right'
+        addLandmark(landmarks, handedness)
+      }
+    })
   },
   { immediate: true }
 )
@@ -202,6 +219,65 @@ watch(
           Start Training
         </BaseBtn>
       </div>
+
+      <!-- Data Collection Panel -->
+      <BaseCard class="w-full mt-8">
+        <h3 class="text-lg font-bold text-white mb-4">Data Collection Session</h3>
+        
+        <div class="mb-4">
+          <label class="block text-sm text-slate-400 mb-2">Gesture Name</label>
+          <input 
+            v-model="currentGestureName"
+            type="text" 
+            placeholder="e.g., hello, thanks, yes, no"
+            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
+            :disabled="isCollecting"
+          />
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <BaseBtn 
+            v-if="!isCollecting"
+            @click="startCollecting(currentGestureName)"
+            :disabled="!currentGestureName.trim()"
+            variant="primary"
+          >
+            Start Recording
+          </BaseBtn>
+          <BaseBtn 
+            v-else
+            @click="stopCollecting"
+            variant="danger"
+          >
+            Stop Recording  
+          </BaseBtn>
+          
+          <BaseBtn 
+            @click="downloadCSV"
+            :disabled="collectedLandmarks.length === 0"
+            variant="secondary"
+          >
+            Download CSV
+          </BaseBtn>
+          
+          <BaseBtn 
+            @click="clearData"
+            :disabled="collectedLandmarks.length === 0"
+            variant="secondary"
+          >
+            Clear Data
+          </BaseBtn>
+        </div>
+
+        <div class="mt-4 text-sm">
+          <div v-if="isCollecting" class="text-green-400 font-semibold">
+            Recording "{{ currentGestureName }}"...
+          </div>
+          <div class="text-slate-400">
+            Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length }}</span>
+          </div>
+        </div>
+      </BaseCard>
     </div>
 
     <!-- Initial State -->

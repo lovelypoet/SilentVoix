@@ -9,23 +9,20 @@ import {
 export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   // MediaPipe instance
   let landmarker = null
-
   // DOM
   let videoEl = null
   let canvasEl = null
   let ctx = null
-
   // Loop
   let rafId = null
   let running = false
-
+  let frameCallback = null
 
   // init landmarker
   const createLandmarker = async () => {
     const vision = await FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
     )
-
     landmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath:
@@ -35,11 +32,9 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
       runningMode: 'VIDEO', // ensure run mode is VIDEO
       numHands: 2
     })
-
     console.log('[HandTracking] initialized (VIDEO mode)')
   }
 
-  
   const loop = () => {
     // no chay va landmark k bat -> end
     if (!running || !landmarker) return
@@ -52,8 +47,12 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     const now = performance.now()
     const results = landmarker.detectForVideo(videoEl, now)
 
-    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
+    // CALLBACK VỚI RESULTS
+    if (frameCallback && results) {
+      frameCallback(results)
+    }
 
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
     ctx.save()
 
     // MIRROR CANVAS IF VIDEO IS MIRRORED
@@ -63,42 +62,34 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     }
 
     if (showLandmarksRef.value && results?.landmarks) {
-  const drawer = new DrawingUtils(ctx)
-
-
-  // chinh mau o day cho de nhin
-  for (const landmarks of results.landmarks) {
-    drawer.drawConnectors(
-      landmarks,
-      HandLandmarker.HAND_CONNECTIONS,
-      {
-        color: 'green',
-        lineWidth: 6
+      const drawer = new DrawingUtils(ctx)
+      // chinh mau o day cho de nhin
+      for (const landmarks of results.landmarks) {
+        drawer.drawConnectors(
+          landmarks,
+          HandLandmarker.HAND_CONNECTIONS,
+          {
+            color: 'green',
+            lineWidth: 6
+          }
+        )
+        drawer.drawLandmarks(
+          landmarks,
+          {
+            color: '#fff700',
+            radius: 6,
+            lineWidth: 2
+          }
+        )
       }
-    )
-
-    drawer.drawLandmarks(
-      landmarks,
-      {
-        color: '#fff700',
-        radius: 6,
-        lineWidth: 2
-      }
-    )
-  }
-}
-
+    }
 
     ctx.restore()
-    
     rafId = requestAnimationFrame(loop)
   }
 
-  // ham chinh de goi trong training.vue
-
   const startHandTracking = async (video, canvas, mediaStream) => {
-    stopHandTracking() // reset toan bo ps
-
+    stopHandTracking() 
     videoEl = video
     canvasEl = canvas
     ctx = canvasEl.getContext('2d')
@@ -106,13 +97,13 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     await createLandmarker()
 
     videoEl.srcObject = mediaStream
-
     await new Promise((resolve) => {
       if (videoEl.readyState >= 2) resolve()
       else videoEl.onloadedmetadata = () => resolve()
     })
 
     await videoEl.play()
+
     canvasEl.width = videoEl.videoWidth
     canvasEl.height = videoEl.videoHeight
 
@@ -121,23 +112,23 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   }
 
   //stop
-
   const stopHandTracking = () => {
     running = false
-
     if (rafId) {
       cancelAnimationFrame(rafId)
       rafId = null
     }
-
     if (ctx && canvasEl) {
       ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
     }
-
     if (landmarker) {
       landmarker.close?.()
       landmarker = null
     }
+  }
+
+  const onFrame = (callback) => {
+    frameCallback = callback
   }
 
   onUnmounted(stopHandTracking)
@@ -145,6 +136,6 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   return {
     startHandTracking,
     stopHandTracking,
+    onFrame  
   }
-  
 }
