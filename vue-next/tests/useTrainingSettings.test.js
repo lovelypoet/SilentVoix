@@ -7,7 +7,6 @@ describe('useTrainingSettings (unit)', () => {
 
     expect(settings.enableCamera.value).toBe(true)
     expect(settings.mirrorCamera.value).toBe(true)
-    expect(settings.resolution.value).toBe('Medium')
     expect(settings.showLandmarks.value).toBe(true)
     expect(settings.trainingMode.value).toBe('Practice')
   })

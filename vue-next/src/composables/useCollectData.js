@@ -96,6 +96,7 @@ export function useCollectData() {
     stopCollecting,
     addLandmark,
     downloadCSV,
-    clearData
+    clearData,
+    convertToCSV
   }
 }
