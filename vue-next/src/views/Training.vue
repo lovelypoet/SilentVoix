@@ -215,9 +215,6 @@ watch(
         <BaseBtn variant="secondary" @click="showSettings = true">
           Settings
         </BaseBtn>
-        <BaseBtn variant="primary">
-          Start Training
-        </BaseBtn>
       </div>
 
       <!-- Data Collection Panel -->
