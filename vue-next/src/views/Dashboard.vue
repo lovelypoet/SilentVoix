@@ -1,13 +1,20 @@
 <script setup>
+import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+
+const router = useRouter()
+
+const startNewSession = () => {
+  router.push('/training')
+}
 </script>
 
 <template>
   <div class="space-y-6">
     <div class="flex justify-between items-center">
       <h1 class="text-3xl font-bold text-white">Dashboard</h1>
-      <BaseBtn variant="primary">New Session</BaseBtn>
+      <BaseBtn variant="primary" @click="startNewSession">New Session</BaseBtn>
     </div>
 
     <!-- Stats Grid -->
