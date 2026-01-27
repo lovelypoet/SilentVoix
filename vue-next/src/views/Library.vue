@@ -92,12 +92,25 @@ onMounted(async () => {
     </div>
 
     <Dialog v-model:visible="displayDialog" modal header="Record New Gesture" :style="{ width: '30rem' }" @hide="cancelRecordNewGesture">
-      <div class="p-fluid">
-        <div class="field">
-          <label for="gestureName" class="font-bold mb-3">Gesture Name</label>
-          <InputText id="gestureName" v-model="newGestureNameInput" autofocus @keyup.enter="confirmRecordNewGesture" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200" />
-        </div>
-      </div>
+     <div class="p-fluid w-full">
+  <div class="field w-full">
+    <label
+      for="gestureName"
+      class="font-bold mb-3 block text-lg"
+    >
+      Gesture Name
+    </label>
+
+    <InputText
+      id="gestureName"
+      v-model="newGestureNameInput"
+      autofocus
+      @keyup.enter="confirmRecordNewGesture"
+      class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+    />
+  </div>
+</div>
+
       <template #footer>
         <BaseBtn variant="secondary" @click="cancelRecordNewGesture">Cancel</BaseBtn>
         <BaseBtn variant="primary" @click="confirmRecordNewGesture">Record</BaseBtn>
