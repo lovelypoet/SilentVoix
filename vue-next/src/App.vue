@@ -9,7 +9,7 @@ const route = useRoute()
     <Toast /> <!-- Add Toast component here -->
     <!-- Sidebar (Hidden on login) -->
     <aside v-if="route.meta.layout !== 'empty'" class="w-64 border-r border-slate-800 p-6 flex flex-col">
-      <div class="text-2xl font-bold text-indigo-500 mb-8">SilentVoix</div>
+      <RouterLink to="/" class="text-2xl font-bold text-indigo-500 mb-8 cursor-pointer">SilentVoix</RouterLink>
       
       <nav class="flex flex-col gap-2">
         <RouterLink to="/" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
