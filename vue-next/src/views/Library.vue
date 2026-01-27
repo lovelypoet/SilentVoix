@@ -1,13 +1,23 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router' // Import useRouter
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import api from '../services/api'
+
+const router = useRouter() // Initialize router
 
 const gestures = ref([])
 // Mock data for prototype
 // Mock data for prototype
 const mockGestures = []
+
+const recordNewGesture = () => {
+  const gestureName = prompt('Enter a name for the new gesture:')
+  if (gestureName) {
+    router.push({ path: '/training', query: { newGestureName: gestureName } })
+  }
+}
 
 onMounted(async () => {
     try {
@@ -26,7 +36,7 @@ onMounted(async () => {
         <h1 class="text-3xl font-bold text-white">Gesture Library</h1>
         <p class="text-slate-400">View and manage your learned signs</p>
       </div>
-      <BaseBtn variant="primary">Record New</BaseBtn>
+      <BaseBtn variant="primary" @click="recordNewGesture">Record New</BaseBtn>
     </div>
 
     <!-- Filter/Search Bar -->

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue'
+import { useRoute } from 'vue-router' // Import useRoute
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
@@ -9,6 +10,8 @@ import { useHandTracking } from '../composables/useHandTracking.js'
 import { useCollectData } from '../composables/useCollectData.js'
 import VideoAnalyzer from '../components/VideoAnalyzer.vue'
 
+
+const route = useRoute() // Initialize useRoute
 
 const isTraining = ref(false)
 const showSettings = ref(false)
@@ -22,6 +25,24 @@ const currentLightingStatus = ref({ status: '--', colorClass: 'text-slate-400' }
 const currentAvgBrightness = ref(0)
 const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
+
+// Data collection
+const {
+  collectedLandmarks,
+  isCollecting,
+  currentGestureName,
+  startCollecting,
+  stopCollecting,
+  addLandmark,
+  downloadCSV,
+  clearData
+} = useCollectData()
+
+// Check for newGestureName query parameter on component setup
+if (route.query.newGestureName) {
+  currentGestureName.value = route.query.newGestureName;
+  isTraining.value = true; // Automatically start training if a new gesture name is provided
+}
 
 // FPS calculation
 let frameCount = 0
@@ -72,18 +93,6 @@ const {
 
 const { mirrorCamera, enableCamera, showLandmarks, fps } = useTrainingSettings()
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
-
-// Data collection
-const {
-  collectedLandmarks,
-  isCollecting,
-  currentGestureName,
-  startCollecting,
-  stopCollecting,
-  addLandmark,
-  downloadCSV,
-  clearData
-} = useCollectData()
 
 
 const videoClasses = computed(() => [
