@@ -7,6 +7,7 @@ import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 import { useHandTracking } from '../composables/useHandTracking.js'
 import { useCollectData } from '../composables/useCollectData.js'
+import VideoAnalyzer from '../components/VideoAnalyzer.vue'
 
 
 const isTraining = ref(false)
@@ -14,6 +15,13 @@ const showSettings = ref(false)
 const videoEl = ref(null)
 const canvasEl = ref(null)
 const actualFps = ref(0)
+
+// Refs for VideoAnalyzer data
+const videoAnalyzerRef = ref(null)
+const currentLightingStatus = ref({ status: '--', colorClass: 'text-slate-400' })
+const currentAvgBrightness = ref(0)
+const detectedGesture = ref('Waiting...')
+const confidence = ref('--%')
 
 // FPS calculation
 let frameCount = 0
@@ -112,6 +120,7 @@ const stopTraining = () => {
 watch(
   [isTraining, stream, videoEl, canvasEl, enableCamera],
   async ([training, mediaStream, video, canvas, cameraEnabled]) => {
+    console.log('Training: isTraining watch triggered. videoEl:', videoEl.value, 'videoAnalyzerRef:', videoAnalyzerRef.value);
     if (!training || !cameraEnabled) {
       stopHandTracking()
       stopFpsCounter()
@@ -184,6 +193,17 @@ watch(
         <video ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
 
         <canvas ref="canvasEl" class="absolute inset-0 w-full h-full"></canvas>
+        <!-- VideoAnalyzer component for background processing -->
+        <VideoAnalyzer
+          v-if="videoEl"
+          :video-el="videoEl"
+          ref="videoAnalyzerRef"
+          class="hidden"
+          :mirror-camera="mirrorCamera"
+          :show-landmarks="showLandmarks"
+          @update:avgBrightness="currentAvgBrightness = $event"
+          @update:lightingStatus="currentLightingStatus = $event"
+        />
         <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">FPS (Target: {{ fps }})</div>
@@ -193,7 +213,7 @@ watch(
           </div>
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Condition</div>
-            <div class="text-2xl font-bold text-slate-400">Too dark</div>
+            <div class="text-2xl font-bold" :class="currentLightingStatus.colorClass">{{ currentLightingStatus.status }}</div>
           </div>
         </div>
         <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
