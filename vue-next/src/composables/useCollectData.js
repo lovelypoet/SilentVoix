@@ -25,17 +25,18 @@ export function useCollectData() {
   }
 
 
-  const addLandmark = (landmarks, handedness = 'Right') => {
-    // Only collect when recording
-    if (!isCollecting.value) return
+  const addLandmark = (landmarks, handedness) => {
+  if (!isCollecting.value) return
+  if (!handedness) return // refuse no hand data
 
-    collectedLandmarks.value.push({
-      gesture: currentGestureName.value,
-      timestamp: Date.now(),
-      handedness,
-      landmarks
-    })
-  }
+  collectedLandmarks.value.push({
+    gesture: currentGestureName.value,
+    timestamp: Date.now(),
+    handedness,
+    landmarks
+  })
+}
+
 
   /**
    * Convert collected data to CSV format
