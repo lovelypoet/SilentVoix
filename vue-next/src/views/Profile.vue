@@ -2,11 +2,13 @@
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
-import { ref, onMounted } from 'vue' // Import onMounted
-import { useAuthStore } from '../stores/auth.js' // Import useAuthStore
-import api from '../services/api.js' // Import api
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '../stores/auth.js'
+import api from '../services/api.js'
+import { useToast } from 'primevue/usetoast'; // Import useToast
 
 const authStore = useAuthStore()
+const toast = useToast(); // Initialize toast
 
 const form = ref({
   name: '',
@@ -31,10 +33,10 @@ const saveChanges = async () => {
     })
     authStore.user = updatedUser
     localStorage.setItem('user', JSON.stringify(updatedUser))
-    alert('Profile updated successfully!') // Simple feedback
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Profile updated successfully!', life: 3000 });
   } catch (error) {
     console.error('Failed to update profile:', error)
-    alert('Failed to update profile.')
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to update profile.', life: 3000 });
   }
 }
 </script>

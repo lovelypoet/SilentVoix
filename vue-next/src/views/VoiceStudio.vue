@@ -6,6 +6,19 @@ import api from '../services/api'
 
 const audioFiles = ref([])
 const isLoading = ref(false)
+const fileInput = ref(null) // Ref for the hidden file input
+
+const triggerFileInput = () => {
+  fileInput.value.click()
+}
+
+const handleFileChange = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    console.log('Selected file:', file.name, file);
+    // Here you would typically handle the file upload, e.g., call an API
+  }
+}
 
 const fetchAudio = async () => {
   isLoading.value = true
@@ -42,7 +55,8 @@ onMounted(() => {
         <h1 class="text-3xl font-bold text-white">Voice Studio</h1>
         <p class="text-slate-400">Manage and test audio feedback files</p>
       </div>
-      <BaseBtn variant="primary">Upload Audio</BaseBtn>
+      <BaseBtn variant="primary" @click="triggerFileInput">Upload Audio</BaseBtn>
+      <input type="file" ref="fileInput" accept="audio/*" style="display: none;" @change="handleFileChange">
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

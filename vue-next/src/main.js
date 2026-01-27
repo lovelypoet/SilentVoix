@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'; // Import ToastService
 import Aura from '@primevue/themes/aura'
 import './style.css'
 import App from './App.vue'
@@ -15,5 +16,6 @@ app.use(PrimeVue, {
         preset: Aura
     }
 })
+app.use(ToastService); // Install ToastService
 
 app.mount('#app')

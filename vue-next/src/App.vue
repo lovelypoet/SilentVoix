@@ -1,10 +1,12 @@
 <script setup>
 import { RouterLink, RouterView, useRoute } from 'vue-router'
+import Toast from 'primevue/toast'; // Import Toast component
 const route = useRoute()
 </script>
 
 <template>
   <div class="min-h-screen bg-slate-950 text-slate-200 flex">
+    <Toast /> <!-- Add Toast component here -->
     <!-- Sidebar (Hidden on login) -->
     <aside v-if="route.meta.layout !== 'empty'" class="w-64 border-r border-slate-800 p-6 flex flex-col">
       <div class="text-2xl font-bold text-indigo-500 mb-8">SilentVoix</div>
