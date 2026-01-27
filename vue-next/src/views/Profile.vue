@@ -2,13 +2,41 @@
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue' // Import onMounted
+import { useAuthStore } from '../stores/auth.js' // Import useAuthStore
+import api from '../services/api.js' // Import api
+
+const authStore = useAuthStore()
 
 const form = ref({
   name: '',
   email: '',
   device: ''
 })
+
+onMounted(() => {
+  if (authStore.user) {
+    form.value.name = authStore.user.display_name || ''
+    form.value.email = authStore.user.email || ''
+    // form.value.device = authStore.user.device || '' // Assuming device might be part of user profile
+  }
+})
+
+const saveChanges = async () => {
+  try {
+    const updatedUser = await api.auth.updateProfile({
+      display_name: form.value.name,
+      email: form.value.email,
+      // device: form.value.device, // Include if device is part of user profile update
+    })
+    authStore.user = updatedUser
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+    alert('Profile updated successfully!') // Simple feedback
+  } catch (error) {
+    console.error('Failed to update profile:', error)
+    alert('Failed to update profile.')
+  }
+}
 </script>
 
 <template>
@@ -24,7 +52,7 @@ const form = ref({
             <BaseInput label="Email Address" type="email" v-model="form.email" />
         </div>
         <div class="mt-6 flex justify-end">
-            <BaseBtn>Save Changes</BaseBtn>
+            <BaseBtn @click="saveChanges">Save Changes</BaseBtn>
         </div>
       </BaseCard>
 

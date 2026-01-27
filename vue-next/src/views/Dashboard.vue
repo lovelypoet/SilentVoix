@@ -2,11 +2,17 @@
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
-import { ref, computed } from 'vue' // Add ref and computed
+import { ref, computed } from 'vue'
+import { useAuthStore } from '../stores/auth.js' // Import useAuthStore
 
 const router = useRouter()
+const authStore = useAuthStore() // Initialize auth store
 
 const isHovering = ref(false)
+
+const displayName = computed(() => {
+  return authStore.user?.display_name || 'user'
+})
 
 const startNewSession = () => {
   router.push('/training')
@@ -39,7 +45,7 @@ const bannerTextStyle = computed(() => {
       @mouseover="isHovering = true"
       @mouseleave="isHovering = false"
     >
-      <h2 class="text-4xl font-bold mb-2" :style="bannerTextStyle">Welcome to SilentVoix!</h2>
+      <h2 class="text-4xl font-bold mb-2" :style="bannerTextStyle">Welcome, {{ displayName }}!</h2>
       <p class="text-lg" :style="bannerTextStyle">Start your sign language journey today.</p>
     </div>
 
