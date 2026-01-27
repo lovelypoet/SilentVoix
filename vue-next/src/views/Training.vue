@@ -133,6 +133,9 @@ watch(
 
     if (video.srcObject !== mediaStream) {
       video.srcObject = mediaStream
+      // Explicitly play the video to ensure it's not paused
+      video.play().catch(e => console.error("Error playing video:", e));
+      console.log('Training: After video.play() - video.paused:', video.paused, 'video.readyState:', video.readyState, 'video.networkState:', video.networkState);
     }
 
     startHandTracking(video, canvas, mediaStream)
