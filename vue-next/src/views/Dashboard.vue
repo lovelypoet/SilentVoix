@@ -2,12 +2,28 @@
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import { ref, computed } from 'vue' // Add ref and computed
 
 const router = useRouter()
+
+const isHovering = ref(false)
 
 const startNewSession = () => {
   router.push('/training')
 }
+
+const bannerTextStyle = computed(() => {
+  const startColor = isHovering.value ? 'rgb(100, 116, 139)' : 'rgb(67, 56, 202)'; // slate-500 or indigo-600
+  const endColor = isHovering.value ? 'rgb(129, 140, 248)' : 'rgb(129, 140, 248)'; // indigo-400 (remains constant for now)
+  return {
+    backgroundImage: `linear-gradient(to right, ${startColor}, ${endColor})`,
+    webkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    webkitTextFillColor: 'transparent',
+    textFillColor: 'transparent',
+    transition: 'all 0.3s ease-in-out', // Transition for smooth color change
+  };
+});
 </script>
 
 <template>
@@ -15,6 +31,16 @@ const startNewSession = () => {
     <div class="flex justify-between items-center">
       <h1 class="text-3xl font-bold text-white">Dashboard</h1>
       <BaseBtn variant="primary" @click="startNewSession">New Session</BaseBtn>
+    </div>
+
+    <!-- Welcome Banner -->
+    <div
+      class="welcome-banner p-8 rounded-lg text-center"
+      @mouseover="isHovering = true"
+      @mouseleave="isHovering = false"
+    >
+      <h2 class="text-4xl font-bold mb-2" :style="bannerTextStyle">Welcome to SilentVoix!</h2>
+      <p class="text-lg" :style="bannerTextStyle">Start your sign language journey today.</p>
     </div>
 
     <!-- Stats Grid -->
