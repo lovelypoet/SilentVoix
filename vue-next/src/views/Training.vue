@@ -349,6 +349,21 @@ watch(currentLightingStatus, (newValue) => {
           Start Lesson 1
         </BaseBtn>
       </BaseCard>
+
+      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer" @click="startTraining">
+        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600">
+          <span class="text-5xl">★</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">
+          Advanced Practice
+        </h3>
+        <p class="text-slate-400 text-sm mb-6">
+          Followed by AI guidance and real-time 3D modelling.
+        </p>
+        <BaseBtn variant="secondary" class="w-full" disabled>
+          Upgrade Plan
+        </BaseBtn>
+      </BaseCard>
     </div>
   </div>
 </template>
