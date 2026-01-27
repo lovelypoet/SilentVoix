@@ -1,7 +1,7 @@
 # ===============================
 # Core ML / TensorFlow (LOCKED)
 # ===============================
-tensorflow==2.20.0
+tensorflow==2.19.0
 keras==3.10.0
 tensorboard==2.19.0
 tensorflowjs==3.15.0

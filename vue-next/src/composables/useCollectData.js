@@ -73,7 +73,10 @@ export function useCollectData() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `landmarks_${currentGestureName.value || 'data'}_${Date.now()}.csv`
+
+    const d = new Date()
+    const timestamp = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_${d.getHours()}-${d.getMinutes()}-${d.getSeconds()}`
+    a.download = `landmarks_${currentGestureName.value || 'data'}_${timestamp}.csv`
     a.click()
     URL.revokeObjectURL(url)
     
