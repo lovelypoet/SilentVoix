@@ -154,6 +154,14 @@ watch(
   },
   { immediate: true }
 )
+
+watch(currentAvgBrightness, (newValue) => {
+  console.log('Training: Received avgBrightness:', newValue);
+});
+
+watch(currentLightingStatus, (newValue) => {
+  console.log('Training: Received lightingStatus:', newValue);
+});
 </script>
 
 <template>

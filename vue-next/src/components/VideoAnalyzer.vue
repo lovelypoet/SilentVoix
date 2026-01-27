@@ -95,7 +95,7 @@ const lightingStatus = computed(() => {
   const brightness = avgBrightness.value;
   if (brightness < 60) {
     return { status: 'Too Dark', colorClass: 'text-yellow-500' };
-  } else if (brightness > 180) {
+  } else if (brightness > 130) {
     return { status: 'Too Bright', colorClass: 'text-red-500' };
   } else {
     return { status: 'Good', colorClass: 'text-green-500' };
