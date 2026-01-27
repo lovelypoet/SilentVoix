@@ -1,7 +1,17 @@
 <script setup>
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'; // Import Toast component
+import BaseBtn from './components/base/BaseBtn.vue' // Import BaseBtn
+import { useAuthStore } from './stores/auth' // Import useAuthStore
+
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+const handleLogout = async () => {
+  await authStore.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -28,6 +38,12 @@ const route = useRoute()
           Profile
         </RouterLink>
       </nav>
+
+      <div class="mt-auto"> <!-- This div will push the logout button to the bottom -->
+        <BaseBtn variant="danger" class="w-full justify-center" @click="handleLogout">
+          Logout
+        </BaseBtn>
+      </div>
     </aside>
 
     <!-- Main Content -->
