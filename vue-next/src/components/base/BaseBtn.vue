@@ -2,7 +2,7 @@
 defineProps({
   variant: {
     type: String,
-    default: 'primary' // primary, secondary, danger
+    default: 'primary' // primary, secondary, danger, amber
   },
   label: String
 })
@@ -14,7 +14,8 @@ defineProps({
     :class="{
       'btn-primary': variant === 'primary',
       'bg-slate-800 hover:bg-slate-700 text-slate-200 focus:ring-slate-500': variant === 'secondary',
-      'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 focus:ring-red-500': variant === 'danger'
+      'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 focus:ring-red-500': variant === 'danger',
+      'btn-amber': variant === 'amber'
     }"
   >
     <slot>{{ label }}</slot>
@@ -40,6 +41,26 @@ defineProps({
   --btn-hue: 260; /* Shift hue on hover/focus */
   --btn-saturation: 80%;
   --btn-lightness: 67%; /* indigo-500 lightness */
+  box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3);
+}
+
+.btn-amber {
+  --btn-hue: 36; /* amber-500 hue */
+  --btn-saturation: 100%;
+  --btn-lightness: 50%;
+  background: hsl(var(--btn-hue) var(--btn-saturation) var(--btn-lightness));
+  color: white;
+  box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2);
+  transition: all 300ms ease;
+  
+  --tw-ring-color: hsl(var(--btn-hue) var(--btn-saturation) var(--btn-lightness));
+}
+
+.btn-amber:hover,
+.btn-amber:focus-visible {
+  --btn-hue: 30; /* amber-600 hue */
+  --btn-saturation: 100%;
+  --btn-lightness: 60%; /* Brighter amber lightness */
   box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3);
 }
 </style>

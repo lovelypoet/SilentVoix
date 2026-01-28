@@ -18,6 +18,7 @@ const showSettings = ref(false)
 const videoEl = ref(null)
 const canvasEl = ref(null)
 const actualFps = ref(0)
+const trainingMode = ref(null) // 'free' or 'advanced'
 
 // Refs for VideoAnalyzer data
 const videoAnalyzerRef = ref(null)
@@ -111,6 +112,15 @@ const startTraining = async () => {
   await requestPermissions()
   if (hasPermissions.value) {
     isTraining.value = true
+    trainingMode.value = 'free'
+  }
+}
+
+const startAdvancedTraining = async () => {
+  await requestPermissions()
+  if (hasPermissions.value) {
+    isTraining.value = true
+    trainingMode.value = 'advanced'
   }
 }
 
@@ -127,6 +137,7 @@ const stopTraining = () => {
   stopStream()
   isTraining.value = false
   showSettings.value = false
+  trainingMode.value = null // Reset training mode
 }
 
 
@@ -213,7 +224,17 @@ watch(
         prevHandedness.value = handedness?.categoryName
 
         // Collect landmarks if recording
-        addLandmark(landmarks, handedness?.categoryName || 'Right')
+        if (isCollecting.value) {
+          addLandmark({
+            landmarks: landmarks,
+            handedness: handedness?.categoryName || 'Unknown',
+            confidence: finalScore,
+            handedness_score: handednessScore,
+            landmark_stability: landmarkStability,
+            visibility: visibility,
+            no_flip_penalty: noFlipPenalty
+          })
+        }
 
       } else {
         detectedGesture.value = 'No Hand Detected'
@@ -240,7 +261,9 @@ watch(currentLightingStatus, (newValue) => {
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
     <div class="mb-8 text-center">
-      <h1 class="text-3xl font-bold text-white mb-2">Training Center</h1>
+      <h1 class="text-3xl font-bold text-white mb-2">
+        {{ trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center' }}
+      </h1>
       <p class="text-slate-400">
         Master your sign language gestures with real-time feedback
       </p>
@@ -412,8 +435,8 @@ watch(currentLightingStatus, (newValue) => {
         </BaseBtn>
       </BaseCard>
 
-      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer" @click="startTraining">
-        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600">
+      <BaseCard class="group hover:border-amber-500/50 transition-colors cursor-pointer" @click="startAdvancedTraining">
+        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-amber-500">
           <span class="text-5xl">★</span>
         </div>
         <h3 class="text-xl font-bold text-white mb-2">
@@ -422,8 +445,8 @@ watch(currentLightingStatus, (newValue) => {
         <p class="text-slate-400 text-sm mb-6">
           Followed by AI guidance and real-time 3D modelling.
         </p>
-        <BaseBtn variant="secondary" class="w-full" disabled>
-          Upgrade Plan
+        <BaseBtn variant="amber" class="w-full" :disabled="isRequesting">
+          Start Advanced Session
         </BaseBtn>
       </BaseCard>
     </div>
