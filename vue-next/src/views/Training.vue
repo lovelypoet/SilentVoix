@@ -9,6 +9,7 @@ import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 import { useHandTracking } from '../composables/useHandTracking.js'
 import { useCollectData } from '../composables/useCollectData.js'
 import VideoAnalyzer from '../components/VideoAnalyzer.vue'
+//import { useTraining } from '../composables/useTraining.js'
 
 
 const route = useRoute() // Initialize useRoute
@@ -469,7 +470,7 @@ watch(currentLightingStatus, (newValue) => {
 
     <!-- Initial State -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer" @click="startTraining">
+      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer card" @click="startTraining">
         <div
           class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-indigo-500 transition-colors">
           <span class="text-5xl">▶</span>
@@ -485,7 +486,7 @@ watch(currentLightingStatus, (newValue) => {
         </BaseBtn>
       </BaseCard>
 
-      <BaseCard class="group opacity-50 cursor-not-allowed">
+      <BaseCard class="group opacity-50 cursor-not-allowed card">
         <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600">
           <span class="text-5xl">★</span>
         </div>
@@ -500,7 +501,7 @@ watch(currentLightingStatus, (newValue) => {
         </BaseBtn>
       </BaseCard>
 
-      <BaseCard class="group hover:border-amber-500/50 transition-colors cursor-pointer" @click="startAdvancedTraining">
+      <BaseCard class="group hover:border-amber-500/50 transition-colors cursor-pointer card" @click="startAdvancedTraining">
         <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-amber-500">
           <span class="text-5xl">★</span>
         </div>

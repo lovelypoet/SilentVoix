@@ -4,24 +4,34 @@ on:
   push:
     branches: [ main, mediapipe, dev ]
   pull_request:
-    branches: [ main, mediapie ]
+    branches: [ main, mediapipe ] 
 
 jobs:
-  build:
+  frontend:
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: ./vue-next
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-    - name: Use Node.js
+    - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: vue-next/package-lock.json
 
-    - name: Install dependencies
-      working-directory: vue-next
-      run: npm install
+    - name: Install dependencies (clean & reproducible)
+      run: npm ci
 
-    - name: Run tests
-      working-directory: vue-next
+    - name: Lint
+      run: npm run lint
+
+    - name: Run test
       run: npm run test
+      
+    - name: Build
+      run: npm run build
+  
