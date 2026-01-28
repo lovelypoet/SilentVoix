@@ -15,6 +15,7 @@ const trainingMode = ref('Practice')
 const countdown = ref(3)
 const fps = ref(15)
 const showLandmarks = ref(true)
+const enableAISuggestions = ref(true) // New setting for AI suggestions
 
 const cameraDevices = ref([])
 
@@ -51,6 +52,7 @@ export function useTrainingSettings() {
     countdown,
     showLandmarks,
     fps,
+    enableAISuggestions, // Add new setting
     cameraDevices,
     resolutionOptions,
 

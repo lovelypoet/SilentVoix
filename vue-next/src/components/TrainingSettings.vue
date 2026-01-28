@@ -14,6 +14,7 @@ const {
   countdown,
   fps,
   showLandmarks,
+  enableAISuggestions, // Import new setting
   cameraDevices,
   resolutionOptions,
   getCameraDevices,
@@ -94,12 +95,20 @@ onMounted(() => {
         </div>
 
         <!-- Visualization -->
-        <!-- chinh on off tracking o day -->
         <div class="space-y-3">
           <h3 class="text-lg font-semibold text-slate-300">Visualization</h3>
           <div class="grid grid-cols-2 gap-4 items-center">
             <label for="show-landmarks" class="text-slate-400">Show Landmarks</label>
             <input type="checkbox" id="show-landmarks" v-model="showLandmarks" class="toggle-switch">
+          </div>
+        </div>
+
+        <!-- AI Suggestions -->
+        <div class="space-y-3">
+          <h3 class="text-lg font-semibold text-slate-300">AI Suggestions</h3>
+          <div class="grid grid-cols-2 gap-4 items-center">
+            <label for="enable-ai-suggestions" class="text-slate-400">Enable AI Suggestions</label>
+            <input type="checkbox" id="enable-ai-suggestions" v-model="enableAISuggestions" class="toggle-switch">
           </div>
         </div>
       </div>

@@ -290,7 +290,7 @@ watch(currentLightingStatus, (newValue) => {
 
     <!-- Active Training -->
     <div v-else-if="isTraining && hasPermissions" class="flex flex-col items-center">
-      <div class="w-full aspect-video bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
+      <div v-if="trainingMode === 'free'" class="w-full aspect-video bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
         <div v-if="!enableCamera" class="absolute inset-0 flex items-center justify-center text-slate-500 bg-black">
           Camera is disabled
         </div>
@@ -329,6 +329,57 @@ watch(currentLightingStatus, (newValue) => {
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Confidence</div>
             <div class="text-2xl font-bold text-slate-400">{{ confidence }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="trainingMode === 'advanced'" class="w-full grid grid-cols-2 gap-4 aspect-video">
+        <!-- Left Placeholder: 3D Model -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl flex items-center justify-center">
+          <span class="text-slate-500 text-2xl font-bold">3D Model</span>
+        </div>
+
+        <!-- Right Placeholder: Camera Feed -->
+        <div class="bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
+          <div v-if="!enableCamera" class="absolute inset-0 flex items-center justify-center text-slate-500 bg-black">
+            Camera is disabled
+          </div>
+
+          <video ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
+
+          <canvas ref="canvasEl" class="absolute inset-0 w-full h-full"></canvas>
+          <!-- VideoAnalyzer component for background processing -->
+          <VideoAnalyzer
+            v-if="videoEl"
+            :video-el="videoEl"
+            ref="videoAnalyzerRef"
+            class="hidden"
+            :mirror-camera="mirrorCamera"
+            :show-landmarks="showLandmarks"
+            @update:avgBrightness="currentAvgBrightness = $event"
+            @update:lightingStatus="currentLightingStatus = $event"
+          />
+          <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
+            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+              <div class="text-xs text-slate-400">FPS (Target: {{ fps }})</div>
+              <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
+                {{ actualFps || '--' }}
+              </div>
+            </div>
+            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+              <div class="text-xs text-slate-400">Condition</div>
+              <div class="text-2xl font-bold" :class="currentLightingStatus.colorClass">{{ currentLightingStatus.status }}</div>
+            </div>
+          </div>
+          <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+              <div class="text-xs text-slate-400">Detected Gesture</div>
+              <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
+            </div>
+            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+              <div class="text-xs text-slate-400">Confidence</div>
+              <div class="text-2xl font-bold text-slate-400">{{ confidence }}</div>
+            </div>
           </div>
         </div>
       </div>
