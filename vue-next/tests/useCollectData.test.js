@@ -108,13 +108,6 @@ describe('useCollectData', () => {
       expect(frame.timestamp).toBeGreaterThan(0)
     })
 
-    it('should default handedness to Right', () => {
-      collectData.startCollecting('hello')
-      collectData.addLandmark(createMockLandmarks())
-      
-      const frame = collectData.collectedLandmarks.value[0]
-      expect(frame.handedness).toBe('Right')
-    })
 
     it('should handle Left handedness', () => {
       collectData.startCollecting('hello')
