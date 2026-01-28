@@ -26,6 +26,10 @@ const currentAvgBrightness = ref(0)
 const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
 
+// Refs for confidence score calculation
+const prevLandmarks = ref(null)
+const prevHandedness = ref(null)
+
 // Data collection
 const {
   collectedLandmarks,
@@ -129,10 +133,14 @@ const stopTraining = () => {
 watch(
   [isTraining, stream, videoEl, canvasEl, enableCamera],
   async ([training, mediaStream, video, canvas, cameraEnabled]) => {
-    console.log('Training: isTraining watch triggered. videoEl:', videoEl.value, 'videoAnalyzerRef:', videoAnalyzerRef.value);
     if (!training || !cameraEnabled) {
       stopHandTracking()
       stopFpsCounter()
+      // Reset states when stopping
+      prevLandmarks.value = null
+      prevHandedness.value = null
+      confidence.value = '--%'
+      detectedGesture.value = 'Waiting...'
       return
     }
 
@@ -142,9 +150,7 @@ watch(
 
     if (video.srcObject !== mediaStream) {
       video.srcObject = mediaStream
-      // Explicitly play the video to ensure it's not paused
       video.play().catch(e => console.error("Error playing video:", e));
-      console.log('Training: After video.play() - video.paused:', video.paused, 'video.readyState:', video.readyState, 'video.networkState:', video.networkState);
     }
 
     startHandTracking(video, canvas, mediaStream)
@@ -155,12 +161,65 @@ watch(
       
       if (results.landmarks && results.landmarks.length > 0) {
         detectedGesture.value = 'Hand Detected'
-        // Collect landmarks nếu đang recording
-        const landmarks = results.landmarks[0] // First hand
-        const handedness = results.handedness?.[0]?.[0]?.categoryName || 'Right'
-        addLandmark(landmarks, handedness)
+        
+        const landmarks = results.landmarks[0]
+        const handedness = results.handedness?.[0]?.[0]
+
+        // --- Calculate Composite Confidence Score ---
+        
+        // 1. Handedness Score (40%)
+        const handednessScore = handedness?.score || 0
+        
+        // 2. Landmark Stability (30%)
+        let landmarkStability = 0
+        if (prevLandmarks.value) {
+          const distances = landmarks.map((point, i) => {
+            const prevPoint = prevLandmarks.value[i]
+            return Math.sqrt(
+              Math.pow(point.x - prevPoint.x, 2) +
+              Math.pow(point.y - prevPoint.y, 2) +
+              Math.pow(point.z - prevPoint.z, 2)
+            )
+          })
+          const avgDistance = distances.reduce((sum, d) => sum + d, 0) / distances.length
+          // Normalize: assume max avg distance of ~0.1 is unstable
+          landmarkStability = Math.max(0, 1 - avgDistance * 10)
+        } else {
+          landmarkStability = 1 // Perfect stability on first frame
+        }
+
+        // 3. Visibility (20%) - Proxy via brightness
+        const visibility = currentAvgBrightness.value / 255
+
+        // 4. No-Flip Penalty (10%)
+        let noFlipPenalty = 1
+        if (prevHandedness.value && handedness?.categoryName && handedness.categoryName !== prevHandedness.value) {
+          noFlipPenalty = 0 // Apply penalty if handedness flips
+        }
+
+        // Final composed score
+        const finalScore = 
+          0.4 * handednessScore +
+          0.3 * landmarkStability +
+          0.2 * visibility +
+          0.1 * noFlipPenalty
+          
+        confidence.value = `${Math.round(finalScore * 100)}%`
+
+        // --- End of Confidence Score ---
+
+        // Update prev state for next frame
+        prevLandmarks.value = landmarks
+        prevHandedness.value = handedness?.categoryName
+
+        // Collect landmarks if recording
+        addLandmark(landmarks, handedness?.categoryName || 'Right')
+
       } else {
         detectedGesture.value = 'No Hand Detected'
+        confidence.value = '--%'
+        prevLandmarks.value = null
+        prevHandedness.value = null
       }
     })
   },
@@ -246,7 +305,7 @@ watch(currentLightingStatus, (newValue) => {
           </div>
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Confidence</div>
-            <div class="text-2xl font-bold text-slate-400">--%</div>
+            <div class="text-2xl font-bold text-slate-400">{{ confidence }}</div>
           </div>
         </div>
       </div>
