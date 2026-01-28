@@ -20,6 +20,10 @@ const canvasEl = ref(null)
 const actualFps = ref(0)
 const trainingMode = ref(null) // 'free' or 'advanced'
 
+// Local loading states for buttons
+const isStartingFreeTraining = ref(false)
+const isStartingAdvancedTraining = ref(false)
+
 // Refs for VideoAnalyzer data
 const videoAnalyzerRef = ref(null)
 const currentLightingStatus = ref({ status: '--', colorClass: 'text-slate-400' })
@@ -109,18 +113,28 @@ const videoClasses = computed(() => [
 
 
 const startTraining = async () => {
-  await requestPermissions()
-  if (hasPermissions.value) {
-    isTraining.value = true
-    trainingMode.value = 'free'
+  isStartingFreeTraining.value = true
+  try {
+    await requestPermissions()
+    if (hasPermissions.value) {
+      isTraining.value = true
+      trainingMode.value = 'free'
+    }
+  } finally {
+    isStartingFreeTraining.value = false
   }
 }
 
 const startAdvancedTraining = async () => {
-  await requestPermissions()
-  if (hasPermissions.value) {
-    isTraining.value = true
-    trainingMode.value = 'advanced'
+  isStartingAdvancedTraining.value = true
+  try {
+    await requestPermissions()
+    if (hasPermissions.value) {
+      isTraining.value = true
+      trainingMode.value = 'advanced'
+    }
+  } finally {
+    isStartingAdvancedTraining.value = false
   }
 }
 
@@ -466,8 +480,8 @@ watch(currentLightingStatus, (newValue) => {
         <p class="text-slate-400 text-sm mb-6">
           Practice any gesture freely with real-time analysis and feedback.
         </p>
-        <BaseBtn class="w-full" :disabled="isRequesting">
-          {{ isRequesting ? 'Requesting...' : 'Start Session' }}
+        <BaseBtn class="w-full" :disabled="isStartingFreeTraining || isRequesting">
+          {{ isStartingFreeTraining ? 'Requesting...' : 'Start Session' }}
         </BaseBtn>
       </BaseCard>
 
@@ -496,8 +510,8 @@ watch(currentLightingStatus, (newValue) => {
         <p class="text-slate-400 text-sm mb-6">
           Followed by AI guidance and real-time 3D modelling.
         </p>
-        <BaseBtn variant="amber" class="w-full" :disabled="isRequesting">
-          Start Advanced Session
+        <BaseBtn variant="amber" class="w-full" :disabled="isStartingAdvancedTraining || isRequesting">
+          {{ isStartingAdvancedTraining ? 'Requesting...' : 'Start Advanced Session' }}
         </BaseBtn>
       </BaseCard>
     </div>
