@@ -121,6 +121,6 @@ onUnmounted(() => {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-fill-color: transparent;
+  -text-fill-color: transparent;
 }
 </style>
