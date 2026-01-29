@@ -66,7 +66,7 @@ Before you begin, ensure you have the following installed:
 
 ## 3. Running the Application
 
-A convenience script `start_dev.sh` has been created in the project root to start both the backend and frontend servers.
+A convenience script `run_dev.sh` has been created in the project root to start both the backend and frontend servers.
 
 1.  **Navigate back to the project root directory:**
     ```bash
