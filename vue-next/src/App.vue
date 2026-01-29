@@ -47,7 +47,7 @@ const handleLogout = async () => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-auto ml-64" :class="{ 'p-8': route.meta.layout !== 'empty' }">
+    <main class="flex-1 overflow-auto" :class="{ 'ml-64 p-8': route.meta.layout !== 'empty' }">
       <RouterView />
     </main>
   </div>
