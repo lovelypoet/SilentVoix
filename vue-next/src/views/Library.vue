@@ -105,8 +105,8 @@ onMounted(async () => {
       id="gestureName"
       v-model="newGestureNameInput"
       autofocus
-      @keyup.enter="confirmRecordNewGesture"
       class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+      @keyup.enter="confirmRecordNewGesture"
     />
   </div>
 </div>

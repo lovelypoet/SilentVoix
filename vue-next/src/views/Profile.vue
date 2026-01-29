@@ -50,8 +50,8 @@ const saveChanges = async () => {
       <BaseCard>
         <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Personal Information</h2>
         <div class="space-y-4">
-            <BaseInput label="Display Name" v-model="form.name" />
-            <BaseInput label="Email Address" type="email" v-model="form.email" />
+            <BaseInput v-model="form.name" label="Display Name" />
+            <BaseInput v-model="form.email" label="Email Address" type="email" />
         </div>
         <div class="mt-6 flex justify-end">
             <BaseBtn @click="saveChanges">Save Changes</BaseBtn>
@@ -62,7 +62,7 @@ const saveChanges = async () => {
       <BaseCard>
         <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Device Configuration</h2>
         <div class="space-y-4">
-            <BaseInput label="Active Device" v-model="form.device" />
+            <BaseInput v-model="form.device" label="Active Device" />
             
             <div class="flex items-center justify-between py-2">
                 <div>

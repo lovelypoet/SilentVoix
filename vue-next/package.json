@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --check .",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui"
@@ -30,6 +32,9 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
     "autoprefixer": "^10.4.23",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.7.0",
     "happy-dom": "^20.3.1",
     "jsdom": "^27.4.0",
     "postcss": "^8.5.6",

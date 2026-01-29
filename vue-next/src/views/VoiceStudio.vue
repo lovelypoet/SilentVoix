@@ -56,7 +56,7 @@ onMounted(() => {
         <p class="text-slate-400">Manage and test audio feedback files</p>
       </div>
       <BaseBtn variant="primary" @click="triggerFileInput">Upload Audio</BaseBtn>
-      <input type="file" ref="fileInput" accept="audio/*" style="display: none;" @change="handleFileChange">
+      <input ref="fileInput" type="file" accept="audio/*" style="display: none;" @change="handleFileChange">
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

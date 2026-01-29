@@ -297,7 +297,7 @@ watch(currentLightingStatus, (newValue) => {
         <p class="text-xs text-slate-500">
           Error: {{ error.name }} - {{ error.message }}
         </p>
-        <BaseBtn @click="handlePermissionRequest" class="mt-4" :disabled="isRequesting">
+        <BaseBtn class="mt-4" :disabled="isRequesting" @click="handlePermissionRequest">
           {{ isRequesting ? 'Retrying...' : 'Retry' }}
         </BaseBtn>
       </BaseCard>
@@ -316,13 +316,13 @@ watch(currentLightingStatus, (newValue) => {
         <!-- VideoAnalyzer component for background processing -->
         <VideoAnalyzer
           v-if="videoEl"
-          :video-el="videoEl"
           ref="videoAnalyzerRef"
+          :video-el="videoEl"
           class="hidden"
           :mirror-camera="mirrorCamera"
           :show-landmarks="showLandmarks"
-          @update:avgBrightness="currentAvgBrightness = $event"
-          @update:lightingStatus="currentLightingStatus = $event"
+          @update:avg-brightness="currentAvgBrightness = $event"
+          @update:lighting-status="currentLightingStatus = $event"
         />
         <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
@@ -366,13 +366,13 @@ watch(currentLightingStatus, (newValue) => {
           <!-- VideoAnalyzer component for background processing -->
           <VideoAnalyzer
             v-if="videoEl"
-            :video-el="videoEl"
             ref="videoAnalyzerRef"
+            :video-el="videoEl"
             class="hidden"
             :mirror-camera="mirrorCamera"
             :show-landmarks="showLandmarks"
-            @update:avgBrightness="currentAvgBrightness = $event"
-            @update:lightingStatus="currentLightingStatus = $event"
+            @update:avg-brightness="currentAvgBrightness = $event"
+            @update:lighting-status="currentLightingStatus = $event"
           />
           <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
             <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
@@ -426,32 +426,32 @@ watch(currentLightingStatus, (newValue) => {
         <div class="flex flex-wrap gap-3">
           <BaseBtn 
             v-if="!isCollecting"
-            @click="startCollecting(currentGestureName)"
             :disabled="!currentGestureName.trim()"
             variant="primary"
+            @click="startCollecting(currentGestureName)"
           >
             Start Recording
           </BaseBtn>
           <BaseBtn 
             v-else
-            @click="stopCollecting"
             variant="danger"
+            @click="stopCollecting"
           >
             Stop Recording  
           </BaseBtn>
           
           <BaseBtn 
-            @click="downloadCSV"
             :disabled="collectedLandmarks.length === 0"
             variant="secondary"
+            @click="downloadCSV"
           >
             Download CSV
           </BaseBtn>
           
           <BaseBtn 
-            @click="clearData"
             :disabled="collectedLandmarks.length === 0"
             variant="secondary"
+            @click="clearData"
           >
             Clear Data
           </BaseBtn>

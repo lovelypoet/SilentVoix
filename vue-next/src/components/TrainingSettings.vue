@@ -31,7 +31,7 @@ onMounted(() => {
     <div class="bg-slate-800/80 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-8 m-4">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-white">Settings </h2>
-        <button @click="emit('close')" class="text-slate-500 hover:text-white transition-colors">&times;</button>
+        <button class="text-slate-500 hover:text-white transition-colors" @click="emit('close')">&times;</button>
       </div>
 
       <div class="space-y-6 text-sm">
@@ -48,7 +48,7 @@ onMounted(() => {
           </div>
           <div class="grid grid-cols-2 gap-4 items-center">
             <label for="enable-camera" class="text-slate-400">Enable Camera</label>
-            <input type="checkbox" id="enable-camera" v-model="enableCamera" class="toggle-switch">
+            <input id="enable-camera" v-model="enableCamera" type="checkbox" class="toggle-switch">
           </div>
         </div>
 
@@ -63,7 +63,7 @@ onMounted(() => {
           </div>
           <div class="grid grid-cols-2 gap-4 items-center">
             <label for="mirror-camera" class="text-slate-400">Mirror Camera</label>
-            <input type="checkbox" id="mirror-camera" v-model="mirrorCamera" class="toggle-switch">
+            <input id="mirror-camera" v-model="mirrorCamera" type="checkbox" class="toggle-switch">
           </div>
         </div>
 
@@ -99,7 +99,7 @@ onMounted(() => {
           <h3 class="text-lg font-semibold text-slate-300">Visualization</h3>
           <div class="grid grid-cols-2 gap-4 items-center">
             <label for="show-landmarks" class="text-slate-400">Show Landmarks</label>
-            <input type="checkbox" id="show-landmarks" v-model="showLandmarks" class="toggle-switch">
+            <input id="show-landmarks" v-model="showLandmarks" type="checkbox" class="toggle-switch">
           </div>
         </div>
 
@@ -108,7 +108,7 @@ onMounted(() => {
           <h3 class="text-lg font-semibold text-slate-300">AI Suggestions</h3>
           <div class="grid grid-cols-2 gap-4 items-center">
             <label for="enable-ai-suggestions" class="text-slate-400">Enable AI Suggestions</label>
-            <input type="checkbox" id="enable-ai-suggestions" v-model="enableAISuggestions" class="toggle-switch">
+            <input id="enable-ai-suggestions" v-model="enableAISuggestions" type="checkbox" class="toggle-switch">
           </div>
         </div>
       </div>
