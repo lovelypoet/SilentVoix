@@ -239,17 +239,19 @@ watch(
         prevHandedness.value = handedness?.categoryName
 
         // Collect landmarks if recording
-        if (isCollecting.value) {
-          addLandmark({
-            landmarks: landmarks,
-            handedness: handedness?.categoryName || 'Unknown',
-            confidence: finalScore,
-            handedness_score: handednessScore,
-            landmark_stability: landmarkStability,
-            visibility: visibility,
-            no_flip_penalty: noFlipPenalty
-          })
-        }
+        // if (isCollecting.value) {
+        //    addLandmark({
+        //    landmarks: landmarks,
+        //    handedness: handedness?.categoryName || 'Unknown',
+        //    confidence: finalScore,
+        //    handedness_score: handednessScore,
+        //    landmark_stability: landmarkStability,
+        //    visibility: visibility,
+        //    no_flip_penalty: noFlipPenalty
+        //  })
+        //}
+        addLandmark(landmarks, handedness?.categoryName || 'Right')
+
 
       } else {
         detectedGesture.value = 'No Hand Detected'
