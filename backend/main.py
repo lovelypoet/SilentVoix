@@ -92,6 +92,7 @@ app.include_router(model_status.router)
 
 # Mount models directory for static files if needed
 app.mount("/models", StaticFiles(directory=settings.DATA_DIR), name="models")
+app.mount("/static/tts", StaticFiles(directory=settings.TTS_CACHE_DIR), name="tts")
 
 @app.get("/")
 def root():

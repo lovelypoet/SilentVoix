@@ -91,6 +91,30 @@ export default {
     playLaptop: (filename) => api.post(`/audio-files/${filename}/play-laptop`),
   },
 
+  // ===================== Utils & TTS API =====================
+  utils: {
+    // Health
+    health: () => api.get('/utils/health'),
+    // TTS
+    tts: {
+      speakOnGlove: (text) => api.post('/utils/test_tts_to_esp32', { text }),
+      speakTest: (text, playOnLaptop = false) => {
+        const token = localStorage.getItem('access_token')
+        return api.post('/utils/tts/test', null, {
+          params: {
+            text,
+            play_on_laptop: playOnLaptop
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
+      },
+
+      getLanguages: () => api.get('/utils/tts/languages'),
+      setLanguage: (language) => api.post(`/utils/tts/language?language=${language}`),
+      getConfig: () => api.get('/utils/tts/config'),
+    }
+  },
+
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');

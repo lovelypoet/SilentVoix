@@ -44,16 +44,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 async def get_current_user(request: Request) -> dict:
-    # Prefer Authorization header
     auth_header = request.headers.get("authorization")
     token = None
     if auth_header and auth_header.lower().startswith("bearer "):
         token = auth_header.split(" ", 1)[1].strip()
-    # Fallback to cookie
+    
     if not token:
         token = request.cookies.get(COOKIE_NAME)
+        
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         email: str = payload.get("sub")
@@ -61,9 +62,11 @@ async def get_current_user(request: Request) -> dict:
             raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+        
     user = await users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+        
     return user
 
 def role_required(min_role: Literal["guest", "editor", "admin"]):

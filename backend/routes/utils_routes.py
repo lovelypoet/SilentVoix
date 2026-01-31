@@ -6,7 +6,7 @@ Endpoints:
 - GET /utils/db/stats: Get database statistics.
 - DELETE /utils/sensor-data: Delete sensor data before a given timestamp.
 """
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from datetime import datetime
 from core.database import db
 from core.settings import settings
@@ -17,7 +17,7 @@ from pydantic import BaseModel
 import os
 from utils.cache import cacheable
 from typing import Dict, Any
-from core.auth import get_current_user
+from routes.auth_routes import get_current_user
 
 router = APIRouter(prefix="/utils", tags=["Utilities"])
 
@@ -172,15 +172,40 @@ async def update_gesture_mapping(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update gesture mapping: {str(e)}")
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS test failed: {str(e)}")
+
 @router.post("/tts/test")
 async def test_tts(
+    request: Request,
     text: str,
+    play_on_laptop: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
-    """Test TTS with given text."""
+    """Test TTS with given text, returning audio URL."""
     try:
+        # Generate audio
         result = await tts_service.speak(text)
-        return {"status": "success", "result": result}
+        
+        # Construct playback info
+        response_data = {"result": result}
+        
+        if result.get("status") == "success" and "audio_path" in result:
+            # Construct URL
+            # audio_path is like 'tts_cache/xyz.mp3' or absolute path
+            # We need filename
+            filename = os.path.basename(result["audio_path"])
+            base_url = str(request.base_url).rstrip("/")
+            response_data["audio_url"] = f"{base_url}/static/tts/{filename}"
+            
+            # Play on laptop if requested (optional/debug)
+            if play_on_laptop:
+                try:
+                    await tts_service.play_on_laptop(result["audio_path"])
+                except Exception as e:
+                    response_data["laptop_playback_error"] = str(e)
+            
+        return {"status": "success", **response_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS test failed: {str(e)}")
 

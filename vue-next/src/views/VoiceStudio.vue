@@ -31,16 +31,28 @@ onMounted(async () => {
 
 
 // ===================== TTS ACTIONS =====================
-const speakOnGlove = async () => {
+const speakText = async () => {
   if (!ttsText.value) return
   try {
     isLoading.value = true
-    ttsStatus.value = 'Sending to glove...'
-    const res = await api.utils.tts.speakOnGlove(ttsText.value)
-    ttsStatus.value = `Sent! ESP32 Status: ${res.esp32_status}`
+    ttsStatus.value = 'Generating audio...'
+    // Call API (playOnLaptop = false)
+    const res = await api.utils.tts.speakTest(ttsText.value, false)
+    
+    // Check res directly (interceptors return response.data)
+    if (res.status === 'success' && res.audio_url) {
+      ttsStatus.value = 'Playing...'
+      const audio = new Audio(res.audio_url)
+      await audio.play()
+      ttsStatus.value = 'Played successfully'
+    } else {
+      throw new Error('No audio URL returned')
+    }
+    
     setTimeout(() => { ttsStatus.value = null }, 3000)
   } catch (err) {
-    error.value = 'Failed to send to glove'
+    const msg = err.response?.data?.detail || err.message || 'Failed to play audio'
+    error.value = `Error: ${msg}`
     console.error(err)
   } finally {
     isLoading.value = false
@@ -163,9 +175,9 @@ const uploadFile = async (file) => {
 
           <!-- Actions -->
           <div class="flex items-center gap-4">
-            <BaseBtn @click="speakOnGlove" :disabled="!ttsText || isLoading" class="flex items-center gap-2">
-              <i class="ph ph-speaker-high text-lg"></i>
-              Speak on Glove
+            <BaseBtn @click="speakText" :disabled="!ttsText || isLoading" class="flex items-center gap-2">
+              <i class="ph ph-laptop text-lg"></i>
+              Play
             </BaseBtn>
             
             <div v-if="ttsStatus" class="text-sm text-indigo-400 animate-pulse">
