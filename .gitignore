@@ -1,1 +1,10 @@
-venv.env
+venv/
+.env
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+dist/
+coverage/
+tsc-output/
+*.log
