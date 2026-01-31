@@ -1,22 +1,61 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import api from '../services/api'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
-import api from '../services/api'
 
-const audioFiles = ref([])
+// State
+const activeTab = ref('tts') // Default to TTS
 const isLoading = ref(false)
+const error = ref(null)
 
-const fetchAudio = async () => {
-  isLoading.value = true
+// --- TTS State ---
+const ttsText = ref('')
+const ttsStatus = ref(null)
+
+// --- Audio Library State ---
+const audioFiles = ref([])
+const isDragging = ref(false)
+const fileInput = ref(null)
+
+// ===================== COMPUTED =====================
+const filteredFiles = computed(() => {
+  return audioFiles.value
+})
+
+// ===================== LIFECYCLE =====================
+onMounted(async () => {
+  await fetchAudioFiles()
+})
+
+
+
+// ===================== TTS ACTIONS =====================
+const speakOnGlove = async () => {
+  if (!ttsText.value) return
   try {
-    // Mock data for now if API fails (since backend might not be up)
-    // audioFiles.value = await api.audio.getAll()
-    // For prototype demonstration:
-    const res = await api.audio.getAll().catch(() => [])
-    audioFiles.value = Array.isArray(res) ? res : []
-  } catch (e) {
-    console.error(e)
+    isLoading.value = true
+    ttsStatus.value = 'Sending to glove...'
+    const res = await api.utils.tts.speakOnGlove(ttsText.value)
+    ttsStatus.value = `Sent! ESP32 Status: ${res.esp32_status}`
+    setTimeout(() => { ttsStatus.value = null }, 3000)
+  } catch (err) {
+    error.value = 'Failed to send to glove'
+    console.error(err)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// ===================== LIBRARY ACTIONS =====================
+const fetchAudioFiles = async () => {
+  try {
+    isLoading.value = true
+    const files = await api.audio.getAll()
+    audioFiles.value = files
+  } catch (err) {
+    console.error('Failed to fetch audio files:', err)
+    // Don't set error here to avoid blocking TTS usage if just audio files fail
   } finally {
     isLoading.value = false
   }
@@ -25,59 +64,194 @@ const fetchAudio = async () => {
 const playOnGlove = async (filename) => {
   try {
     await api.audio.playESP32(filename)
-  } catch (e) {
-    alert('Failed to play on glove (Mock: Playing beep...)')
+    alert(`Playing ${filename} on Glove...`)
+  } catch (err) {
+    alert('Failed to play on glove')
   }
 }
 
-onMounted(() => {
-  fetchAudio()
-})
+const playOnLaptop = async (filename) => {
+    try {
+        await api.audio.playLaptop(filename)
+    } catch (err) {
+        alert('Failed to play on laptop')
+    }
+}
+
+const deleteFile = async (filename) => {
+  if (!confirm(`Delete ${filename}?`)) return
+  try {
+    await api.audio.delete(filename)
+    await fetchAudioFiles()
+  } catch (err) {
+    alert('Failed to delete file')
+  }
+}
+
+const triggerUpload = () => fileInput.value.click()
+
+const handleFileUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  await uploadFile(file)
+}
+
+const onDrop = async (event) => {
+  isDragging.value = false
+  const file = event.dataTransfer.files[0]
+  if (file && file.type.startsWith('audio/')) {
+    await uploadFile(file)
+  }
+}
+
+const uploadFile = async (file) => {
+  try {
+    isLoading.value = true
+    await api.audio.upload(file, 'web-user')
+    await fetchAudioFiles()
+  } catch (err) {
+    alert('Upload failed')
+  } finally {
+    isLoading.value = false
+  }
+}
 </script>
 
 <template>
   <div class="space-y-6">
-    <div class="flex justify-between items-center">
+    <!-- Header with Tabs -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-white">Voice Studio</h1>
-        <p class="text-slate-400">Manage and test audio feedback files</p>
+        <h1 class="text-2xl font-bold text-white mb-2">Voice Studio</h1>
+        <p class="text-slate-400">Manage audio, speech-to-text, and TTS capabilities.</p>
       </div>
-      <BaseBtn variant="primary">Upload Audio</BaseBtn>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <BaseCard v-for="file in audioFiles" :key="file.filename" class="flex flex-col justify-between">
-        <div class="flex items-start justify-between mb-4">
-          <div class="p-3 rounded-lg bg-indigo-500/20 text-indigo-400">
-            <!-- Icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256"><path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24m0 192a88 88 0 1 1 88-88a88.1 88.1 0 0 1-88 88m48-88a48 48 0 0 1-48 48a48 48 0 0 1-48-48a48 48 0 0 1 48-48a48 48 0 0 1 48 48"/></svg>
-          </div>
-          <button class="text-slate-500 hover:text-red-500 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path fill="currentColor" d="M216 48h-40v-8a24 24 0 0 0-24-24h-48a24 24 0 0 0-24 24v8H40a8 8 0 0 0 0 16h8v144a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16V64h8a8 8 0 0 0 0-16M96 40a8 8 0 0 1 8-8h48a8 8 0 0 1 8 8v8H96Zm96 168H64V64h128Zm-80-104v64a8 8 0 0 1-16 0v-64a8 8 0 0 1 16 0m48 0v64a8 8 0 0 1-16 0v-64a8 8 0 0 1 16 0"/></svg>
-          </button>
-        </div>
-        
-        <div>
-          <h3 class="text-white font-medium truncate" :title="file.filename">{{ file.filename }}</h3>
-          <p class="text-xs text-slate-500 mt-1">Uploaded by {{ file.uploader }}</p>
-        </div>
-
-        <div class="mt-6 flex gap-2">
-          <BaseBtn class="flex-1 text-sm py-2" @click="playOnGlove(file.filename)">Play on Glove</BaseBtn>
-          <BaseBtn variant="secondary" class="flex-1 text-sm py-2">Preview</BaseBtn>
-        </div>
-      </BaseCard>
       
-      <!-- Upload Placeholder -->
-      <BaseCard class="border-dashed border-2 border-slate-700 bg-transparent hover:bg-slate-900/50 hover:border-indigo-500/50 transition flex flex-col items-center justify-center cursor-pointer min-h-[200px] group">
-          <div class="text-slate-600 group-hover:text-indigo-500 mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 256 256"><path fill="currentColor" d="M216 152a8 8 0 0 1-8 8H48a8 8 0 0 1 0-16h160a8 8 0 0 1 8 8m-80-8a8 8 0 0 0 8-8V88h28.69L134.34 49.37a8 8 0 0 0-12.68 0L83.31 88H112v48a8 8 0 0 0 8 8"/></svg>
+      <!-- Tab Navigation -->
+      <div class="flex bg-slate-800 p-1 rounded-lg">
+        <button 
+          v-for="tab in ['tts', 'library', 'live']" 
+          :key="tab"
+          @click="activeTab = tab"
+          class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          :class="activeTab === tab ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'"
+        >
+          {{ tab === 'tts' ? 'Text to Speech' : tab === 'library' ? 'Audio Library' : 'Live Voice' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Error Alert -->
+    <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg flex justify-between items-center relative">
+      <span>{{ error }}</span>
+      <button @click="error = null" class="text-sm hover:text-white absolute right-4">&times;</button>
+    </div>
+
+    <!-- ===================== TTS TAB ===================== -->
+    <div v-if="activeTab === 'tts'" class="space-y-6">
+      <BaseCard title="Text to Speech Engine">
+        <div class="space-y-6">
+          <!-- Input Area -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-300">Enter text to speak</label>
+            <textarea 
+              v-model="ttsText"
+              rows="4"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+              placeholder="Type something here (e.g., 'Hello, how can I help you?')..."
+            ></textarea>
           </div>
-          <span class="text-slate-400 font-medium">Drop audio files here</span>
-      </BaseCard>
-      <BaseCard v-if="audioFiles.length === 0" class="col-span-full p-8 text-center text-slate-500">
-        No audio files found.
+
+          <!-- Actions -->
+          <div class="flex items-center gap-4">
+            <BaseBtn @click="speakOnGlove" :disabled="!ttsText || isLoading" class="flex items-center gap-2">
+              <i class="ph ph-speaker-high text-lg"></i>
+              Speak on Glove
+            </BaseBtn>
+            
+            <div v-if="ttsStatus" class="text-sm text-indigo-400 animate-pulse">
+              {{ ttsStatus }}
+            </div>
+          </div>
+        </div>
       </BaseCard>
     </div>
+
+    <!-- ===================== LIBRARY TAB ===================== -->
+    <div v-if="activeTab === 'library'" class="space-y-6">
+        <!-- New Upload Zone -->
+      <div 
+        @dragover.prevent="isDragging = true" 
+        @dragleave.prevent="isDragging = false" 
+        @drop.prevent="onDrop"
+        @click="triggerUpload"
+        class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer group"
+        :class="isDragging ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-indigo-500/50 hover:bg-slate-800/50'"
+      >
+        <input type="file" ref="fileInput" class="hidden" accept="audio/*" @change="handleFileUpload">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+            <i class="ph ph-upload-simple text-2xl text-slate-400 group-hover:text-indigo-400"></i>
+          </div>
+          <div>
+            <h3 class="font-medium text-white mb-1">Upload Audio File</h3>
+            <p class="text-sm text-slate-500">Drag & drop or click to browse (MP3, WAV)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- File List -->
+      <div v-if="audioFiles.length === 0 && !isLoading" class="text-center py-12">
+        <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="ph ph-music-notes text-3xl text-slate-500"></i>
+        </div>
+        <h3 class="text-lg font-medium text-white mb-1">No audio files found</h3>
+        <p class="text-slate-500">Upload a file to get started</p>
+      </div>
+
+      <div v-else class="grid grid-cols-1 gap-4">
+        <BaseCard v-for="file in filteredFiles" :key="file.filename" class="group hover:border-indigo-500/30 transition-colors">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                <i class="ph ph-file-audio text-xl"></i>
+              </div>
+              <div>
+                <h3 class="font-medium text-white group-hover:text-indigo-300 transition-colors">{{ file.filename }}</h3>
+                <div class="text-xs text-slate-500 flex items-center gap-2">
+                  <span>{{ new Date(file.upload_time).toLocaleDateString() }}</span>
+                  <span>•</span>
+                  <span>{{ (file.size / 1024 / 1024).toFixed(2) }} MB</span> <!-- Mock size if not real -->
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <button @click="playOnGlove(file.filename)" class="p-2 rounded-lg hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors" title="Play on Glove">
+                <i class="ph ph-speaker-high text-xl"></i>
+              </button>
+              <button @click="playOnLaptop(file.filename)" class="p-2 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors" title="Play on Laptop">
+                <i class="ph ph-laptop text-xl"></i>
+              </button>
+              <button @click="deleteFile(file.filename)" class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors" title="Delete">
+                <i class="ph ph-trash text-xl"></i>
+              </button>
+            </div>
+          </div>
+        </BaseCard>
+      </div>
+    </div>
+
+    <!-- ===================== LIVE VOICE TAB (Placeholder) ===================== -->
+    <div v-if="activeTab === 'live'" class="text-center py-20">
+      <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
+        <i class="ph ph-microphone text-4xl text-slate-500"></i>
+      </div>
+      <h2 class="text-xl font-bold text-white mb-2">Live Speech Recognition</h2>
+      <p class="text-slate-400 max-w-md mx-auto">
+        This feature will allow you to stream audio from your microphone directly to the backend for real-time transcription.
+      </p>
+      <BaseBtn variant="secondary" class="mt-6" disabled>Coming Soon</BaseBtn>
+    </div>
+
   </div>
 </template>
