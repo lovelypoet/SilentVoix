@@ -3,12 +3,22 @@ import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import { ref } from 'vue'
+import { useAuthStore } from '../stores/auth'
+import { useRouter } from 'vue-router'
+
+const authStore = useAuthStore()
+const router = useRouter()
 
 const form = ref({
-  name: '',
-  email: '',
-  device: ''
+  name: authStore.user?.email || '',
+  email: authStore.user?.email || '',
+  device: 'SignGlove-V2'
 })
+
+const handleLogout = async () => {
+    await authStore.logout()
+    router.push('/login')
+}
 </script>
 
 <template>
@@ -21,7 +31,7 @@ const form = ref({
         <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Personal Information</h2>
         <div class="space-y-4">
             <BaseInput label="Display Name" v-model="form.name" />
-            <BaseInput label="Email Address" type="email" v-model="form.email" />
+            <BaseInput label="Email Address" type="email" v-model="form.email" readonly />
         </div>
         <div class="mt-6 flex justify-end">
             <BaseBtn>Save Changes</BaseBtn>
@@ -54,6 +64,12 @@ const form = ref({
             </div>
         </div>
       </BaseCard>
+
+        <div class="flex items-center justify-between">
+            <BaseBtn @click="handleLogout" class="bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20">
+                Sign Out
+            </BaseBtn>
+        </div>
     </div>
   </div>
 </template>
