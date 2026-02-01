@@ -250,7 +250,7 @@ watch(
         //    no_flip_penalty: noFlipPenalty
         //  })
         //}
-        addLandmark(landmarks, handedness?.categoryName || 'Right')
+        addLandmark(results.landmarks, results.handedness)
 
 
       } else {
