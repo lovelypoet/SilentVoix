@@ -1,5 +1,4 @@
 import { onUnmounted } from 'vue'
-// import media pipe library
 import {
   HandLandmarker,
   FilesetResolver,
@@ -7,7 +6,7 @@ import {
 } from '@mediapipe/tasks-vision'
 
 export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
-  // MediaPipe instance
+  // MediaPipe
   let landmarker = null
 
   // DOM
@@ -15,12 +14,18 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   let canvasEl = null
   let ctx = null
 
+  // RAW (unmirrored) canvas for MediaPipe
+  let rawCanvas = null
+  let rawCtx = null
+
   // Loop
   let rafId = null
   let running = false
+  let frameCallback = null
 
-
-  // init landmarker
+  // ---------------------------
+  // INIT MEDIAPIPE
+  // ---------------------------
   const createLandmarker = async () => {
     const vision = await FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
@@ -32,16 +37,17 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
           'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
         delegate: 'GPU'
       },
-      runningMode: 'VIDEO', // ensure run mode is VIDEO
+      runningMode: 'VIDEO',
       numHands: 2
     })
 
     console.log('[HandTracking] initialized (VIDEO mode)')
   }
 
-  
+  // ---------------------------
+  // MAIN LOOP
+  // ---------------------------
   const loop = () => {
-    // no chay va landmark k bat -> end
     if (!running || !landmarker) return
 
     if (!videoEl || videoEl.videoWidth === 0 || videoEl.videoHeight === 0) {
@@ -50,54 +56,59 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     }
 
     const now = performance.now()
-    const results = landmarker.detectForVideo(videoEl, now)
 
+    // ---- FEED RAW FRAME TO MEDIAPIPE (NO MIRROR) ----
+    rawCtx.setTransform(1, 0, 0, 1, 0, 0)
+    rawCtx.drawImage(videoEl, 0, 0)
+
+    const results = landmarker.detectForVideo(rawCanvas, now)
+
+    // CALLBACK
+    if (frameCallback && results) {
+      frameCallback(results)
+    }
+
+    // ---- DRAW UI CANVAS (MIRRORED IF NEEDED) ----
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
-
     ctx.save()
 
-    // MIRROR CANVAS IF VIDEO IS MIRRORED
     if (mirrorCameraRef?.value) {
       ctx.translate(canvasEl.width, 0)
       ctx.scale(-1, 1)
     }
 
     if (showLandmarksRef.value && results?.landmarks) {
-  const drawer = new DrawingUtils(ctx)
+      const drawer = new DrawingUtils(ctx)
 
-
-  // chinh mau o day cho de nhin
-  for (const landmarks of results.landmarks) {
-    drawer.drawConnectors(
-      landmarks,
-      HandLandmarker.HAND_CONNECTIONS,
-      {
-        color: 'green',
-        lineWidth: 6
+      for (const landmarks of results.landmarks) {
+        drawer.drawConnectors(
+          landmarks,
+          HandLandmarker.HAND_CONNECTIONS,
+          {
+            color: 'green',
+            lineWidth: 6
+          }
+        )
+        drawer.drawLandmarks(
+          landmarks,
+          {
+            color: '#fff700',
+            radius: 6,
+            lineWidth: 2
+          }
+        )
       }
-    )
-
-    drawer.drawLandmarks(
-      landmarks,
-      {
-        color: '#fff700',
-        radius: 6,
-        lineWidth: 2
-      }
-    )
-  }
-}
-
+    }
 
     ctx.restore()
-    
     rafId = requestAnimationFrame(loop)
   }
 
-  // ham chinh de goi trong training.vue
-
+  // ---------------------------
+  // START
+  // ---------------------------
   const startHandTracking = async (video, canvas, mediaStream) => {
-    stopHandTracking() // reset toan bo ps
+    stopHandTracking()
 
     videoEl = video
     canvasEl = canvas
@@ -106,22 +117,30 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     await createLandmarker()
 
     videoEl.srcObject = mediaStream
-
     await new Promise((resolve) => {
       if (videoEl.readyState >= 2) resolve()
       else videoEl.onloadedmetadata = () => resolve()
     })
 
     await videoEl.play()
+
+    // UI canvas
     canvasEl.width = videoEl.videoWidth
     canvasEl.height = videoEl.videoHeight
+
+    // RAW canvas (UNMIRRORED)
+    rawCanvas = document.createElement('canvas')
+    rawCtx = rawCanvas.getContext('2d')
+    rawCanvas.width = videoEl.videoWidth
+    rawCanvas.height = videoEl.videoHeight
 
     running = true
     loop()
   }
 
-  //stop
-
+  // ---------------------------
+  // STOP
+  // ---------------------------
   const stopHandTracking = () => {
     running = false
 
@@ -138,6 +157,13 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
       landmarker.close?.()
       landmarker = null
     }
+
+    rawCanvas = null
+    rawCtx = null
+  }
+
+  const onFrame = (callback) => {
+    frameCallback = callback
   }
 
   onUnmounted(stopHandTracking)
@@ -145,6 +171,6 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   return {
     startHandTracking,
     stopHandTracking,
+    onFrame
   }
-  
 }

@@ -36,6 +36,7 @@ export default {
     login: (email, password) => api.post('/auth/login', { email, password }),
     logout: () => api.post('/auth/logout'),
     me: () => api.get('/auth/me'),
+    updateProfile: (payload) => api.put('/auth/me', payload), // Changed to PUT request for updating profile
   },
 
   // ===================== Gesture API =====================

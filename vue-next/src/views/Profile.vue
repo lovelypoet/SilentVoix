@@ -2,12 +2,22 @@
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+<<<<<<< HEAD
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter()
+=======
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '../stores/auth.js'
+import api from '../services/api.js'
+import { useToast } from 'primevue/usetoast'; // Import useToast
+
+const authStore = useAuthStore()
+const toast = useToast(); // Initialize toast
+>>>>>>> mediapipe
 
 const form = ref({
   name: authStore.user?.email || '',
@@ -15,9 +25,34 @@ const form = ref({
   device: 'SignGlove-V2'
 })
 
+<<<<<<< HEAD
 const handleLogout = async () => {
     await authStore.logout()
     router.push('/login')
+=======
+onMounted(() => {
+  if (authStore.user) {
+    form.value.name = authStore.user.display_name || ''
+    form.value.email = authStore.user.email || ''
+    // form.value.device = authStore.user.device || '' // Assuming device might be part of user profile
+  }
+})
+
+const saveChanges = async () => {
+  try {
+    const updatedUser = await api.auth.updateProfile({
+      display_name: form.value.name,
+      email: form.value.email,
+      // device: form.value.device, // Include if device is part of user profile update
+    })
+    authStore.user = updatedUser
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Profile updated successfully!', life: 3000 });
+  } catch (error) {
+    console.error('Failed to update profile:', error)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to update profile.', life: 3000 });
+  }
+>>>>>>> mediapipe
 }
 </script>
 
@@ -30,11 +65,16 @@ const handleLogout = async () => {
       <BaseCard>
         <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Personal Information</h2>
         <div class="space-y-4">
+<<<<<<< HEAD
             <BaseInput label="Display Name" v-model="form.name" />
             <BaseInput label="Email Address" type="email" v-model="form.email" readonly />
+=======
+            <BaseInput v-model="form.name" label="Display Name" />
+            <BaseInput v-model="form.email" label="Email Address" type="email" />
+>>>>>>> mediapipe
         </div>
         <div class="mt-6 flex justify-end">
-            <BaseBtn>Save Changes</BaseBtn>
+            <BaseBtn @click="saveChanges">Save Changes</BaseBtn>
         </div>
       </BaseCard>
 
@@ -42,7 +82,7 @@ const handleLogout = async () => {
       <BaseCard>
         <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Device Configuration</h2>
         <div class="space-y-4">
-            <BaseInput label="Active Device" v-model="form.device" />
+            <BaseInput v-model="form.device" label="Active Device" />
             
             <div class="flex items-center justify-between py-2">
                 <div>

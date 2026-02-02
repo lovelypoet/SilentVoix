@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 venv/
 .env
 __pycache__/
@@ -8,3 +9,6 @@ dist/
 coverage/
 tsc-output/
 *.log
+=======
+logs/*
+>>>>>>> mediapipe

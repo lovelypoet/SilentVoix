@@ -1,13 +1,40 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import api from '../services/api'
+import { useToast } from 'primevue/usetoast' // Import useToast
+import Dialog from 'primevue/dialog' // Import Dialog
+import InputText from 'primevue/inputtext' // Import InputText
+
+const router = useRouter()
+const toast = useToast() // Initialize toast
 
 const gestures = ref([])
-// Mock data for prototype
-// Mock data for prototype
-const mockGestures = []
+const displayDialog = ref(false)
+const newGestureNameInput = ref('')
+
+const recordNewGesture = () => {
+  newGestureNameInput.value = '' // Clear previous input
+  displayDialog.value = true // Open the dialog
+}
+
+const confirmRecordNewGesture = () => {
+  if (newGestureNameInput.value.trim()) {
+    router.push({ path: '/training', query: { newGestureName: newGestureNameInput.value.trim() } })
+    toast.add({ severity: 'success', summary: 'Gesture Recording Started', detail: `Recording for "${newGestureNameInput.value.trim()}"`, life: 3000 })
+    displayDialog.value = false
+  } else {
+    toast.add({ severity: 'error', summary: 'Input Required', detail: 'Please enter a name for the new gesture.', life: 3000 })
+  }
+}
+
+const cancelRecordNewGesture = () => {
+  displayDialog.value = false
+  newGestureNameInput.value = ''
+  toast.add({ severity: 'info', summary: 'Cancelled', detail: 'Gesture recording cancelled.', life: 3000 })
+}
 
 onMounted(async () => {
     try {
@@ -26,7 +53,7 @@ onMounted(async () => {
         <h1 class="text-3xl font-bold text-white">Gesture Library</h1>
         <p class="text-slate-400">View and manage your learned signs</p>
       </div>
-      <BaseBtn variant="primary">Record New</BaseBtn>
+      <BaseBtn variant="primary" @click="recordNewGesture">Record New</BaseBtn>
     </div>
 
     <!-- Filter/Search Bar -->
@@ -63,5 +90,31 @@ onMounted(async () => {
          No gestures found in library.
        </BaseCard>
     </div>
+
+    <Dialog v-model:visible="displayDialog" modal header="Record New Gesture" :style="{ width: '30rem' }" @hide="cancelRecordNewGesture">
+     <div class="p-fluid w-full">
+  <div class="field w-full">
+    <label
+      for="gestureName"
+      class="font-bold mb-3 block text-lg"
+    >
+      Gesture Name
+    </label>
+
+    <InputText
+      id="gestureName"
+      v-model="newGestureNameInput"
+      autofocus
+      class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+      @keyup.enter="confirmRecordNewGesture"
+    />
+  </div>
+</div>
+
+      <template #footer>
+        <BaseBtn variant="secondary" @click="cancelRecordNewGesture">Cancel</BaseBtn>
+        <BaseBtn variant="primary" @click="confirmRecordNewGesture">Record</BaseBtn>
+      </template>
+    </Dialog>
   </div>
 </template>

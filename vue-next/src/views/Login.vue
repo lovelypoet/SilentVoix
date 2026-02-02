@@ -57,7 +57,7 @@ const handleLogin = async () => {
 
         <BaseBtn 
             variant="primary" 
-            class="w-full justify-center" 
+            class="w-full justify-center login-button-twinkle" 
             :disabled="isLoading"
         >
             <span v-if="isLoading">Signing in...</span>
@@ -67,3 +67,29 @@ const handleLogin = async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes fadeToTransparent {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes twinkle {
+  from {
+    opacity: var(--twinkle-amount);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.login-button-twinkle {
+  --twinkle-amount: 0.5; /* Adjust as needed */
+  --twinkle-duration: 1.5s; /* Adjust as needed */
+  --fade-duration: 1s; /* Adjust as needed */
+  animation:
+    twinkle var(--twinkle-duration) infinite alternate ease-in-out,
+    fadeToTransparent var(--fade-duration) 500ms;
+}
+</style>
