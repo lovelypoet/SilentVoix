@@ -2,14 +2,6 @@
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
-<<<<<<< HEAD
-import { ref } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import { useRouter } from 'vue-router'
-
-const authStore = useAuthStore()
-const router = useRouter()
-=======
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import api from '../services/api.js'
@@ -17,7 +9,6 @@ import { useToast } from 'primevue/usetoast'; // Import useToast
 
 const authStore = useAuthStore()
 const toast = useToast(); // Initialize toast
->>>>>>> mediapipe
 
 const form = ref({
   name: authStore.user?.email || '',
@@ -25,11 +16,6 @@ const form = ref({
   device: 'SignGlove-V2'
 })
 
-<<<<<<< HEAD
-const handleLogout = async () => {
-    await authStore.logout()
-    router.push('/login')
-=======
 onMounted(() => {
   if (authStore.user) {
     form.value.name = authStore.user.display_name || ''
@@ -52,7 +38,6 @@ const saveChanges = async () => {
     console.error('Failed to update profile:', error)
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to update profile.', life: 3000 });
   }
->>>>>>> mediapipe
 }
 </script>
 
@@ -65,13 +50,8 @@ const saveChanges = async () => {
       <BaseCard>
         <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Personal Information</h2>
         <div class="space-y-4">
-<<<<<<< HEAD
-            <BaseInput label="Display Name" v-model="form.name" />
-            <BaseInput label="Email Address" type="email" v-model="form.email" readonly />
-=======
             <BaseInput v-model="form.name" label="Display Name" />
             <BaseInput v-model="form.email" label="Email Address" type="email" />
->>>>>>> mediapipe
         </div>
         <div class="mt-6 flex justify-end">
             <BaseBtn @click="saveChanges">Save Changes</BaseBtn>
