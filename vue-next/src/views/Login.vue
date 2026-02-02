@@ -64,10 +64,6 @@ const handleLogin = async () => {
             <span v-else>Sign In</span>
         </BaseBtn>
       </form>
-      
-      <div class="mt-6 text-center text-sm text-slate-500">
-        Demo Credentials: <span class="text-slate-400">admin@example.com / admin123</span>
-      </div>
     </div>
   </div>
 </template>
