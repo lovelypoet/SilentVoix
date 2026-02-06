@@ -45,9 +45,9 @@ defineProps({
 }
 
 .btn-amber {
-  --btn-hue: 36; /* amber-500 hue */
-  --btn-saturation: 100%;
-  --btn-lightness: 50%;
+  --btn-hue: 42; /* soft sand hue */
+  --btn-saturation: 45%;
+  --btn-lightness: 58%;
   background: hsl(var(--btn-hue) var(--btn-saturation) var(--btn-lightness));
   color: white;
   box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2);
@@ -58,9 +58,9 @@ defineProps({
 
 .btn-amber:hover,
 .btn-amber:focus-visible {
-  --btn-hue: 30; /* amber-600 hue */
-  --btn-saturation: 100%;
-  --btn-lightness: 60%; /* Brighter amber lightness */
+  --btn-hue: 38; /* warmer sand on hover */
+  --btn-saturation: 55%;
+  --btn-lightness: 62%;
   box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3);
 }
 
