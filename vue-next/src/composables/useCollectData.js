@@ -4,8 +4,8 @@ import { ref } from 'vue'
  * Composable to collect and save hand landmark data
  * 
  * @effect
- * - Collect hand landmarks from MediaPipe (supports 1 or 2 hands)
- * - Convert to CSV format with 21*3*2 = 126 features (Left hand first, then Right)
+ * - Collect hand landmarks from MediaPipe
+ * - Convert to CSV format with 21*3*2 = 126 features 
  * - Download CSV file
  */
 export function useCollectData() {
@@ -22,16 +22,11 @@ export function useCollectData() {
     isCollecting.value = false
   }
 
-  /**
-   * Add landmark data for one or two hands
-   * @param {Array} landmarksArray - Array of landmark arrays from MediaPipe results.landmarks
-   * @param {Array} handednessArray - Array of handedness objects from MediaPipe results.handedness
-   */
+  
   const addLandmark = (landmarksArray, handednessArray) => {
     if (!isCollecting.value) return
     if (!landmarksArray || landmarksArray.length === 0) return
 
-    // Prepare slots for Left and Right hands
     let leftHand = null
     let rightHand = null
     
@@ -39,7 +34,7 @@ export function useCollectData() {
       const landmarks = landmarksArray[i]
       const handedness = handednessArray?.[i]?.[0]?.categoryName || 'Unknown'
       
-      // Assign to correct slot based on handedness label
+      // Assign to correct slot
       if (handedness === 'Left') {
         leftHand = landmarks
       } else if (handedness === 'Right') {
@@ -47,30 +42,27 @@ export function useCollectData() {
       }
     }
 
-    // Create feature array [21*3*2] = 126 features
-    // Format: [Left_hand_21_landmarks, Right_hand_21_landmarks]
-    // Each landmark has x, y, z
     const features = []
     
-    // Add Left hand data (or zeros if not detected)
+    // Add Left hand data
     if (leftHand) {
       leftHand.forEach(lm => {
         features.push(lm.x, lm.y, lm.z)
       })
     } else {
-      // Fill with zeros (21 landmarks * 3 coords = 63 values)
+      // Fill with zeros 
       for (let j = 0; j < 63; j++) {
         features.push(0)
       }
     }
     
-    // Add Right hand data (or zeros if not detected)
+    // Add Right hand data 
     if (rightHand) {
       rightHand.forEach(lm => {
         features.push(lm.x, lm.y, lm.z)
       })
     } else {
-      // Fill with zeros (21 landmarks * 3 coords = 63 values)
+      // Fill with zeros 
       for (let j = 0; j < 63; j++) {
         features.push(0)
       }
@@ -81,7 +73,7 @@ export function useCollectData() {
       timestamp: Date.now(),
       L_exist: leftHand ? 1 : 0,
       R_exist: rightHand ? 1 : 0,
-      features  // Array of 126 values
+      features  
     })
   }
 
@@ -91,12 +83,10 @@ export function useCollectData() {
   const convertToCSV = () => {
     let header = 'gesture,timestamp,L_exist,R_exist'
     
-    // Add headers for Left hand (21 landmarks * 3 coords)
     for (let i = 0; i < 21; i++) {
       header += `,L_x${i},L_y${i},L_z${i}`
     }
     
-    // Add headers for Right hand (21 landmarks * 3 coords)
     for (let i = 0; i < 21; i++) {
       header += `,R_x${i},R_y${i},R_z${i}`
     }
