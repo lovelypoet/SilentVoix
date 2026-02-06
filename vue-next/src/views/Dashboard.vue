@@ -19,7 +19,7 @@ const startNewSession = () => {
 }
 
 let animationFrameId = null;
-const hue = ref(246); // Starting hue for indigo-600
+const hue = ref(175); // Starting hue for teal
 
 const animateColors = () => {
   if (!isHovering.value) { // Stop animation if not hovering
@@ -31,7 +31,7 @@ const animateColors = () => {
   }
   hue.value = (hue.value + 0.5) % 360; // Shift hue by 0.5 degrees per frame
   document.documentElement.style.setProperty('--hue-start', hue.value);
-  document.documentElement.style.setProperty('--hue-end', (hue.value + 30) % 360); // Slightly different hue for the end of the gradient
+  document.documentElement.style.setProperty('--hue-end', (hue.value + 20) % 360); // Slightly different hue for the end of the gradient
 
   animationFrameId = requestAnimationFrame(animateColors);
 };
@@ -122,7 +122,7 @@ onUnmounted(() => {
       <BaseCard class="soft-card">
         <div class="text-slate-400 text-sm mb-1">Total Training Time</div>
         <div class="text-3xl font-bold text-white">--</div>
-        <div class="text-emerald-400 text-sm mt-2 flex items-center gap-1">
+        <div class="text-teal-300 text-sm mt-2 flex items-center gap-1">
           <span>0h</span>
           <span class="text-slate-500">this week</span>
         </div>
@@ -131,7 +131,7 @@ onUnmounted(() => {
       <BaseCard class="soft-card">
         <div class="text-slate-400 text-sm mb-1">Gestures Learned</div>
         <div class="text-3xl font-bold text-white">0</div>
-        <div class="text-indigo-400 text-sm mt-2 flex items-center gap-1">
+        <div class="text-teal-300 text-sm mt-2 flex items-center gap-1">
           <span>Level 0</span>
           <span class="text-slate-500">Novice</span>
         </div>
@@ -159,8 +159,8 @@ onUnmounted(() => {
 
 <style scoped>
 .welcome-banner {
-  background: radial-gradient(1200px 400px at -10% -20%, rgba(99, 102, 241, 0.22), transparent 60%),
-              radial-gradient(900px 350px at 110% 0%, rgba(236, 72, 153, 0.18), transparent 55%),
+  background: radial-gradient(1200px 400px at -10% -20%, rgba(20, 184, 166, 0.22), transparent 60%),
+              radial-gradient(900px 350px at 110% 0%, rgba(125, 211, 252, 0.18), transparent 55%),
               linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -168,8 +168,8 @@ onUnmounted(() => {
 .welcome-text {
   background-image: linear-gradient(
     to right,
-    hsl(var(--hue-start, 246), 69%, 51%), /* Default to indigo-600 hue */
-    hsl(var(--hue-end, 276), 90%, 74%)    /* Default to indigo-400 hue + 30 */
+    hsl(var(--hue-start, 175), 60%, 45%), /* Default to teal */
+    hsl(var(--hue-end, 195), 70%, 70%)    /* Default to mint */
   );
   -webkit-background-clip: text;
   background-clip: text;
@@ -187,7 +187,7 @@ onUnmounted(() => {
 .hero-bubble-1 {
   width: 220px;
   height: 220px;
-  background: rgba(59, 130, 246, 0.25);
+  background: rgba(20, 184, 166, 0.22);
   top: -60px;
   right: 40px;
 }
@@ -195,7 +195,7 @@ onUnmounted(() => {
 .hero-bubble-2 {
   width: 180px;
   height: 180px;
-  background: rgba(236, 72, 153, 0.22);
+  background: rgba(56, 189, 248, 0.2);
   bottom: -40px;
   left: 20px;
 }
@@ -214,7 +214,7 @@ onUnmounted(() => {
 .progress-fill {
   height: 100%;
   border-radius: 9999px;
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.9), rgba(236, 72, 153, 0.9));
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.9), rgba(56, 189, 248, 0.9));
 }
 
 @media (prefers-reduced-motion: reduce) {

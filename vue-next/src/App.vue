@@ -19,22 +19,22 @@ const handleLogout = async () => {
     <Toast /> <!-- Add Toast component here -->
     <!-- Sidebar (Hidden on login) -->
     <aside v-if="route.meta.layout !== 'empty'" class="w-64 border-r border-slate-800 p-6 flex flex-col fixed h-screen top-0 left-0">
-      <RouterLink to="/" class="text-2xl font-bold text-indigo-500 mb-8 cursor-pointer">SilentVoix</RouterLink>
+      <RouterLink to="/" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
       
       <nav class="flex flex-col gap-2">
-        <RouterLink to="/" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/" class="p-3 rounded hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="bg-slate-900 text-teal-300">
           Dashboard
         </RouterLink>
-        <RouterLink to="/training" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/training" class="p-3 rounded hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="bg-slate-900 text-teal-300">
           Training
         </RouterLink>
-        <RouterLink to="/library" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/library" class="p-3 rounded hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="bg-slate-900 text-teal-300">
           Library
         </RouterLink>
-        <RouterLink to="/voice" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/voice" class="p-3 rounded hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="bg-slate-900 text-teal-300">
           Voice Studio
         </RouterLink>
-        <RouterLink to="/profile" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/profile" class="p-3 rounded hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="bg-slate-900 text-teal-300">
           Profile
         </RouterLink>
       </nav>

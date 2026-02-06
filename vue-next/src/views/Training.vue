@@ -420,7 +420,7 @@ watch(currentLightingStatus, (newValue) => {
             v-model="currentGestureName"
             type="text" 
             placeholder="e.g., hello, thanks, yes, no"
-            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
+            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-teal-500 focus:outline-none"
             :disabled="isCollecting"
           />
         </div>
@@ -472,9 +472,9 @@ watch(currentLightingStatus, (newValue) => {
 
     <!-- Initial State -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer card" @click="startTraining">
+      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startTraining">
         <div
-          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-indigo-500 transition-colors">
+          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
           <span class="text-5xl">▶</span>
         </div>
         <h3 class="text-xl font-bold text-white mb-2">
@@ -503,8 +503,8 @@ watch(currentLightingStatus, (newValue) => {
         </BaseBtn>
       </BaseCard>
 
-      <BaseCard class="group hover:border-amber-500/50 transition-colors cursor-pointer card" @click="startAdvancedTraining">
-        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-amber-500">
+      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startAdvancedTraining">
+        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400">
           <span class="text-5xl">★</span>
         </div>
         <h3 class="text-xl font-bold text-white mb-2">
@@ -513,7 +513,7 @@ watch(currentLightingStatus, (newValue) => {
         <p class="text-slate-400 text-sm mb-6">
           Followed by AI guidance and real-time 3D modelling.
         </p>
-        <BaseBtn variant="amber" class="w-full" :disabled="isStartingAdvancedTraining || isRequesting">
+        <BaseBtn variant="primary" class="w-full" :disabled="isStartingAdvancedTraining || isRequesting">
           {{ isStartingAdvancedTraining ? 'Requesting...' : 'Start Advanced Session' }}
         </BaseBtn>
       </BaseCard>
