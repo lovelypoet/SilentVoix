@@ -113,7 +113,7 @@ const playOnGlove = async (filename) => {
   try {
     await api.audio.playESP32(filename)
     alert(`Playing ${filename} on Glove...`)
-  } catch (err) {
+  } catch {
     alert('Failed to play on glove')
   }
 }
@@ -121,7 +121,7 @@ const playOnGlove = async (filename) => {
 const playOnLaptop = async (filename) => {
     try {
         await api.audio.playLaptop(filename)
-    } catch (err) {
+    } catch {
         alert('Failed to play on laptop')
     }
 }
@@ -131,7 +131,7 @@ const deleteFile = async (filename) => {
   try {
     await api.audio.delete(filename)
     await fetchAudioFiles()
-  } catch (err) {
+  } catch {
     alert('Failed to delete file')
   }
 }
@@ -157,7 +157,7 @@ const uploadFile = async (file) => {
     isLoading.value = true
     await api.audio.upload(file, 'web-user')
     await fetchAudioFiles()
-  } catch (err) {
+  } catch {
     alert('Upload failed')
   } finally {
     isLoading.value = false
@@ -179,9 +179,9 @@ const uploadFile = async (file) => {
         <button 
           v-for="tab in ['tts', 'library', 'live']" 
           :key="tab"
-          @click="activeTab = tab"
           class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
           :class="activeTab === tab ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'"
+          @click="activeTab = tab"
         >
           {{ tab === 'tts' ? 'Text to Speech' : tab === 'library' ? 'Audio Library' : 'Live Voice' }}
         </button>
@@ -191,7 +191,7 @@ const uploadFile = async (file) => {
     <!-- Error Alert -->
     <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg flex justify-between items-center relative">
       <span>{{ error }}</span>
-      <button @click="error = null" class="text-sm hover:text-white absolute right-4">&times;</button>
+      <button class="text-sm hover:text-white absolute right-4" @click="error = null">&times;</button>
     </div>
 
     <!-- ===================== TTS TAB ===================== -->
@@ -202,16 +202,16 @@ const uploadFile = async (file) => {
           <div class="flex gap-4">
             <div class="inline-flex bg-slate-900 p-1 rounded-lg border border-slate-700">
                <button 
-                 @click="ttsEngine = 'gtts'"
                  class="px-4 py-2 rounded-md text-sm font-medium transition-all"
                  :class="ttsEngine === 'gtts' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+                 @click="ttsEngine = 'gtts'"
                >
                  GTTS
                </button>
                <button 
-                 @click="ttsEngine = 'os'"
                  class="px-4 py-2 rounded-md text-sm font-medium transition-all"
                  :class="ttsEngine === 'os' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+                 @click="ttsEngine = 'os'"
                >
                  Device Default
                </button>
@@ -235,7 +235,7 @@ const uploadFile = async (file) => {
 
           <!-- Actions -->
           <div class="flex items-center gap-4">
-            <BaseBtn @click="speakText" :disabled="!ttsText || isLoading" class="flex items-center gap-2">
+            <BaseBtn :disabled="!ttsText || isLoading" class="flex items-center gap-2" @click="speakText">
               <i class="ph ph-laptop text-lg"></i>
               Play
             </BaseBtn>
@@ -252,14 +252,14 @@ const uploadFile = async (file) => {
     <div v-if="activeTab === 'library'" class="space-y-6">
         <!-- New Upload Zone -->
       <div 
-        @dragover.prevent="isDragging = true" 
-        @dragleave.prevent="isDragging = false" 
+        class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer group" 
+        :class="isDragging ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-indigo-500/50 hover:bg-slate-800/50'" 
+        @dragover.prevent="isDragging = true"
+        @dragleave.prevent="isDragging = false"
         @drop.prevent="onDrop"
         @click="triggerUpload"
-        class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer group"
-        :class="isDragging ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-indigo-500/50 hover:bg-slate-800/50'"
       >
-        <input type="file" ref="fileInput" class="hidden" accept="audio/*" @change="handleFileUpload">
+        <input ref="fileInput" type="file" class="hidden" accept="audio/*" @change="handleFileUpload">
         <div class="flex flex-col items-center gap-3">
           <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
             <i class="ph ph-upload-simple text-2xl text-slate-400 group-hover:text-indigo-400"></i>
@@ -298,13 +298,13 @@ const uploadFile = async (file) => {
             </div>
             
             <div class="flex items-center gap-2">
-              <button @click="playOnGlove(file.filename)" class="p-2 rounded-lg hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors" title="Play on Glove">
+              <button class="p-2 rounded-lg hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors" title="Play on Glove" @click="playOnGlove(file.filename)">
                 <i class="ph ph-speaker-high text-xl"></i>
               </button>
-              <button @click="playOnLaptop(file.filename)" class="p-2 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors" title="Play on Laptop">
+              <button class="p-2 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors" title="Play on Laptop" @click="playOnLaptop(file.filename)">
                 <i class="ph ph-laptop text-xl"></i>
               </button>
-              <button @click="deleteFile(file.filename)" class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors" title="Delete">
+              <button class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors" title="Delete" @click="deleteFile(file.filename)">
                 <i class="ph ph-trash text-xl"></i>
               </button>
             </div>
