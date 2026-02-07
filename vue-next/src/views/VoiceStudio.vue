@@ -12,6 +12,7 @@ const error = ref(null)
 // --- TTS State ---
 const ttsText = ref('')
 const ttsStatus = ref(null)
+const ttsEngine = ref('gtts')
 
 // --- Audio Library State ---
 const audioFiles = ref([])
@@ -33,6 +34,41 @@ onMounted(async () => {
 // ===================== TTS ACTIONS =====================
 const speakText = async () => {
   if (!ttsText.value) return
+  
+  // OS / Browser TTS
+  if (ttsEngine.value === 'os') {
+    if (!('speechSynthesis' in window)) {
+      error.value = 'Text-to-speech is not supported in this browser.'
+      return
+    }
+    
+    // Stop any existing speech
+    window.speechSynthesis.cancel()
+    
+    const utterance = new SpeechSynthesisUtterance(ttsText.value)
+    
+    // Setup event handlers
+    utterance.onstart = () => {
+      ttsStatus.value = 'Playing (Local)...'
+    }
+    
+    utterance.onend = () => {
+      ttsStatus.value = 'Played successfully'
+      setTimeout(() => { ttsStatus.value = null }, 3000)
+    }
+    
+    utterance.onerror = (e) => {
+      console.error('TTS Error:', e)
+      error.value = 'Local playback failed'
+      ttsStatus.value = null
+    }
+    
+    // Speak
+    window.speechSynthesis.speak(utterance)
+    return
+  }
+
+  // Google TTS (Server)
   try {
     isLoading.value = true
     ttsStatus.value = 'Generating audio...'
@@ -162,6 +198,30 @@ const uploadFile = async (file) => {
     <div v-if="activeTab === 'tts'" class="space-y-6">
       <BaseCard title="Text to Speech Engine">
         <div class="space-y-6">
+          <!-- Engine Selector -->
+          <div class="flex gap-4">
+            <div class="inline-flex bg-slate-900 p-1 rounded-lg border border-slate-700">
+               <button 
+                 @click="ttsEngine = 'gtts'"
+                 class="px-4 py-2 rounded-md text-sm font-medium transition-all"
+                 :class="ttsEngine === 'gtts' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+               >
+                 GTTS
+               </button>
+               <button 
+                 @click="ttsEngine = 'os'"
+                 class="px-4 py-2 rounded-md text-sm font-medium transition-all"
+                 :class="ttsEngine === 'os' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+               >
+                 Device Default
+               </button>
+            </div>
+            <div class="flex items-center text-xs text-slate-500">
+                <i class="ph ph-info mr-1"></i>
+                {{ ttsEngine === 'gtts' ? 'It\'s on lystiger' : 'It\'s on your device' }}
+            </div>
+          </div>
+
           <!-- Input Area -->
           <div class="space-y-2">
             <label class="text-sm font-medium text-slate-300">Enter text to speak</label>
