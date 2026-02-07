@@ -35,7 +35,7 @@ const handleLogin = async () => {
         <p class="text-slate-400">Sign Language Translation System</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-6">
+      <form class="space-y-6" @submit.prevent="handleLogin">
         <BaseInput 
             v-model="email" 
             label="Email" 

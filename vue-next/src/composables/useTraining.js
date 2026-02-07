@@ -1,8 +1,11 @@
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
 gsap.registerPlugin(ScrollTrigger);
 
 const cards = document.querySelectorAll(".card");
 
-cards.forEach((card, i) => {
+cards.forEach((card, _i) => {
   gsap.to(card, {
     scrollTrigger: {
       trigger: card,

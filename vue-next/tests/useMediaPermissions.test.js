@@ -2,7 +2,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useMediaPermissions } from '../src/composables/useMediaPermissions';
 import { useTrainingSettings } from '../src/composables/useTrainingSettings';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { nextTick } from 'vue';
 
 // Mock the global navigator object
 global.navigator.mediaDevices = {
@@ -22,7 +22,7 @@ describe('useMediaPermissions', () => {
 
     await requestPermissions();
 
-    
+
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     expect(stream.value).toBeNull();
   });
@@ -34,7 +34,7 @@ describe('useMediaPermissions', () => {
     const { requestPermissions, stream, hasPermissions } = useMediaPermissions();
     const settings = useTrainingSettings();
     settings.enableCamera.value = true;
-    
+
     await requestPermissions();
 
     expect(stream.value).toStrictEqual(mockStream);
@@ -81,7 +81,7 @@ describe('useMediaPermissions', () => {
     settings.enableCamera.value = true;
 
     await requestPermissions();
-    
+
     navigator.mediaDevices.getUserMedia.mockClear();
 
     settings.selectedCamera.value = 'new-camera-id';
@@ -94,9 +94,9 @@ describe('useMediaPermissions', () => {
     const { requestPermissions } = useMediaPermissions();
     const settings = useTrainingSettings();
     settings.enableCamera.value = true;
-    
+
     await requestPermissions();
-    
+
     navigator.mediaDevices.getUserMedia.mockClear();
 
     settings.resolution.value = '720p'; // Assuming '1080p' is the default
