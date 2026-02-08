@@ -20,14 +20,17 @@ export function useCollectData() {
     isCollecting.value = false
   }
 
-  const addLandmark = (landmarksArray, handednessArray) => {
+  const addLandmark = (landmarksArray, handednessArray, frameMeta = {}) => {
     if (!isCollecting.value) return
+    const timestamp_ms = frameMeta.timestamp_ms ?? Date.now()
+    const frame_id = frameMeta.frame_id ?? collectedLandmarks.value.length
     if (!landmarksArray || landmarksArray.length === 0) {
       const features = []
       for (let i = 0; i < 126; i++) features.push(0)
       collectedLandmarks.value.push({
         gesture: currentGestureName.value,
-        timestamp: Date.now(),
+        frame_id,
+        timestamp_ms,
         L_exist: 0,
         R_exist: 0,
         features
@@ -65,7 +68,8 @@ export function useCollectData() {
 
     collectedLandmarks.value.push({
       gesture: currentGestureName.value,
-      timestamp: Date.now(),
+      frame_id,
+      timestamp_ms,
       L_exist: leftHand ? 1 : 0,
       R_exist: rightHand ? 1 : 0,
       features
@@ -73,7 +77,7 @@ export function useCollectData() {
   }
 
   const convertToCSV = () => {
-    let header = 'gesture,timestamp,L_exist,R_exist,L_missing,R_missing'
+    let header = 'frame_id,timestamp_ms,gesture,L_exist,R_exist,L_missing,R_missing'
 
     for (let i = 0; i < 21; i++) {
       header += `,L_x${i},L_y${i},L_z${i}`
@@ -88,7 +92,7 @@ export function useCollectData() {
     collectedLandmarks.value.forEach(frame => {
       const L_missing = frame.L_exist ? 0 : 1
       const R_missing = frame.R_exist ? 0 : 1
-      let row = `${frame.gesture},${frame.timestamp},${frame.L_exist},${frame.R_exist},${L_missing},${R_missing}`
+      let row = `${frame.frame_id},${frame.timestamp_ms},${frame.gesture},${frame.L_exist},${frame.R_exist},${L_missing},${R_missing}`
       frame.features.forEach(v => {
         row += `,${v}`
       })
@@ -104,6 +108,8 @@ export function useCollectData() {
     const leftMissing = collectedLandmarks.value.filter(f => f.L_exist === 0).length
     const rightMissing = collectedLandmarks.value.filter(f => f.R_exist === 0).length
     const totalFrames = collectedLandmarks.value.length
+    const t_start_ms = totalFrames ? collectedLandmarks.value[0].timestamp_ms : null
+    const t_end_ms = totalFrames ? collectedLandmarks.value[totalFrames - 1].timestamp_ms : null
 
     let hands = 'none'
     if (hasLeft && hasRight) hands = 'both'
@@ -116,6 +122,9 @@ export function useCollectData() {
       frame_limit: metadata.value.frame_limit,
       hands,
       frames: totalFrames,
+      t_start_ms,
+      t_end_ms,
+      duration_ms: (t_start_ms !== null && t_end_ms !== null) ? (t_end_ms - t_start_ms) : 0,
       left_missing_frames: leftMissing,
       right_missing_frames: rightMissing,
       left_missing_rate: totalFrames ? leftMissing / totalFrames : 0,

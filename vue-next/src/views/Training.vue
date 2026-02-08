@@ -32,6 +32,7 @@ const currentAvgBrightness = ref(0)
 const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
 const recordingStartCount = ref(0)
+const cvFrameId = ref(0)
 
 // Refs for confidence score calculation
 const prevLandmarks = ref(null)
@@ -161,6 +162,7 @@ const startRecording = () => {
   metadata.value.fps = 30
   metadata.value.frame_limit = frameLimit.value
   recordingStartCount.value = collectedLandmarks.value.length
+  cvFrameId.value = 0
   startCollecting(currentGestureName.value)
 }
 
@@ -273,14 +275,26 @@ watch(
         //    no_flip_penalty: noFlipPenalty
         //  })
         //}
-        addLandmark(results.landmarks, results.handedness)
+        if (isCollecting.value) {
+          addLandmark(results.landmarks, results.handedness, {
+            frame_id: cvFrameId.value,
+            timestamp_ms: performance.now()
+          })
+          cvFrameId.value += 1
+        }
 
       } else {
         detectedGesture.value = 'No Hand Detected'
         confidence.value = '--%'
         prevLandmarks.value = null
         prevHandedness.value = null
-        addLandmark([], [])
+        if (isCollecting.value) {
+          addLandmark([], [], {
+            frame_id: cvFrameId.value,
+            timestamp_ms: performance.now()
+          })
+          cvFrameId.value += 1
+        }
       }
     })
   },
