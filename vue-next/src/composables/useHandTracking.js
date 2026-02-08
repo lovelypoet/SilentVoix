@@ -32,7 +32,9 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   let isRecording = ref(false)
   
   // HOLD-LAST-FRAME (live display)
+  const HOLD_LAST_FRAME_MS = 200
   let lastValidResult = null
+  let lastValidTime = 0
   
   // Callback for external consumers
   let frameCallback = null
@@ -71,7 +73,7 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     
     // TIME-GATED CAPTURE: Only detect at 30 FPS
     const timeSinceLastCapture = now - lastCaptureTime
-    let currentResult = lastValidResult // Hold last frame by default
+    let currentResult = null
     
     if (timeSinceLastCapture >= FRAME_INTERVAL) {
       // ---- FEED RAW FRAME TO MEDIAPIPE (NO MIRROR) ----
@@ -83,27 +85,29 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
       if (results && results.landmarks && results.landmarks.length > 0) {
         currentResult = results
         lastValidResult = results // Update hold-last-frame
-        lastCaptureTime = now
-        
-        // CAPTURE DATA if recording
-        if (isRecording.value) {
-          capturedFrames.push({
-            timestamp: now,
-            landmarks: JSON.parse(JSON.stringify(results.landmarks)), // Deep copy
-            handedness: results.handedness ? JSON.parse(JSON.stringify(results.handedness)) : null,
-            worldLandmarks: results.worldLandmarks ? JSON.parse(JSON.stringify(results.worldLandmarks)) : null
-          })
-        }
-        
-        // CALLBACK with fresh data
-        if (frameCallback) {
-          frameCallback(results)
-        }
+        lastValidTime = now
+      }
+      
+      lastCaptureTime = now
+
+      // CAPTURE DATA if recording (store empty frame when no detection)
+      if (isRecording.value) {
+        capturedFrames.push({
+          timestamp: now,
+          landmarks: currentResult?.landmarks ? JSON.parse(JSON.stringify(currentResult.landmarks)) : [],
+          handedness: currentResult?.handedness ? JSON.parse(JSON.stringify(currentResult.handedness)) : null,
+          worldLandmarks: currentResult?.worldLandmarks ? JSON.parse(JSON.stringify(currentResult.worldLandmarks)) : null
+        })
+      }
+
+      // CALLBACK per gated tick (results or null)
+      if (frameCallback) {
+        frameCallback(currentResult)
       }
     }
     
     // ---- DRAW UI CANVAS (MIRRORED IF NEEDED) ----
-    // Always draw at display refresh rate, using held frame
+    // Always draw at display refresh rate, using held frame (short timeout)
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
     ctx.save()
     
@@ -112,9 +116,13 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
       ctx.scale(-1, 1)
     }
     
-    if (showLandmarksRef.value && currentResult?.landmarks) {
+    const displayResult =
+      currentResult ||
+      (now - lastValidTime <= HOLD_LAST_FRAME_MS ? lastValidResult : null)
+
+    if (showLandmarksRef.value && displayResult?.landmarks) {
       const drawer = new DrawingUtils(ctx)
-      for (const landmarks of currentResult.landmarks) {
+      for (const landmarks of displayResult.landmarks) {
         drawer.drawConnectors(
           landmarks,
           HandLandmarker.HAND_CONNECTIONS,

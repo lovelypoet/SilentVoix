@@ -21,7 +21,18 @@ export function useCollectData() {
 
   const addLandmark = (landmarksArray, handednessArray) => {
     if (!isCollecting.value) return
-    if (!landmarksArray || landmarksArray.length === 0) return
+    if (!landmarksArray || landmarksArray.length === 0) {
+      const features = []
+      for (let i = 0; i < 126; i++) features.push(0)
+      collectedLandmarks.value.push({
+        gesture: currentGestureName.value,
+        timestamp: Date.now(),
+        L_exist: 0,
+        R_exist: 0,
+        features
+      })
+      return
+    }
 
     let leftHand = null
     let rightHand = null
@@ -61,7 +72,7 @@ export function useCollectData() {
   }
 
   const convertToCSV = () => {
-    let header = 'gesture,timestamp,L_exist,R_exist'
+    let header = 'gesture,timestamp,L_exist,R_exist,L_missing,R_missing'
 
     for (let i = 0; i < 21; i++) {
       header += `,L_x${i},L_y${i},L_z${i}`
@@ -74,7 +85,9 @@ export function useCollectData() {
     let csv = header + '\n'
 
     collectedLandmarks.value.forEach(frame => {
-      let row = `${frame.gesture},${frame.timestamp},${frame.L_exist},${frame.R_exist}`
+      const L_missing = frame.L_exist ? 0 : 1
+      const R_missing = frame.R_exist ? 0 : 1
+      let row = `${frame.gesture},${frame.timestamp},${frame.L_exist},${frame.R_exist},${L_missing},${R_missing}`
       frame.features.forEach(v => {
         row += `,${v}`
       })
@@ -87,6 +100,9 @@ export function useCollectData() {
   const downloadMetadata = () => {
     const hasLeft = collectedLandmarks.value.some(f => f.L_exist === 1)
     const hasRight = collectedLandmarks.value.some(f => f.R_exist === 1)
+    const leftMissing = collectedLandmarks.value.filter(f => f.L_exist === 0).length
+    const rightMissing = collectedLandmarks.value.filter(f => f.R_exist === 0).length
+    const totalFrames = collectedLandmarks.value.length
 
     let hands = 'none'
     if (hasLeft && hasRight) hands = 'both'
@@ -97,7 +113,11 @@ export function useCollectData() {
       label: currentGestureName.value || 'unknown',
       fps: metadata.value.fps,
       hands,
-      frames: collectedLandmarks.value.length,
+      frames: totalFrames,
+      left_missing_frames: leftMissing,
+      right_missing_frames: rightMissing,
+      left_missing_rate: totalFrames ? leftMissing / totalFrames : 0,
+      right_missing_rate: totalFrames ? rightMissing / totalFrames : 0,
       features: 128,
       preprocessing: metadata.value.preprocessing,
       created_at: new Date().toISOString()

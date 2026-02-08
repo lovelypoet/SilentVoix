@@ -185,7 +185,7 @@ watch(
     onFrame((results) => {
       frameCount++
       
-      if (results.landmarks && results.landmarks.length > 0) {
+      if (results?.landmarks && results.landmarks.length > 0) {
         detectedGesture.value = 'Hand Detected'
         
         const landmarks = results.landmarks[0]
@@ -252,12 +252,12 @@ watch(
         //}
         addLandmark(results.landmarks, results.handedness)
 
-
       } else {
         detectedGesture.value = 'No Hand Detected'
         confidence.value = '--%'
         prevLandmarks.value = null
         prevHandedness.value = null
+        addLandmark([], [])
       }
     })
   },
