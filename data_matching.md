@@ -42,6 +42,18 @@ timestamp_ms (via millis())
 
 Sensor streaming remains always-on, independent of CV capture.
 
+3.1.1 Capture Paths (1-Hand vs 2-Hand)
+Path A: Single-hand + CV (simplest)
+One ESP32 glove, one serial stream, one set of sensor timestamps.
+Sync with CV using the shared sync gesture and offset computation.
+Best for early MVP validation and rapid data collection.
+
+Path B: Dual-hand + CV (recommended implementation)
+Two ESP32 gloves, both read by a single Python collector.
+Both streams are timestamped with the same host clock (shared timebase).
+Sync gesture still used, but offsets are more stable and repeatable.
+This is the most reliable approach for two-hand fusion.
+
 3.2 Sync Gesture Indicator
 Before performing the sign, the user executes a single, sharp tap gesture (e.g., tapping the hand on a surface).
 This gesture:
@@ -96,6 +108,43 @@ Both modalities are resampled to a fixed temporal length T
 
 
 Enables consistent CV-only, sensor-only, and fusion training
+
+3.4 Formal Spike Detection and Acceptance Rules (v1)
+Sensor Spike (per glove)
+Let x(t) be the scalar magnitude of the sensor signal (e.g., acceleration norm or aggregated pressure).
+Compute rolling mean μ and standard deviation σ in a pre-spike window.
+A spike is detected when:
+x(t) > μ + 6σ
+and the condition persists for at least two consecutive sensor samples.
+
+CV Spike
+Let v_f be the hand velocity magnitude at frame f, with rolling mean v̄ and standard deviation σ_v.
+A CV spike is detected when:
+v_f > v̄ + 5σ_v
+for at least two consecutive frames. The spike timestamp is the CV sync reference.
+
+Temporal Offset (per glove)
+Δ_i = t^{sensor}_{i,spike} − t^{CV}_{spike}
+
+Absolute Offset Acceptance (per glove)
+Acceptable: |Δ_i| ≤ 500 ms
+Warning: 500 ms < |Δ_i| ≤ 2000 ms
+Reject: |Δ_i| > 2000 ms
+
+Inter-Glove Synchronization (dual-hand)
+Δ_LR = |Δ_L − Δ_R|
+High-quality: Δ_LR ≤ 100 ms
+Warning: 100 ms < Δ_LR ≤ 300 ms
+Reject: Δ_LR > 300 ms
+
+Final Sample Validation (dual-hand)
+Accept if:
+CV spike detected,
+both glove spikes detected,
+|Δ_L| ≤ 500 ms,
+|Δ_R| ≤ 500 ms,
+Δ_LR ≤ 300 ms.
+Otherwise: reject or keep as warning per thresholds.
 
 
 
@@ -184,3 +233,35 @@ Real-time fusion inference
 
 8. Conclusion
 By reframing synchronization as an event-based temporal alignment problem, this research provides a practical and extensible solution for multimodal sign-language data capture. The proposed approach balances engineering simplicity, robustness, and scalability, making it suitable for both MVP development and future research extensions.
+
+Trainer Guide (Steps + Commands)
+1. Start CV capture
+Open the Training page in the UI, enter a gesture name, and press Start Recording.
+Use the sync gesture first (sharp tap), then perform the sign.
+
+2. Start sensor capture
+Single-hand:
+```bash
+python backend/ingestion/collect_data.py
+```
+Dual-hand:
+```bash
+python backend/ingestion/collect_dual_hand_data.py
+```
+
+3. Stop capture
+Press Ctrl+C in the sensor terminal when done.
+Download the CV CSV and metadata from the UI.
+
+4. Run alignment (v1)
+Single-hand:
+```bash
+python backend/utils/align_cv_sensor.py --cv path/to/cv.csv --sensor path/to/sensor.csv --out sync_metadata.json
+```
+Dual-hand (combined CSV from dual-hand collector):
+```bash
+python backend/utils/align_cv_sensor.py --cv path/to/cv.csv --sensor-left path/to/dual_hand_raw_data.csv --out sync_metadata.json
+```
+
+5. Review output
+Open `sync_metadata.json` and check `offset_left_ms`, `offset_right_ms`, and `delta_lr_ms` against the acceptance rules.

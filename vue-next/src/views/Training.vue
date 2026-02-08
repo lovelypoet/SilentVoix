@@ -278,7 +278,7 @@ watch(
         if (isCollecting.value) {
           addLandmark(results.landmarks, results.handedness, {
             frame_id: cvFrameId.value,
-            timestamp_ms: performance.now()
+            timestamp_ms: Date.now()
           })
           cvFrameId.value += 1
         }
@@ -291,7 +291,7 @@ watch(
         if (isCollecting.value) {
           addLandmark([], [], {
             frame_id: cvFrameId.value,
-            timestamp_ms: performance.now()
+            timestamp_ms: Date.now()
           })
           cvFrameId.value += 1
         }
