@@ -18,7 +18,7 @@ const handleLogout = async () => {
   <div class="min-h-screen bg-slate-950 text-slate-200 flex app-bg">
     <Toast /> <!-- Add Toast component here -->
     <!-- Sidebar (Hidden on login) -->
-    <aside v-if="route.meta.layout !== 'empty'" class="w-64 border-r border-slate-800 p-6 flex flex-col fixed h-screen top-0 left-0">
+    <aside v-if="route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen'" class="w-64 border-r border-slate-800 p-6 flex flex-col fixed h-screen top-0 left-0">
       <RouterLink to="/" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
       
       <nav class="flex flex-col gap-2">
@@ -47,7 +47,7 @@ const handleLogout = async () => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-auto" :class="{ 'p-8': route.meta.layout !== 'empty' }">
+    <main class="flex-1 overflow-auto" :class="{ 'p-8': route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen' }">
       <RouterView />
     </main>
   </div>

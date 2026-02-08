@@ -26,7 +26,7 @@ const router = createRouter({
             path: '/capture',
             name: 'capture',
             component: () => import('../views/CaptureSession.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, layout: 'fullscreen' }
         },
         {
             path: '/voice',

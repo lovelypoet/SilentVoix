@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
@@ -20,6 +21,7 @@ const prevLandmarks = ref(null)
 const prevHandedness = ref(null)
 const recordingStartCount = ref(0)
 const cvFrameId = ref(0)
+const router = useRouter()
 const serialStatus = ref({
   single_connected: false,
   left_connected: false,
@@ -294,11 +296,16 @@ watch(
   <div class="max-w-6xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-white mb-2">Capture Session</h1>
-      <p class="text-slate-400">
-        Record labeled gestures with consistent frame caps and CSV export.
-      </p>
+    <div class="mb-8 flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-white mb-2">Capture Session</h1>
+        <p class="text-slate-400">
+          Record labeled gestures with consistent frame caps and CSV export.
+        </p>
+      </div>
+      <BaseBtn variant="secondary" @click="router.push('/training')">
+        Return
+      </BaseBtn>
     </div>
 
     <div v-if="error" class="text-center mt-12">
@@ -314,8 +321,8 @@ watch(
       </BaseCard>
     </div>
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2">
+    <div v-else class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div class="lg:col-span-3">
         <div class="w-full aspect-video bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
           <div v-if="!enableCamera" class="absolute inset-0 flex items-center justify-center text-slate-500 bg-black">
             Camera is disabled
@@ -348,9 +355,15 @@ watch(
             </div>
           </div>
         </div>
+
+        <div v-if="!isSessionActive" class="mt-6">
+          <BaseBtn variant="primary" :disabled="isRequesting" @click="startSession">
+            {{ isRequesting ? 'Requesting...' : 'Start Capture Session' }}
+          </BaseBtn>
+        </div>
       </div>
 
-      <div class="lg:col-span-1">
+      <div class="lg:col-span-2 lg:sticky lg:top-6 self-start">
         <BaseCard class="w-full">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold text-white">Capture Controls</h3>
@@ -464,10 +477,6 @@ watch(
       </div>
     </div>
 
-    <div v-if="!isSessionActive" class="mt-8">
-      <BaseBtn variant="primary" :disabled="isRequesting" @click="startSession">
-        {{ isRequesting ? 'Requesting...' : 'Start Capture Session' }}
-      </BaseBtn>
-    </div>
+    
   </div>
 </template>
