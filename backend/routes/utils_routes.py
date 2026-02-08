@@ -16,11 +16,18 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import os
 from utils.cache import cacheable
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from serial.tools import list_ports
+import subprocess
+import sys
+import os
 from routes.auth_routes import get_current_user
 
 router = APIRouter(prefix="/utils", tags=["Utilities"])
+
+# Sensor capture process (single instance)
+SENSOR_CAPTURE_PROCESS: Optional[subprocess.Popen] = None
+SENSOR_CAPTURE_MODE: Optional[str] = None
 
 class TTSRequest(BaseModel):
     text: str
@@ -133,6 +140,58 @@ async def get_serial_status() -> Dict[str, Any]:
         return {"status": "success", "data": status}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read serial ports: {str(e)}")
+
+@router.post("/sensor-capture/start")
+async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:
+    """
+    Start the local sensor capture script (single or dual).
+    """
+    global SENSOR_CAPTURE_PROCESS, SENSOR_CAPTURE_MODE
+    if SENSOR_CAPTURE_PROCESS and SENSOR_CAPTURE_PROCESS.poll() is None:
+        return {"status": "running", "mode": SENSOR_CAPTURE_MODE}
+
+    script = "collect_data.py" if mode == "single" else "collect_dual_hand_data.py"
+    script_path = os.path.join(os.path.dirname(__file__), "..", "ingestion", script)
+    script_path = os.path.abspath(script_path)
+
+    if not os.path.exists(script_path):
+        raise HTTPException(status_code=404, detail=f"Capture script not found: {script}")
+
+    try:
+        SENSOR_CAPTURE_PROCESS = subprocess.Popen(
+            [sys.executable, script_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=os.path.dirname(script_path)
+        )
+        SENSOR_CAPTURE_MODE = mode
+        return {"status": "started", "mode": mode, "pid": SENSOR_CAPTURE_PROCESS.pid}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start capture: {str(e)}")
+
+@router.post("/sensor-capture/stop")
+async def stop_sensor_capture() -> Dict[str, Any]:
+    """
+    Stop the local sensor capture script if running.
+    """
+    global SENSOR_CAPTURE_PROCESS, SENSOR_CAPTURE_MODE
+    if not SENSOR_CAPTURE_PROCESS or SENSOR_CAPTURE_PROCESS.poll() is not None:
+        return {"status": "stopped"}
+    try:
+        SENSOR_CAPTURE_PROCESS.terminate()
+        SENSOR_CAPTURE_PROCESS = None
+        SENSOR_CAPTURE_MODE = None
+        return {"status": "stopped"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop capture: {str(e)}")
+
+@router.get("/sensor-capture/status")
+async def sensor_capture_status() -> Dict[str, Any]:
+    """
+    Check current capture process status.
+    """
+    running = SENSOR_CAPTURE_PROCESS is not None and SENSOR_CAPTURE_PROCESS.poll() is None
+    return {"status": "running" if running else "stopped", "mode": SENSOR_CAPTURE_MODE}
 
 @router.get("/tts/config")
 async def get_tts_config(current_user: dict = Depends(get_current_user)):

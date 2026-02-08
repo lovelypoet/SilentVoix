@@ -26,6 +26,9 @@ const serialStatus = ref({
   right_connected: false,
   available_ports: []
 })
+const sensorCaptureStatus = ref({ status: 'stopped', mode: 'single' })
+const captureMode = ref('single')
+const syncCountdown = ref(0)
 let serialPoll = null
 
 const {
@@ -132,9 +135,45 @@ const fetchSerialStatus = async () => {
   }
 }
 
+const fetchCaptureStatus = async () => {
+  try {
+    const res = await api.utils.sensorCapture.status()
+    if (res) {
+      sensorCaptureStatus.value = res
+    }
+  } catch (e) {
+    // Keep last known status
+  }
+}
+
+const startSensorCapture = async () => {
+  await api.utils.sensorCapture.start(captureMode.value)
+  await fetchCaptureStatus()
+}
+
+const stopSensorCapture = async () => {
+  await api.utils.sensorCapture.stop()
+  await fetchCaptureStatus()
+}
+
+const triggerSyncCue = () => {
+  if (syncCountdown.value > 0) return
+  syncCountdown.value = 3
+  const timer = setInterval(() => {
+    syncCountdown.value -= 1
+    if (syncCountdown.value <= 0) {
+      clearInterval(timer)
+    }
+  }, 1000)
+}
+
 onMounted(() => {
   fetchSerialStatus()
-  serialPoll = setInterval(fetchSerialStatus, 3000)
+  fetchCaptureStatus()
+  serialPoll = setInterval(() => {
+    fetchSerialStatus()
+    fetchCaptureStatus()
+  }, 3000)
 })
 
 onUnmounted(() => {
@@ -303,6 +342,11 @@ watch(
               <div class="text-2xl font-bold text-slate-400">{{ confidence }}</div>
             </div>
           </div>
+          <div v-if="syncCountdown > 0" class="absolute inset-0 flex items-center justify-center">
+            <div class="bg-black/70 border border-teal-500/40 text-teal-300 rounded-2xl px-8 py-6 text-5xl font-bold">
+              {{ syncCountdown }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -320,11 +364,42 @@ watch(
                 {{ serialStatus.left_connected ? 'Online' : 'Offline' }}
               </span>
             </div>
+            <div class="text-xs text-slate-500">
+              Port: {{ serialStatus.left_port || '--' }}
+            </div>
             <div class="flex items-center justify-between">
               <span class="text-slate-400">Glove Right</span>
               <span :class="serialStatus.right_connected ? 'text-green-400' : 'text-red-400'">
                 {{ serialStatus.right_connected ? 'Online' : 'Offline' }}
               </span>
+            </div>
+            <div class="text-xs text-slate-500">
+              Port: {{ serialStatus.right_port || '--' }}
+            </div>
+          </div>
+
+          <div class="mb-4 text-xs text-slate-500">
+            Available ports: {{ serialStatus.available_ports?.length ? serialStatus.available_ports.join(', ') : '--' }}
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm text-slate-400 mb-2">Capture Mode</label>
+            <select v-model="captureMode" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white w-full">
+              <option value="single">Single Hand</option>
+              <option value="dual">Dual Hand</option>
+            </select>
+          </div>
+
+          <div class="mb-4 space-y-2">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-400">Sensor Capture</span>
+              <span :class="sensorCaptureStatus.status === 'running' ? 'text-green-400' : 'text-red-400'">
+                {{ sensorCaptureStatus.status === 'running' ? 'Running' : 'Stopped' }}
+              </span>
+            </div>
+            <div class="flex gap-3">
+              <BaseBtn variant="primary" @click="startSensorCapture">Start Sensor</BaseBtn>
+              <BaseBtn variant="secondary" @click="stopSensorCapture">Stop Sensor</BaseBtn>
             </div>
           </div>
 
@@ -367,6 +442,7 @@ watch(
             </BaseBtn>
 
             <BaseBtn variant="secondary" @click="resetRecording">Reset</BaseBtn>
+            <BaseBtn variant="secondary" @click="triggerSyncCue">Sync Cue</BaseBtn>
           </div>
 
           <div class="mt-4 text-sm">

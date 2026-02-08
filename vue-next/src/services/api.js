@@ -97,6 +97,11 @@ export default {
     // Health
     health: () => api.get('/utils/health'),
     serialStatus: () => api.get('/utils/serial-status'),
+    sensorCapture: {
+      start: (mode = 'single') => api.post(`/utils/sensor-capture/start?mode=${mode}`),
+      stop: () => api.post('/utils/sensor-capture/stop'),
+      status: () => api.get('/utils/sensor-capture/status'),
+    },
     // TTS
     tts: {
       speakOnGlove: (text) => api.post('/utils/test_tts_to_esp32', { text }),
