@@ -101,7 +101,7 @@ const {
   stopStream
 } = useMediaPermissions()
 
-const { mirrorCamera, enableCamera, showLandmarks, fps } = useTrainingSettings()
+const { mirrorCamera, enableCamera, showLandmarks } = useTrainingSettings()
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
 
@@ -328,7 +328,7 @@ watch(currentLightingStatus, (newValue) => {
         />
         <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
-            <div class="text-xs text-slate-400">FPS (Target: {{ fps }})</div>
+            <div class="text-xs text-slate-400">FPS (Target: 30)</div>
             <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
               {{ actualFps || '--' }}
             </div>
@@ -378,7 +378,7 @@ watch(currentLightingStatus, (newValue) => {
           />
           <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
             <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
-              <div class="text-xs text-slate-400">FPS (Target: {{ fps }})</div>
+              <div class="text-xs text-slate-400">FPS (Target: 30)</div>
               <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
                 {{ actualFps || '--' }}
               </div>
