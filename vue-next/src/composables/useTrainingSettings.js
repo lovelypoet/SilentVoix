@@ -13,6 +13,7 @@ const resolution = ref('Medium (720)')
 const mirrorCamera = ref(true)
 const trainingMode = ref('Practice')
 const countdown = ref(3)
+const frameLimit = ref(100)
 const showLandmarks = ref(true)
 const enableAISuggestions = ref(true) // New setting for AI suggestions
 
@@ -49,6 +50,7 @@ export function useTrainingSettings() {
     mirrorCamera,
     trainingMode,
     countdown,
+    frameLimit,
     showLandmarks,
     enableAISuggestions, // Add new setting
     cameraDevices,

@@ -31,6 +31,7 @@ const currentLightingStatus = ref({ status: '--', colorClass: 'text-slate-400' }
 const currentAvgBrightness = ref(0)
 const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
+const recordingStartCount = ref(0)
 
 // Refs for confidence score calculation
 const prevLandmarks = ref(null)
@@ -41,6 +42,7 @@ const {
   collectedLandmarks,
   isCollecting,
   currentGestureName,
+  metadata,
   startCollecting,
   stopCollecting,
   addLandmark,
@@ -101,7 +103,7 @@ const {
   stopStream
 } = useMediaPermissions()
 
-const { mirrorCamera, enableCamera, showLandmarks } = useTrainingSettings()
+const { mirrorCamera, enableCamera, showLandmarks, frameLimit } = useTrainingSettings()
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
 
@@ -155,6 +157,19 @@ const stopTraining = () => {
   trainingMode.value = null // Reset training mode
 }
 
+const startRecording = () => {
+  metadata.value.fps = 30
+  metadata.value.frame_limit = frameLimit.value
+  recordingStartCount.value = collectedLandmarks.value.length
+  startCollecting(currentGestureName.value)
+}
+
+const resetRecording = () => {
+  stopCollecting()
+  clearData()
+  recordingStartCount.value = 0
+}
+
 
 watch(
   [isTraining, stream, videoEl, canvasEl, enableCamera],
@@ -184,6 +199,14 @@ watch(
     
     onFrame((results) => {
       frameCount++
+
+      if (isCollecting.value) {
+        const framesSinceStart = collectedLandmarks.value.length - recordingStartCount.value
+        if (framesSinceStart >= frameLimit.value) {
+          stopCollecting()
+          return
+        }
+      }
       
       if (results?.landmarks && results.landmarks.length > 0) {
         detectedGesture.value = 'Hand Detected'
@@ -271,6 +294,16 @@ watch(currentAvgBrightness, (newValue) => {
 watch(currentLightingStatus, (newValue) => {
   console.log('Training: Received lightingStatus:', newValue);
 });
+
+watch(
+  () => [isCollecting.value, collectedLandmarks.value.length, frameLimit.value],
+  ([collecting, frameCountNow, limit]) => {
+    if (!collecting) return
+    if (frameCountNow - recordingStartCount.value >= limit) {
+      stopCollecting()
+    }
+  }
+)
 </script>
 
 <template>
@@ -430,7 +463,7 @@ watch(currentLightingStatus, (newValue) => {
             v-if="!isCollecting"
             :disabled="!currentGestureName.trim()"
             variant="primary"
-            @click="startCollecting(currentGestureName)"
+            @click="startRecording"
           >
             Start Recording
           </BaseBtn>
@@ -457,6 +490,13 @@ watch(currentLightingStatus, (newValue) => {
           >
             Clear Data
           </BaseBtn>
+          
+          <BaseBtn 
+            variant="secondary"
+            @click="resetRecording"
+          >
+            Reset
+          </BaseBtn>
         </div>
 
         <div class="mt-4 text-sm">
@@ -464,7 +504,8 @@ watch(currentLightingStatus, (newValue) => {
             Recording "{{ currentGestureName }}"...
           </div>
           <div class="text-slate-400">
-            Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length }}</span>
+            Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length - recordingStartCount }}</span>
+            <span class="text-slate-500"> / {{ frameLimit }}</span>
           </div>
         </div>
       </BaseCard>

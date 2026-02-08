@@ -7,6 +7,7 @@ export function useCollectData() {
 
   const metadata = ref({
     fps: 30,
+    frame_limit: 100,
     preprocessing: []
   })
 
@@ -112,6 +113,7 @@ export function useCollectData() {
     const meta = {
       label: currentGestureName.value || 'unknown',
       fps: metadata.value.fps,
+      frame_limit: metadata.value.frame_limit,
       hands,
       frames: totalFrames,
       left_missing_frames: leftMissing,

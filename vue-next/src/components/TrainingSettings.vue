@@ -12,6 +12,7 @@ const {
   mirrorCamera,
   trainingMode,
   countdown,
+  frameLimit,
   showLandmarks,
   enableAISuggestions, // Import new setting
   cameraDevices,
@@ -82,6 +83,14 @@ onMounted(() => {
               <option :value="0">Off</option>
               <option :value="3">3s</option>
               <option :value="5">5s</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-4 items-center">
+            <label for="frame-limit" class="text-slate-400">Frame Limit</label>
+            <select id="frame-limit" v-model="frameLimit" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white w-full">
+              <option :value="100">100</option>
+              <option :value="150">150</option>
+              <option :value="200">200</option>
             </select>
           </div>
         </div>
