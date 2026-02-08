@@ -13,7 +13,7 @@ const resolution = ref('Medium (720)')
 const mirrorCamera = ref(true)
 const trainingMode = ref('Practice')
 const countdown = ref(3)
-const fps = ref(15)
+const fps = ref(30)
 const showLandmarks = ref(true)
 const enableAISuggestions = ref(true) // New setting for AI suggestions
 

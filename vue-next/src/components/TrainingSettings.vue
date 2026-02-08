@@ -12,7 +12,6 @@ const {
   mirrorCamera,
   trainingMode,
   countdown,
-  fps,
   showLandmarks,
   enableAISuggestions, // Import new setting
   cameraDevices,
@@ -83,13 +82,6 @@ onMounted(() => {
               <option :value="0">Off</option>
               <option :value="3">3s</option>
               <option :value="5">5s</option>
-            </select>
-          </div>
-          <div class="grid grid-cols-2 gap-4 items-center">
-            <label for="fps" class="text-slate-400">FPS</label>
-            <select id="fps" v-model="fps" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white w-full">
-              <option :value="15">15</option>
-              <option :value="30">30</option>
             </select>
           </div>
         </div>
