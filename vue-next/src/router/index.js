@@ -23,6 +23,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/capture',
+            name: 'capture',
+            component: () => import('../views/CaptureSession.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/voice',
             name: 'voice',
             component: () => import('../views/VoiceStudio.vue'),

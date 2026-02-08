@@ -96,6 +96,7 @@ export default {
   utils: {
     // Health
     health: () => api.get('/utils/health'),
+    serialStatus: () => api.get('/utils/serial-status'),
     // TTS
     tts: {
       speakOnGlove: (text) => api.post('/utils/test_tts_to_esp32', { text }),

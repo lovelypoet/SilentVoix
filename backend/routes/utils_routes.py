@@ -17,6 +17,7 @@ from pydantic import BaseModel
 import os
 from utils.cache import cacheable
 from typing import Dict, Any
+from serial.tools import list_ports
 from routes.auth_routes import get_current_user
 
 router = APIRouter(prefix="/utils", tags=["Utilities"])
@@ -111,6 +112,27 @@ async def get_training_logs(lines: int = Query(200, ge=1, le=2000)):
         return {"status": "success", "lines": tail}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read training log: {e}")
+
+@router.get("/serial-status")
+async def get_serial_status() -> Dict[str, Any]:
+    """
+    Check whether configured serial ports are currently available.
+    """
+    try:
+        ports = list_ports.comports()
+        available = [p.device for p in ports]
+        status = {
+            "single_port": settings.SERIAL_PORT_SINGLE,
+            "left_port": settings.SERIAL_PORT_LEFT,
+            "right_port": settings.SERIAL_PORT_RIGHT,
+            "available_ports": available,
+            "single_connected": settings.SERIAL_PORT_SINGLE in available,
+            "left_connected": settings.SERIAL_PORT_LEFT in available,
+            "right_connected": settings.SERIAL_PORT_RIGHT in available
+        }
+        return {"status": "success", "data": status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read serial ports: {str(e)}")
 
 @router.get("/tts/config")
 async def get_tts_config(current_user: dict = Depends(get_current_user)):

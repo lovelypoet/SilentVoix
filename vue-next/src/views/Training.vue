@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue'
-import { useRoute } from 'vue-router' // Import useRoute
+import { useRoute, useRouter } from 'vue-router' // Import useRoute
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
@@ -13,6 +13,7 @@ import VideoAnalyzer from '../components/VideoAnalyzer.vue'
 
 
 const route = useRoute() // Initialize useRoute
+const router = useRouter()
 
 const isTraining = ref(false)
 const showSettings = ref(false)
@@ -127,6 +128,10 @@ const startTraining = async () => {
   } finally {
     isStartingFreeTraining.value = false
   }
+}
+
+const startCaptureSession = () => {
+  router.push('/capture')
 }
 
 const startAdvancedTraining = async () => {
@@ -526,7 +531,7 @@ watch(
     </div>
 
     <!-- Initial State -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
       <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startTraining">
         <div
           class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
@@ -540,6 +545,22 @@ watch(
         </p>
         <BaseBtn class="w-full" :disabled="isStartingFreeTraining || isRequesting">
           {{ isStartingFreeTraining ? 'Requesting...' : 'Start Session' }}
+        </BaseBtn>
+      </BaseCard>
+
+      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startCaptureSession">
+        <div
+          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
+          <span class="text-5xl">●</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">
+          Capture Session
+        </h3>
+        <p class="text-slate-400 text-sm mb-6">
+          Record a labeled gesture with frame caps and downloadable CSV.
+        </p>
+        <BaseBtn class="w-full">
+          Start Capture
         </BaseBtn>
       </BaseCard>
 
