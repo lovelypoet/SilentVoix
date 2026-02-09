@@ -1,4 +1,4 @@
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import api from '../services/api'
 
 const buildPath = (values) => {
@@ -17,7 +17,7 @@ const buildPath = (values) => {
     .join(' ')
 }
 
-export const useSyncStream = (captureMode, isSessionActive) => {
+export const useSyncStream = (captureMode) => {
   const sensorSeries = ref([])
   const cvSeries = ref([])
   const sensorSpikeThreshold = ref(null)
@@ -195,16 +195,9 @@ export const useSyncStream = (captureMode, isSessionActive) => {
     }
   )
 
-  watch(
-    () => isSessionActive.value,
-    (active) => {
-      if (active) {
-        openSyncStream()
-      } else {
-        closeSyncStream()
-      }
-    }
-  )
+  onMounted(() => {
+    openSyncStream()
+  })
 
   onUnmounted(() => {
     if (syncTick) clearInterval(syncTick)

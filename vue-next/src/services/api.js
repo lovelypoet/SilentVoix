@@ -126,8 +126,15 @@ export default {
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');
-    // Replace http/https with ws/wss
-    const wsUrl = BASE_URL.replace(/^http/, 'ws') + path + (token ? `?token=${token}` : '');
+    let wsOrigin = '';
+    if (BASE_URL && /^https?:\/\//.test(BASE_URL)) {
+      wsOrigin = BASE_URL.replace(/^http/, 'ws');
+    } else if (import.meta.env.DEV) {
+      wsOrigin = `ws://${window.location.hostname}:8000`;
+    } else {
+      wsOrigin = window.location.origin.replace(/^http/, 'ws');
+    }
+    const wsUrl = wsOrigin + path + (token ? `?token=${token}` : '');
     return new WebSocket(wsUrl);
   }
 };

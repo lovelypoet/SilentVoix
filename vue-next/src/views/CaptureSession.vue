@@ -84,7 +84,7 @@ const {
   cvSpike,
   ingestCvPoint,
   resetCvState
-} = useSyncStream(captureMode, isSessionActive)
+} = useSyncStream(captureMode)
 
 const videoClasses = computed(() => [
   'w-full',
@@ -309,16 +309,24 @@ watch(terminalLines, () => {
   <div class="max-w-6xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div class="mb-8 flex items-center justify-between">
-      <div>
+    <div class="mb-8 grid grid-cols-3 items-center">
+      <div class="flex justify-start">
+        <BaseBtn
+          variant="secondary"
+          title="Return to training page"
+          class="px-3"
+          @click="router.push('/training')"
+        >
+          &larr;
+        </BaseBtn>
+      </div>
+      <div class="text-center">
         <h1 class="text-3xl font-bold text-white mb-2">Capture Session</h1>
         <p class="text-slate-400">
           Record labeled gestures with consistent frame caps and CSV export.
         </p>
       </div>
-      <BaseBtn variant="secondary" @click="router.push('/training')">
-        Return
-      </BaseBtn>
+      <div></div>
     </div>
 
     <div v-if="error" class="text-center mt-12">
@@ -369,7 +377,7 @@ watch(terminalLines, () => {
           </div>
         </div>
 
-        <div v-if="!isSessionActive" class="mt-6 flex items-stretch gap-4">
+        <div class="mt-6 flex items-stretch gap-4">
           <BaseBtn variant="primary" :disabled="isRequesting" class="flex-none" @click="startSession">
             {{ isRequesting ? 'Requesting...' : 'Start Capture Session' }}
           </BaseBtn>

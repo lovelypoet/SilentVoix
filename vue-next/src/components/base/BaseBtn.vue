@@ -10,6 +10,7 @@ defineProps({
 
 <template>
   <button 
+    v-bind="$attrs"
     class="px-5 py-2.5 rounded-lg font-medium transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed"
     :class="{
       'btn-primary': variant === 'primary',
