@@ -19,6 +19,9 @@ const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
 const prevLandmarks = ref(null)
 const prevHandedness = ref(null)
+const prevCvPoint = ref(null)
+const prevCvTime = ref(0)
+const lastCvSend = ref(0)
 const recordingStartCount = ref(0)
 const cvFrameId = ref(0)
 const router = useRouter()
@@ -37,11 +40,18 @@ const isTerminalStreaming = ref(false)
 const terminalAutoScroll = ref(true)
 const terminalEl = ref(null)
 const sensorSeries = ref([])
+const cvSeries = ref([])
 const sensorSpikeThreshold = ref(null)
 const sensorSpikeIndex = ref(-1)
 const sensorSpikeActive = ref(false)
+const cvSpikeThreshold = ref(null)
+const cvSpikeIndex = ref(-1)
+const cvSpikeActive = ref(false)
+const syncWs = ref(null)
+const syncWsConnected = ref(false)
 let serialPoll = null
 let terminalPoll = null
+let syncTick = null
 
 const {
   collectedLandmarks,
@@ -74,11 +84,10 @@ const videoClasses = computed(() => [
   { '-scale-x-100': mirrorCamera.value }
 ])
 
-const sparkPath = computed(() => {
-  if (!sensorSeries.value.length) return ''
+const buildPath = (values) => {
+  if (!values.length) return ''
   const width = 100
   const height = 24
-  const values = sensorSeries.value
   const max = Math.max(...values)
   const min = Math.min(...values)
   const range = Math.max(1, max - min)
@@ -89,13 +98,30 @@ const sparkPath = computed(() => {
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`
     })
     .join(' ')
-})
+}
+
+const sparkPath = computed(() => buildPath(sensorSeries.value))
+const cvPath = computed(() => buildPath(cvSeries.value))
 
 const sparkPeak = computed(() => {
   if (!sensorSeries.value.length) return { x: 0, y: 0 }
   const width = 100
   const height = 24
   const values = sensorSeries.value
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = Math.max(1, max - min)
+  const peakIndex = values.indexOf(max)
+  const x = (peakIndex / (values.length - 1)) * width
+  const y = height - ((max - min) / range) * (height - 4) - 2
+  return { x, y }
+})
+
+const cvPeak = computed(() => {
+  if (!cvSeries.value.length) return { x: 0, y: 0 }
+  const width = 100
+  const height = 24
+  const values = cvSeries.value
   const max = Math.max(...values)
   const min = Math.min(...values)
   const range = Math.max(1, max - min)
@@ -116,6 +142,17 @@ const sparkThreshold = computed(() => {
   return Math.max(2, Math.min(height - 2, y))
 })
 
+const cvThreshold = computed(() => {
+  if (cvSpikeThreshold.value === null || !cvSeries.value.length) return null
+  const height = 24
+  const values = cvSeries.value
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = Math.max(1, max - min)
+  const y = height - ((cvSpikeThreshold.value - min) / range) * (height - 4) - 2
+  return Math.max(2, Math.min(height - 2, y))
+})
+
 const sparkSpike = computed(() => {
   if (sensorSpikeIndex.value < 0 || !sensorSeries.value.length) return null
   const width = 100
@@ -129,27 +166,18 @@ const sparkSpike = computed(() => {
   return { x, y }
 })
 
-const computeSpikeStats = (series, windowSize = 20) => {
-  if (!series.length) {
-    return { threshold: null, spikeIndex: -1, active: false }
-  }
-  const start = Math.max(0, series.length - windowSize)
-  const window = series.slice(start)
-  const mean = window.reduce((sum, v) => sum + v, 0) / window.length
-  const variance = window.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / window.length
-  const sigma = Math.sqrt(variance)
-  const threshold = mean + 6 * sigma
-  let spikeIndex = -1
-  let active = false
-  if (series.length >= 2) {
-    const i = series.length - 1
-    if (series[i] > threshold && series[i - 1] > threshold) {
-      spikeIndex = i
-      active = true
-    }
-  }
-  return { threshold, spikeIndex, active }
-}
+const cvSpike = computed(() => {
+  if (cvSpikeIndex.value < 0 || !cvSeries.value.length) return null
+  const width = 100
+  const height = 24
+  const values = cvSeries.value
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = Math.max(1, max - min)
+  const x = (cvSpikeIndex.value / (values.length - 1)) * width
+  const y = height - ((values[cvSpikeIndex.value] - min) / range) * (height - 4) - 2
+  return { x, y }
+})
 
 let frameCount = 0
 let lastTime = performance.now()
@@ -286,11 +314,6 @@ const fetchTerminalLogs = async () => {
         }
         if (linePeak !== null) series.push(linePeak)
       }
-      sensorSeries.value = series.slice(-60)
-      const stats = computeSpikeStats(sensorSeries.value)
-      sensorSpikeThreshold.value = stats.threshold
-      sensorSpikeIndex.value = stats.spikeIndex
-      sensorSpikeActive.value = stats.active
     }
   } catch (e) {
     terminalError.value = 'No collector logs found yet. Start a capture to generate logs.'
@@ -335,6 +358,8 @@ onMounted(() => {
 onUnmounted(() => {
   if (serialPoll) clearInterval(serialPoll)
   if (terminalPoll) clearInterval(terminalPoll)
+  if (syncTick) clearInterval(syncTick)
+  if (syncWs.value) syncWs.value.close()
 })
 
 watch(
@@ -345,6 +370,9 @@ watch(
       stopFpsCounter()
       prevLandmarks.value = null
       prevHandedness.value = null
+      prevCvPoint.value = null
+      prevCvTime.value = 0
+      lastCvSend.value = 0
       confidence.value = '--%'
       detectedGesture.value = 'Waiting...'
       return
@@ -364,6 +392,26 @@ watch(
 
     onFrame((results) => {
       frameCount++
+
+      if (results?.landmarks?.[0]?.[0]) {
+        const now = Date.now()
+        const point = results.landmarks[0][0]
+        if (prevCvPoint.value) {
+          const dx = point.x - prevCvPoint.value.x
+          const dy = point.y - prevCvPoint.value.y
+          const dz = point.z - prevCvPoint.value.z
+          const dt = Math.max(1, now - prevCvTime.value)
+          const velocity = Math.sqrt(dx * dx + dy * dy + dz * dz) / dt
+          if (syncWs.value && syncWs.value.readyState === WebSocket.OPEN) {
+            if (now - lastCvSend.value >= 100) {
+              syncWs.value.send(JSON.stringify({ type: 'cv_sample', timestamp_ms: now, velocity }))
+              lastCvSend.value = now
+            }
+          }
+        }
+        prevCvPoint.value = point
+        prevCvTime.value = now
+      }
 
       if (isCollecting.value) {
         const framesSinceStart = collectedLandmarks.value.length - recordingStartCount.value
@@ -462,6 +510,74 @@ watch(
     }
   }
 )
+
+const openSyncStream = () => {
+  if (syncWs.value) return
+  const ws = api.createWebSocket('/ws/sync')
+  syncWs.value = ws
+
+  ws.onopen = () => {
+    syncWsConnected.value = true
+    ws.send(JSON.stringify({ type: 'configure', mode: captureMode.value }))
+    syncTick = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'tick' }))
+      }
+    }, 1000)
+  }
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      if (data.type !== 'sync_series') return
+      if (data.sensor) {
+        sensorSeries.value = data.sensor.series || []
+        sensorSpikeThreshold.value = data.sensor.threshold ?? null
+        sensorSpikeIndex.value = data.sensor.spike_index ?? -1
+        sensorSpikeActive.value = Boolean(data.sensor.spike_active)
+      }
+      if (data.cv) {
+        cvSeries.value = data.cv.series || []
+        cvSpikeThreshold.value = data.cv.threshold ?? null
+        cvSpikeIndex.value = data.cv.spike_index ?? -1
+        cvSpikeActive.value = Boolean(data.cv.spike_active)
+      }
+    } catch (e) {
+      // Ignore malformed payloads
+    }
+  }
+
+  ws.onclose = () => {
+    syncWsConnected.value = false
+    syncWs.value = null
+    if (syncTick) clearInterval(syncTick)
+    syncTick = null
+  }
+}
+
+const closeSyncStream = () => {
+  if (syncWs.value) syncWs.value.close()
+}
+
+watch(
+  () => captureMode.value,
+  (mode) => {
+    if (syncWs.value && syncWs.value.readyState === WebSocket.OPEN) {
+      syncWs.value.send(JSON.stringify({ type: 'configure', mode }))
+    }
+  }
+)
+
+watch(
+  () => isSessionActive.value,
+  (active) => {
+    if (active) {
+      openSyncStream()
+    } else {
+      closeSyncStream()
+    }
+  }
+)
 </script>
 
 <template>
@@ -551,6 +667,13 @@ watch(
                     stroke="url(#spark)"
                     stroke-width="2"
                   />
+                  <path
+                    :d="cvPath"
+                    fill="none"
+                    stroke="#f472b6"
+                    stroke-width="1.6"
+                    opacity="0.9"
+                  />
                   <line
                     v-if="sparkThreshold !== null"
                     x1="0"
@@ -562,6 +685,17 @@ watch(
                     stroke-dasharray="4 3"
                     opacity="0.9"
                   />
+                  <line
+                    v-if="cvThreshold !== null"
+                    x1="0"
+                    x2="100"
+                    :y1="cvThreshold"
+                    :y2="cvThreshold"
+                    stroke="#f472b6"
+                    stroke-width="1"
+                    stroke-dasharray="2 3"
+                    opacity="0.7"
+                  />
                   <circle v-if="sparkPath" :cx="sparkPeak.x" :cy="sparkPeak.y" r="2.5" fill="#22c55e" />
                   <circle
                     v-if="sparkSpike"
@@ -570,13 +704,20 @@ watch(
                     r="2.8"
                     fill="#f59e0b"
                   />
+                  <circle
+                    v-if="cvSpike"
+                    :cx="cvSpike.x"
+                    :cy="cvSpike.y"
+                    r="2.6"
+                    fill="#f472b6"
+                  />
                 </svg>
               </div>
               <div
                 class="text-[10px] font-semibold"
-                :class="sensorSpikeActive ? 'text-amber-300' : 'text-slate-500'"
+                :class="sensorSpikeActive || cvSpikeActive ? 'text-amber-300' : 'text-slate-500'"
               >
-                {{ sensorSpikeActive ? 'spike' : 'live' }}
+                {{ sensorSpikeActive || cvSpikeActive ? 'spike' : 'live' }}
               </div>
             </div>
           </BaseCard>

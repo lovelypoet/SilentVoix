@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from routes import training_routes, sensor_routes, admin_routes, dashboard_routes, gestures_predict
-from routes import utils_routes, auth_routes, voice_routes
+from routes import utils_routes, auth_routes, voice_routes, sync_routes
 from AI.gesture_model_inference import preprocess_frame, predict_gesture
 from routes import model_status
 from routes import audio_files_routes
@@ -88,6 +88,7 @@ app.include_router(dashboard_routes.router)
 app.include_router(utils_routes.router)
 app.include_router(audio_files_routes.router)
 app.include_router(voice_routes.router)
+app.include_router(sync_routes.router)
 app.include_router(model_status.router)
 
 # Mount models directory for static files if needed
