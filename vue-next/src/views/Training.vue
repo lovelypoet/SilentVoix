@@ -46,6 +46,7 @@ const {
   isCollecting,
   currentGestureName,
   metadata,
+  takeLogs,
   startCollecting,
   stopCollecting,
   addLandmark,
@@ -293,7 +294,8 @@ watch(
         if (isCollecting.value) {
           addLandmark(results.landmarks, results.handedness, {
             frame_id: cvFrameId.value,
-            timestamp_ms: Date.now()
+            timestamp_ms: Date.now(),
+            lighting_status: currentLightingStatus.value?.status || null
           })
           cvFrameId.value += 1
         }
@@ -306,7 +308,8 @@ watch(
         if (isCollecting.value) {
           addLandmark([], [], {
             frame_id: cvFrameId.value,
-            timestamp_ms: Date.now()
+            timestamp_ms: Date.now(),
+            lighting_status: currentLightingStatus.value?.status || null
           })
           cvFrameId.value += 1
         }
@@ -526,6 +529,19 @@ watch(
           >
             Reset
           </BaseBtn>
+        </div>
+
+        <div class="mt-4 border border-slate-800 bg-black/70 rounded-lg px-4 py-3 font-mono text-xs text-slate-200">
+          <div class="text-slate-500 mb-2">Take Console</div>
+          <div v-if="takeLogs.length === 0" class="text-slate-500">
+            No takes recorded yet.
+          </div>
+          <div v-else class="space-y-1 max-h-28 overflow-y-auto">
+            <div v-for="(line, idx) in takeLogs" :key="`take-log-${idx}`">
+              <span class="text-emerald-400">$</span>
+              <span class="ml-2">{{ line }}</span>
+            </div>
+          </div>
         </div>
 
         <div class="mt-4 text-sm">
