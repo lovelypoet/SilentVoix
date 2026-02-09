@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
@@ -12,7 +12,7 @@ import { useHandTracking } from '../composables/useHandTracking.js'
 import { useCollectData } from '../composables/useCollectData.js'
 import { useCollectorLogs } from '../composables/useCollectorLogs.js'
 import { useSyncStream } from '../composables/useSyncStream.js'
-import api from '../services/api'
+import { useSensorStatus } from '../composables/useSensorStatus.js'
 
 const isSessionActive = ref(false)
 const showSettings = ref(false)
@@ -26,17 +26,9 @@ const prevHandedness = ref(null)
 const recordingStartCount = ref(0)
 const cvFrameId = ref(0)
 const router = useRouter()
-const serialStatus = ref({
-  single_connected: false,
-  left_connected: false,
-  right_connected: false,
-  available_ports: []
-})
-const sensorCaptureStatus = ref({ status: 'stopped', mode: 'single' })
 const captureMode = ref('single')
 const syncCountdown = ref(0)
 const terminalComponent = ref(null)
-let serialPoll = null
 
 const {
   collectedLandmarks,
@@ -61,6 +53,13 @@ const {
 
 const { mirrorCamera, enableCamera, showLandmarks, frameLimit } = useTrainingSettings()
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
+
+const {
+  serialStatus,
+  sensorCaptureStatus,
+  startSensorCapture,
+  stopSensorCapture
+} = useSensorStatus()
 
 const {
   terminalLines,
@@ -155,38 +154,6 @@ const resetRecording = () => {
   recordingStartCount.value = 0
 }
 
-const fetchSerialStatus = async () => {
-  try {
-    const res = await api.utils.serialStatus()
-    if (res?.data) {
-      serialStatus.value = res.data
-    }
-  } catch (e) {
-    // Keep last known status
-  }
-}
-
-const fetchCaptureStatus = async () => {
-  try {
-    const res = await api.utils.sensorCapture.status()
-    if (res) {
-      sensorCaptureStatus.value = res
-    }
-  } catch (e) {
-    // Keep last known status
-  }
-}
-
-const startSensorCapture = async () => {
-  await api.utils.sensorCapture.start(captureMode.value)
-  await fetchCaptureStatus()
-}
-
-const stopSensorCapture = async () => {
-  await api.utils.sensorCapture.stop()
-  await fetchCaptureStatus()
-}
-
 const triggerSyncCue = () => {
   if (syncCountdown.value > 0) return
   syncCountdown.value = 3
@@ -204,17 +171,7 @@ const scrollTerminalToBottom = () => {
   el.scrollTop = el.scrollHeight
 }
 
-onMounted(() => {
-  fetchSerialStatus()
-  fetchCaptureStatus()
-  serialPoll = setInterval(() => {
-    fetchSerialStatus()
-    fetchCaptureStatus()
-  }, 3000)
-})
-
 onUnmounted(() => {
-  if (serialPoll) clearInterval(serialPoll)
 })
 
 watch(
@@ -493,7 +450,7 @@ watch(terminalLines, () => {
               </span>
             </div>
             <div class="flex gap-3">
-              <BaseBtn variant="primary" @click="startSensorCapture">Start Sensor</BaseBtn>
+              <BaseBtn variant="primary" @click="startSensorCapture(captureMode)">Start Sensor</BaseBtn>
               <BaseBtn variant="secondary" @click="stopSensorCapture">Stop Sensor</BaseBtn>
             </div>
           </div>
