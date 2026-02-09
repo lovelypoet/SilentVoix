@@ -1,11 +1,17 @@
 import time
+import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from ingestion.sync_stream import SyncStreamBuffer, load_sensor_series
 
-router = APIRouter(prefix="/ws", tags=["WebSocket"])
+ws_router = APIRouter(prefix="/ws", tags=["WebSocket"])
+http_router = APIRouter(prefix="/sync", tags=["Sync"])
+
+_last_payload = None
+_last_update = 0.0
+_payload_lock = asyncio.Lock()
 
 
-@router.websocket("/sync")
+@ws_router.websocket("/sync")
 async def websocket_sync_stream(websocket: WebSocket):
     await websocket.accept()
     buffer = SyncStreamBuffer(max_points=60)
@@ -51,6 +57,10 @@ async def websocket_sync_stream(websocket: WebSocket):
                         "spike_active": cv_stats["spike_active"],
                     },
                 }
+                async with _payload_lock:
+                    global _last_payload, _last_update
+                    _last_payload = payload
+                    _last_update = now
                 await websocket.send_json(payload)
                 last_send = now
 
@@ -61,3 +71,14 @@ async def websocket_sync_stream(websocket: WebSocket):
             await websocket.close()
         except Exception:
             pass
+
+
+@http_router.get("/series")
+async def get_sync_series():
+    """
+    Return the latest merged sensor + CV series for replay/offline analysis.
+    """
+    async with _payload_lock:
+        if _last_payload is None:
+            return {"status": "empty", "last_update": None, "data": None}
+        return {"status": "ok", "last_update": _last_update, "data": _last_payload}

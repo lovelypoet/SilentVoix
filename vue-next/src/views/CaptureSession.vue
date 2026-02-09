@@ -719,6 +719,12 @@ watch(
               >
                 {{ sensorSpikeActive || cvSpikeActive ? 'spike' : 'live' }}
               </div>
+              <div
+                class="text-[10px] font-semibold"
+                :class="syncWsConnected ? 'text-emerald-400' : 'text-slate-500'"
+              >
+                {{ syncWsConnected ? 'ws:on' : 'ws:off' }}
+              </div>
             </div>
           </BaseCard>
         </div>

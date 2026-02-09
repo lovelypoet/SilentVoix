@@ -88,7 +88,8 @@ app.include_router(dashboard_routes.router)
 app.include_router(utils_routes.router)
 app.include_router(audio_files_routes.router)
 app.include_router(voice_routes.router)
-app.include_router(sync_routes.router)
+app.include_router(sync_routes.ws_router)
+app.include_router(sync_routes.http_router)
 app.include_router(model_status.router)
 
 # Mount models directory for static files if needed
