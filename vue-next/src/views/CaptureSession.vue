@@ -31,7 +31,17 @@ const serialStatus = ref({
 const sensorCaptureStatus = ref({ status: 'stopped', mode: 'single' })
 const captureMode = ref('single')
 const syncCountdown = ref(0)
+const terminalLines = ref([])
+const terminalError = ref('')
+const isTerminalStreaming = ref(false)
+const terminalAutoScroll = ref(true)
+const terminalEl = ref(null)
+const sensorSeries = ref([])
+const sensorSpikeThreshold = ref(null)
+const sensorSpikeIndex = ref(-1)
+const sensorSpikeActive = ref(false)
 let serialPoll = null
+let terminalPoll = null
 
 const {
   collectedLandmarks,
@@ -63,6 +73,83 @@ const videoClasses = computed(() => [
   'object-cover',
   { '-scale-x-100': mirrorCamera.value }
 ])
+
+const sparkPath = computed(() => {
+  if (!sensorSeries.value.length) return ''
+  const width = 100
+  const height = 24
+  const values = sensorSeries.value
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = Math.max(1, max - min)
+  return values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * width
+      const y = height - ((v - min) / range) * (height - 4) - 2
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`
+    })
+    .join(' ')
+})
+
+const sparkPeak = computed(() => {
+  if (!sensorSeries.value.length) return { x: 0, y: 0 }
+  const width = 100
+  const height = 24
+  const values = sensorSeries.value
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = Math.max(1, max - min)
+  const peakIndex = values.indexOf(max)
+  const x = (peakIndex / (values.length - 1)) * width
+  const y = height - ((max - min) / range) * (height - 4) - 2
+  return { x, y }
+})
+
+const sparkThreshold = computed(() => {
+  if (sensorSpikeThreshold.value === null || !sensorSeries.value.length) return null
+  const height = 24
+  const values = sensorSeries.value
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = Math.max(1, max - min)
+  const y = height - ((sensorSpikeThreshold.value - min) / range) * (height - 4) - 2
+  return Math.max(2, Math.min(height - 2, y))
+})
+
+const sparkSpike = computed(() => {
+  if (sensorSpikeIndex.value < 0 || !sensorSeries.value.length) return null
+  const width = 100
+  const height = 24
+  const values = sensorSeries.value
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = Math.max(1, max - min)
+  const x = (sensorSpikeIndex.value / (values.length - 1)) * width
+  const y = height - ((values[sensorSpikeIndex.value] - min) / range) * (height - 4) - 2
+  return { x, y }
+})
+
+const computeSpikeStats = (series, windowSize = 20) => {
+  if (!series.length) {
+    return { threshold: null, spikeIndex: -1, active: false }
+  }
+  const start = Math.max(0, series.length - windowSize)
+  const window = series.slice(start)
+  const mean = window.reduce((sum, v) => sum + v, 0) / window.length
+  const variance = window.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / window.length
+  const sigma = Math.sqrt(variance)
+  const threshold = mean + 6 * sigma
+  let spikeIndex = -1
+  let active = false
+  if (series.length >= 2) {
+    const i = series.length - 1
+    if (series[i] > threshold && series[i - 1] > threshold) {
+      spikeIndex = i
+      active = true
+    }
+  }
+  return { threshold, spikeIndex, active }
+}
 
 let frameCount = 0
 let lastTime = performance.now()
@@ -169,6 +256,73 @@ const triggerSyncCue = () => {
   }, 1000)
 }
 
+const fetchTerminalLogs = async () => {
+  try {
+    terminalError.value = ''
+    const activeMode =
+      sensorCaptureStatus.value?.status === 'running'
+        ? sensorCaptureStatus.value?.mode || captureMode.value
+        : captureMode.value
+    const res = await api.utils.collectorLogs(activeMode, 200)
+    if (res?.lines) {
+      terminalLines.value = res.lines.map(line => line.replace(/\r?\n$/, ''))
+      const series = []
+      for (const line of res.lines) {
+        const matches = [...line.matchAll(/\[([^\]]+)\]/g)]
+        if (!matches.length) continue
+        let linePeak = null
+        for (const m of matches) {
+          const nums = m[1]
+            .split(',')
+            .map(v => Number(v.trim()))
+            .filter(v => Number.isFinite(v))
+          if (nums.length >= 8) {
+            const ax = nums[5]
+            const ay = nums[6]
+            const az = nums[7]
+            const mag = Math.sqrt(ax * ax + ay * ay + az * az)
+            linePeak = linePeak === null ? mag : Math.max(linePeak, mag)
+          }
+        }
+        if (linePeak !== null) series.push(linePeak)
+      }
+      sensorSeries.value = series.slice(-60)
+      const stats = computeSpikeStats(sensorSeries.value)
+      sensorSpikeThreshold.value = stats.threshold
+      sensorSpikeIndex.value = stats.spikeIndex
+      sensorSpikeActive.value = stats.active
+    }
+  } catch (e) {
+    terminalError.value = 'No collector logs found yet. Start a capture to generate logs.'
+  }
+}
+
+const startTerminalStream = async () => {
+  if (terminalPoll) return
+  isTerminalStreaming.value = true
+  await fetchTerminalLogs()
+  terminalPoll = setInterval(fetchTerminalLogs, 1000)
+}
+
+const stopTerminalStream = () => {
+  if (terminalPoll) clearInterval(terminalPoll)
+  terminalPoll = null
+  isTerminalStreaming.value = false
+}
+
+const toggleTerminalStream = () => {
+  if (isTerminalStreaming.value) {
+    stopTerminalStream()
+  } else {
+    startTerminalStream()
+  }
+}
+
+const scrollTerminalToBottom = () => {
+  if (!terminalEl.value || !terminalAutoScroll.value) return
+  terminalEl.value.scrollTop = terminalEl.value.scrollHeight
+}
+
 onMounted(() => {
   fetchSerialStatus()
   fetchCaptureStatus()
@@ -180,6 +334,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (serialPoll) clearInterval(serialPoll)
+  if (terminalPoll) clearInterval(terminalPoll)
 })
 
 watch(
@@ -290,6 +445,23 @@ watch(
     }
   }
 )
+
+watch(terminalLines, () => {
+  nextTick(() => {
+    scrollTerminalToBottom()
+  })
+})
+
+watch(
+  () => sensorCaptureStatus.value?.status,
+  (status) => {
+    if (status === 'running') {
+      startTerminalStream()
+    } else if (status === 'stopped') {
+      stopTerminalStream()
+    }
+  }
+)
 </script>
 
 <template>
@@ -356,10 +528,116 @@ watch(
           </div>
         </div>
 
-        <div v-if="!isSessionActive" class="mt-6">
-          <BaseBtn variant="primary" :disabled="isRequesting" @click="startSession">
+        <div v-if="!isSessionActive" class="mt-6 flex items-stretch gap-4">
+          <BaseBtn variant="primary" :disabled="isRequesting" class="flex-none" @click="startSession">
             {{ isRequesting ? 'Requesting...' : 'Start Capture Session' }}
           </BaseBtn>
+
+          <BaseCard class="flex-1 h-12 px-3 py-2 border border-slate-800 bg-slate-950/70">
+            <div class="h-full flex items-center gap-3">
+              <div class="text-[10px] uppercase tracking-wider text-slate-500">Sync Spike</div>
+              <div class="flex-1 h-full">
+                <svg viewBox="0 0 100 24" class="w-full h-full">
+                  <defs>
+                    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.2" />
+                      <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.9" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="0" y="0" width="100" height="24" fill="transparent" />
+                  <path
+                    :d="sparkPath"
+                    fill="none"
+                    stroke="url(#spark)"
+                    stroke-width="2"
+                  />
+                  <line
+                    v-if="sparkThreshold !== null"
+                    x1="0"
+                    x2="100"
+                    :y1="sparkThreshold"
+                    :y2="sparkThreshold"
+                    stroke="#f59e0b"
+                    stroke-width="1"
+                    stroke-dasharray="4 3"
+                    opacity="0.9"
+                  />
+                  <circle v-if="sparkPath" :cx="sparkPeak.x" :cy="sparkPeak.y" r="2.5" fill="#22c55e" />
+                  <circle
+                    v-if="sparkSpike"
+                    :cx="sparkSpike.x"
+                    :cy="sparkSpike.y"
+                    r="2.8"
+                    fill="#f59e0b"
+                  />
+                </svg>
+              </div>
+              <div
+                class="text-[10px] font-semibold"
+                :class="sensorSpikeActive ? 'text-amber-300' : 'text-slate-500'"
+              >
+                {{ sensorSpikeActive ? 'spike' : 'live' }}
+              </div>
+            </div>
+          </BaseCard>
+        </div>
+
+        <div class="mt-6">
+          <BaseCard class="bg-slate-950/70 border border-slate-800">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <div class="text-sm font-semibold text-slate-200">Collector Logs</div>
+                <div class="text-xs text-slate-500">
+                  {{
+                    (sensorCaptureStatus.status === 'running'
+                      ? sensorCaptureStatus.mode
+                      : captureMode) === 'dual'
+                      ? 'Dual-hand'
+                      : 'Single-hand'
+                  }} collector output
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="text-xs font-semibold"
+                  :class="isTerminalStreaming ? 'text-green-400' : 'text-slate-500'"
+                >
+                  {{ isTerminalStreaming ? 'Live' : 'Idle' }}
+                </span>
+                <BaseBtn
+                  variant="secondary"
+                  class="px-3 py-1 text-xs"
+                  @click="toggleTerminalStream"
+                >
+                  {{ isTerminalStreaming ? 'Stop' : 'Connect' }}
+                </BaseBtn>
+              </div>
+            </div>
+
+            <div
+              ref="terminalEl"
+              class="h-44 overflow-y-auto rounded-lg border border-slate-800 bg-black/70 px-4 py-3 font-mono text-xs text-slate-200"
+            >
+              <div v-if="terminalError" class="text-red-400">{{ terminalError }}</div>
+              <div v-else-if="terminalLines.length === 0" class="text-slate-500">
+                No log output yet.
+              </div>
+              <div v-else class="space-y-1">
+                <div v-for="(line, idx) in terminalLines" :key="`term-${idx}`">
+                  <span class="text-emerald-400">$</span>
+                  <span class="ml-2">{{ line }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="terminalAutoScroll" type="checkbox" class="accent-teal-400" />
+                Auto-scroll
+              </label>
+              <span>Last 200 lines</span>
+            </div>
+          </BaseCard>
         </div>
       </div>
 

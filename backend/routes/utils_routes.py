@@ -120,6 +120,29 @@ async def get_training_logs(lines: int = Query(200, ge=1, le=2000)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read training log: {e}")
 
+@router.get("/collector/logs")
+async def get_collector_logs(
+    mode: str = Query("single"),
+    lines: int = Query(200, ge=1, le=2000)
+):
+    """
+    Return the last N lines of the collector script log (single or dual hand).
+    """
+    if mode not in ["single", "dual"]:
+        raise HTTPException(status_code=400, detail="mode must be 'single' or 'dual'")
+    log_filename = "data_collection.log" if mode == "single" else "dual_hand_data_collection.log"
+    base_dir = os.path.join(os.path.dirname(__file__), "..", "ingestion")
+    path = os.path.abspath(os.path.join(base_dir, log_filename))
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail=f"Collector log not found for mode: {mode}")
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.readlines()
+        tail = content[-lines:]
+        return {"status": "success", "mode": mode, "lines": tail}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read collector log: {e}")
+
 @router.get("/serial-status")
 async def get_serial_status() -> Dict[str, Any]:
     """

@@ -102,6 +102,7 @@ export default {
       stop: () => api.post('/utils/sensor-capture/stop'),
       status: () => api.get('/utils/sensor-capture/status'),
     },
+    collectorLogs: (mode = 'single', lines = 200) => api.get(`/utils/collector/logs?mode=${mode}&lines=${lines}`),
     // TTS
     tts: {
       speakOnGlove: (text) => api.post('/utils/test_tts_to_esp32', { text }),
