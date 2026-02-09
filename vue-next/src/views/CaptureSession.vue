@@ -469,7 +469,7 @@ watch(
           </div>
 
           <div class="mt-6">
-            <BaseBtn variant="danger" class="w-full" @click="stopSession">
+            <BaseBtn variant="danger" class="w-full" @click="router.push('/training')">
               End Session
             </BaseBtn>
           </div>

@@ -557,7 +557,7 @@ watch(
           Capture Session
         </h3>
         <p class="text-slate-400 text-sm mb-6">
-          Record a labeled gesture with frame caps and downloadable CSV.
+          Record a labeled gesture with sensor and CV data.
         </p>
         <BaseBtn class="w-full">
           Start Capture
