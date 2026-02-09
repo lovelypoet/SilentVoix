@@ -11,7 +11,8 @@ defineProps({
   cvSpike: { type: Object, default: null },
   sensorSpikeActive: { type: Boolean, default: false },
   cvSpikeActive: { type: Boolean, default: false },
-  syncWsConnected: { type: Boolean, default: false }
+  syncWsConnected: { type: Boolean, default: false },
+  expectedSyncLabel: { type: String, default: '' }
 })
 </script>
 
@@ -80,6 +81,9 @@ defineProps({
         :class="syncWsConnected ? 'text-emerald-400' : 'text-slate-500'"
       >
         {{ syncWsConnected ? 'ws:on' : 'ws:off' }}
+      </div>
+      <div v-if="expectedSyncLabel" class="text-[10px] text-slate-500">
+        {{ expectedSyncLabel }}
       </div>
     </div>
   </BaseCard>

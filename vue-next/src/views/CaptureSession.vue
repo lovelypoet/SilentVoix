@@ -28,6 +28,7 @@ const cvFrameId = ref(0)
 const router = useRouter()
 const captureMode = ref('single')
 const syncCountdown = ref(0)
+const expectedSyncTimestampMs = ref(null)
 const terminalComponent = ref(null)
 
 const {
@@ -92,6 +93,11 @@ const videoClasses = computed(() => [
   { '-scale-x-100': mirrorCamera.value }
 ])
 
+const expectedSyncLabel = computed(() => {
+  if (!expectedSyncTimestampMs.value) return ''
+  return new Date(expectedSyncTimestampMs.value).toLocaleTimeString()
+})
+
 let frameCount = 0
 let lastTime = performance.now()
 let fpsInterval = null
@@ -138,6 +144,7 @@ const stopSession = () => {
   stopStream()
   isSessionActive.value = false
   showSettings.value = false
+  expectedSyncTimestampMs.value = null
 }
 
 const startRecording = () => {
@@ -146,17 +153,20 @@ const startRecording = () => {
   recordingStartCount.value = collectedLandmarks.value.length
   cvFrameId.value = 0
   startCollecting(currentGestureName.value)
+  triggerSyncCue()
 }
 
 const resetRecording = () => {
   stopCollecting()
   clearData()
   recordingStartCount.value = 0
+  expectedSyncTimestampMs.value = null
 }
 
 const triggerSyncCue = () => {
   if (syncCountdown.value > 0) return
   syncCountdown.value = 3
+  expectedSyncTimestampMs.value = Date.now() + 3000
   const timer = setInterval(() => {
     syncCountdown.value -= 1
     if (syncCountdown.value <= 0) {
@@ -376,6 +386,7 @@ watch(terminalLines, () => {
             :sensor-spike-active="sensorSpikeActive"
             :cv-spike-active="cvSpikeActive"
             :sync-ws-connected="syncWsConnected"
+            :expected-sync-label="expectedSyncLabel"
           />
         </div>
 
