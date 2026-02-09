@@ -1,6 +1,8 @@
 import os
 import math
+import random
 import re
+import time
 from typing import Dict, List, Tuple, Optional
 
 
@@ -43,12 +45,39 @@ def _extract_accel_magnitude_from_line(line: str) -> Optional[float]:
     return line_peak
 
 
-def load_sensor_series(mode: str, limit: int = 200, max_points: int = 60) -> List[float]:
+def _simulate_sensor_series(max_points: int = 60) -> List[float]:
+    now = time.time()
+    phase = now * 1.7
+    base = 0.35 + 0.05 * math.sin(phase / 2.0)
+    series: List[float] = []
+    for i in range(max_points):
+        wave = 0.12 * math.sin((i + phase) / 6.0)
+        noise = random.uniform(-0.03, 0.03)
+        series.append(max(0.0, base + wave + noise))
+
+    # Inject an occasional spike near the end for sync visualization
+    if int(now * 2) % 8 == 0 and series:
+        spike_index = max_points - 3
+        series[spike_index] = series[spike_index] + 0.6
+        series[spike_index + 1] = series[spike_index + 1] + 0.4
+    return series
+
+
+def _truthy_env(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def load_sensor_series(mode: str, limit: int = 200, max_points: int = 60, simulate: bool = False) -> List[float]:
+    if simulate or _truthy_env(os.getenv("SYNC_SENSOR_SIM")):
+        return _simulate_sensor_series(max_points=max_points)
+
     log_filename = "data_collection.log" if mode == "single" else "dual_hand_data_collection.log"
     base_dir = os.path.join(os.path.dirname(__file__))
     path = os.path.abspath(os.path.join(base_dir, log_filename))
     if not os.path.exists(path):
-        return []
+        return _simulate_sensor_series(max_points=max_points) if _truthy_env(os.getenv("SYNC_SENSOR_SIM")) else []
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()[-limit:]

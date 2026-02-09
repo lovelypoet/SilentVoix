@@ -17,7 +17,7 @@ const buildPath = (values) => {
     .join(' ')
 }
 
-export const useSyncStream = (captureMode) => {
+export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
   const sensorSeries = ref([])
   const cvSeries = ref([])
   const sensorSpikeThreshold = ref(null)
@@ -116,7 +116,7 @@ export const useSyncStream = (captureMode) => {
 
     ws.onopen = () => {
       syncWsConnected.value = true
-      ws.send(JSON.stringify({ type: 'configure', mode: captureMode.value }))
+      ws.send(JSON.stringify({ type: 'configure', mode: captureMode.value, simulate: simulateSensor.value }))
       syncTick = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'tick' }))
@@ -190,7 +190,16 @@ export const useSyncStream = (captureMode) => {
     () => captureMode.value,
     (mode) => {
       if (syncWs.value && syncWs.value.readyState === WebSocket.OPEN) {
-        syncWs.value.send(JSON.stringify({ type: 'configure', mode }))
+        syncWs.value.send(JSON.stringify({ type: 'configure', mode, simulate: simulateSensor.value }))
+      }
+    }
+  )
+
+  watch(
+    () => simulateSensor.value,
+    (simulate) => {
+      if (syncWs.value && syncWs.value.readyState === WebSocket.OPEN) {
+        syncWs.value.send(JSON.stringify({ type: 'configure', mode: captureMode.value, simulate }))
       }
     }
   )
@@ -223,6 +232,7 @@ export const useSyncStream = (captureMode) => {
     sparkSpike,
     cvSpike,
     ingestCvPoint,
-    resetCvState
+    resetCvState,
+    simulateSensor
   }
 }

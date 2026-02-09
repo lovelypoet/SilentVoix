@@ -28,6 +28,7 @@ const cvFrameId = ref(0)
 const hasAutoSavedCurrentRun = ref(false)
 const router = useRouter()
 const captureMode = ref('single')
+const simulateSensor = ref(false)
 const syncCountdown = ref(0)
 const expectedSyncTimestampMs = ref(null)
 const terminalComponent = ref(null)
@@ -85,7 +86,7 @@ const {
   cvSpike,
   ingestCvPoint,
   resetCvState
-} = useSyncStream(captureMode)
+} = useSyncStream(captureMode, simulateSensor)
 
 const videoClasses = computed(() => [
   'w-full',
@@ -481,6 +482,16 @@ watch(terminalLines, () => {
             <div class="flex gap-3">
               <BaseBtn variant="primary" @click="startSensorCapture(captureMode)">Start Sensor</BaseBtn>
               <BaseBtn variant="secondary" @click="stopSensorCapture">Stop Sensor</BaseBtn>
+              <BaseBtn
+                variant="secondary"
+                :class="simulateSensor ? 'border-teal-400 text-teal-300' : ''"
+                @click="simulateSensor = !simulateSensor"
+              >
+                {{ simulateSensor ? 'Mock: On' : 'Mock Sensor' }}
+              </BaseBtn>
+            </div>
+            <div class="text-xs text-slate-500">
+              Synthetic sensor spikes for testing when hardware is unavailable.
             </div>
           </div>
 
