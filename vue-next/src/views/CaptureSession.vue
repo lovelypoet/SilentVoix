@@ -10,6 +10,8 @@ import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 import { useHandTracking } from '../composables/useHandTracking.js'
 import { useCollectData } from '../composables/useCollectData.js'
+import { useCollectorLogs } from '../composables/useCollectorLogs.js'
+import { useSyncStream } from '../composables/useSyncStream.js'
 import api from '../services/api'
 
 const isSessionActive = ref(false)
@@ -21,9 +23,6 @@ const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
 const prevLandmarks = ref(null)
 const prevHandedness = ref(null)
-const prevCvPoint = ref(null)
-const prevCvTime = ref(0)
-const lastCvSend = ref(0)
 const recordingStartCount = ref(0)
 const cvFrameId = ref(0)
 const router = useRouter()
@@ -36,24 +35,8 @@ const serialStatus = ref({
 const sensorCaptureStatus = ref({ status: 'stopped', mode: 'single' })
 const captureMode = ref('single')
 const syncCountdown = ref(0)
-const terminalLines = ref([])
-const terminalError = ref('')
-const isTerminalStreaming = ref(false)
-const terminalAutoScroll = ref(true)
 const terminalComponent = ref(null)
-const sensorSeries = ref([])
-const cvSeries = ref([])
-const sensorSpikeThreshold = ref(null)
-const sensorSpikeIndex = ref(-1)
-const sensorSpikeActive = ref(false)
-const cvSpikeThreshold = ref(null)
-const cvSpikeIndex = ref(-1)
-const cvSpikeActive = ref(false)
-const syncWs = ref(null)
-const syncWsConnected = ref(false)
 let serialPoll = null
-let terminalPoll = null
-let syncTick = null
 
 const {
   collectedLandmarks,
@@ -79,107 +62,36 @@ const {
 const { mirrorCamera, enableCamera, showLandmarks, frameLimit } = useTrainingSettings()
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
+const {
+  terminalLines,
+  terminalError,
+  isStreaming: isTerminalStreaming,
+  autoScroll: terminalAutoScroll,
+  toggleStream: toggleTerminalStream
+} = useCollectorLogs(captureMode, sensorCaptureStatus)
+
+const {
+  sensorSpikeActive,
+  cvSpikeActive,
+  syncWsConnected,
+  sparkPath,
+  cvPath,
+  sparkPeak,
+  cvPeak,
+  sparkThreshold,
+  cvThreshold,
+  sparkSpike,
+  cvSpike,
+  ingestCvPoint,
+  resetCvState
+} = useSyncStream(captureMode, isSessionActive)
+
 const videoClasses = computed(() => [
   'w-full',
   'h-full',
   'object-cover',
   { '-scale-x-100': mirrorCamera.value }
 ])
-
-const buildPath = (values) => {
-  if (!values.length) return ''
-  const width = 100
-  const height = 24
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = Math.max(1, max - min)
-  return values
-    .map((v, i) => {
-      const x = (i / (values.length - 1)) * width
-      const y = height - ((v - min) / range) * (height - 4) - 2
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`
-    })
-    .join(' ')
-}
-
-const sparkPath = computed(() => buildPath(sensorSeries.value))
-const cvPath = computed(() => buildPath(cvSeries.value))
-
-const sparkPeak = computed(() => {
-  if (!sensorSeries.value.length) return { x: 0, y: 0 }
-  const width = 100
-  const height = 24
-  const values = sensorSeries.value
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = Math.max(1, max - min)
-  const peakIndex = values.indexOf(max)
-  const x = (peakIndex / (values.length - 1)) * width
-  const y = height - ((max - min) / range) * (height - 4) - 2
-  return { x, y }
-})
-
-const cvPeak = computed(() => {
-  if (!cvSeries.value.length) return { x: 0, y: 0 }
-  const width = 100
-  const height = 24
-  const values = cvSeries.value
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = Math.max(1, max - min)
-  const peakIndex = values.indexOf(max)
-  const x = (peakIndex / (values.length - 1)) * width
-  const y = height - ((max - min) / range) * (height - 4) - 2
-  return { x, y }
-})
-
-const sparkThreshold = computed(() => {
-  if (sensorSpikeThreshold.value === null || !sensorSeries.value.length) return null
-  const height = 24
-  const values = sensorSeries.value
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = Math.max(1, max - min)
-  const y = height - ((sensorSpikeThreshold.value - min) / range) * (height - 4) - 2
-  return Math.max(2, Math.min(height - 2, y))
-})
-
-const cvThreshold = computed(() => {
-  if (cvSpikeThreshold.value === null || !cvSeries.value.length) return null
-  const height = 24
-  const values = cvSeries.value
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = Math.max(1, max - min)
-  const y = height - ((cvSpikeThreshold.value - min) / range) * (height - 4) - 2
-  return Math.max(2, Math.min(height - 2, y))
-})
-
-const sparkSpike = computed(() => {
-  if (sensorSpikeIndex.value < 0 || !sensorSeries.value.length) return null
-  const width = 100
-  const height = 24
-  const values = sensorSeries.value
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = Math.max(1, max - min)
-  const x = (sensorSpikeIndex.value / (values.length - 1)) * width
-  const y = height - ((values[sensorSpikeIndex.value] - min) / range) * (height - 4) - 2
-  return { x, y }
-})
-
-const cvSpike = computed(() => {
-  if (cvSpikeIndex.value < 0 || !cvSeries.value.length) return null
-  const width = 100
-  const height = 24
-  const values = cvSeries.value
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = Math.max(1, max - min)
-  const x = (cvSpikeIndex.value / (values.length - 1)) * width
-  const y = height - ((values[cvSpikeIndex.value] - min) / range) * (height - 4) - 2
-  return { x, y }
-})
 
 let frameCount = 0
 let lastTime = performance.now()
@@ -286,63 +198,6 @@ const triggerSyncCue = () => {
   }, 1000)
 }
 
-const fetchTerminalLogs = async () => {
-  try {
-    terminalError.value = ''
-    const activeMode =
-      sensorCaptureStatus.value?.status === 'running'
-        ? sensorCaptureStatus.value?.mode || captureMode.value
-        : captureMode.value
-    const res = await api.utils.collectorLogs(activeMode, 200)
-    if (res?.lines) {
-      terminalLines.value = res.lines.map(line => line.replace(/\r?\n$/, ''))
-      const series = []
-      for (const line of res.lines) {
-        const matches = [...line.matchAll(/\[([^\]]+)\]/g)]
-        if (!matches.length) continue
-        let linePeak = null
-        for (const m of matches) {
-          const nums = m[1]
-            .split(',')
-            .map(v => Number(v.trim()))
-            .filter(v => Number.isFinite(v))
-          if (nums.length >= 8) {
-            const ax = nums[5]
-            const ay = nums[6]
-            const az = nums[7]
-            const mag = Math.sqrt(ax * ax + ay * ay + az * az)
-            linePeak = linePeak === null ? mag : Math.max(linePeak, mag)
-          }
-        }
-        if (linePeak !== null) series.push(linePeak)
-      }
-    }
-  } catch (e) {
-    terminalError.value = 'No collector logs found yet. Start a capture to generate logs.'
-  }
-}
-
-const startTerminalStream = async () => {
-  if (terminalPoll) return
-  isTerminalStreaming.value = true
-  await fetchTerminalLogs()
-  terminalPoll = setInterval(fetchTerminalLogs, 1000)
-}
-
-const stopTerminalStream = () => {
-  if (terminalPoll) clearInterval(terminalPoll)
-  terminalPoll = null
-  isTerminalStreaming.value = false
-}
-
-const toggleTerminalStream = () => {
-  if (isTerminalStreaming.value) {
-    stopTerminalStream()
-  } else {
-    startTerminalStream()
-  }
-}
-
 const scrollTerminalToBottom = () => {
   const el = terminalComponent.value?.terminalEl
   if (!el || !terminalAutoScroll.value) return
@@ -360,9 +215,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (serialPoll) clearInterval(serialPoll)
-  if (terminalPoll) clearInterval(terminalPoll)
-  if (syncTick) clearInterval(syncTick)
-  if (syncWs.value) syncWs.value.close()
 })
 
 watch(
@@ -373,9 +225,7 @@ watch(
       stopFpsCounter()
       prevLandmarks.value = null
       prevHandedness.value = null
-      prevCvPoint.value = null
-      prevCvTime.value = 0
-      lastCvSend.value = 0
+      resetCvState()
       confidence.value = '--%'
       detectedGesture.value = 'Waiting...'
       return
@@ -397,23 +247,7 @@ watch(
       frameCount++
 
       if (results?.landmarks?.[0]?.[0]) {
-        const now = Date.now()
-        const point = results.landmarks[0][0]
-        if (prevCvPoint.value) {
-          const dx = point.x - prevCvPoint.value.x
-          const dy = point.y - prevCvPoint.value.y
-          const dz = point.z - prevCvPoint.value.z
-          const dt = Math.max(1, now - prevCvTime.value)
-          const velocity = Math.sqrt(dx * dx + dy * dy + dz * dz) / dt
-          if (syncWs.value && syncWs.value.readyState === WebSocket.OPEN) {
-            if (now - lastCvSend.value >= 100) {
-              syncWs.value.send(JSON.stringify({ type: 'cv_sample', timestamp_ms: now, velocity }))
-              lastCvSend.value = now
-            }
-          }
-        }
-        prevCvPoint.value = point
-        prevCvTime.value = now
+        ingestCvPoint(results.landmarks[0][0], Date.now())
       }
 
       if (isCollecting.value) {
@@ -502,85 +336,6 @@ watch(terminalLines, () => {
     scrollTerminalToBottom()
   })
 })
-
-watch(
-  () => sensorCaptureStatus.value?.status,
-  (status) => {
-    if (status === 'running') {
-      startTerminalStream()
-    } else if (status === 'stopped') {
-      stopTerminalStream()
-    }
-  }
-)
-
-const openSyncStream = () => {
-  if (syncWs.value) return
-  const ws = api.createWebSocket('/ws/sync')
-  syncWs.value = ws
-
-  ws.onopen = () => {
-    syncWsConnected.value = true
-    ws.send(JSON.stringify({ type: 'configure', mode: captureMode.value }))
-    syncTick = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'tick' }))
-      }
-    }, 1000)
-  }
-
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data)
-      if (data.type !== 'sync_series') return
-      if (data.sensor) {
-        sensorSeries.value = data.sensor.series || []
-        sensorSpikeThreshold.value = data.sensor.threshold ?? null
-        sensorSpikeIndex.value = data.sensor.spike_index ?? -1
-        sensorSpikeActive.value = Boolean(data.sensor.spike_active)
-      }
-      if (data.cv) {
-        cvSeries.value = data.cv.series || []
-        cvSpikeThreshold.value = data.cv.threshold ?? null
-        cvSpikeIndex.value = data.cv.spike_index ?? -1
-        cvSpikeActive.value = Boolean(data.cv.spike_active)
-      }
-    } catch (e) {
-      // Ignore malformed payloads
-    }
-  }
-
-  ws.onclose = () => {
-    syncWsConnected.value = false
-    syncWs.value = null
-    if (syncTick) clearInterval(syncTick)
-    syncTick = null
-  }
-}
-
-const closeSyncStream = () => {
-  if (syncWs.value) syncWs.value.close()
-}
-
-watch(
-  () => captureMode.value,
-  (mode) => {
-    if (syncWs.value && syncWs.value.readyState === WebSocket.OPEN) {
-      syncWs.value.send(JSON.stringify({ type: 'configure', mode }))
-    }
-  }
-)
-
-watch(
-  () => isSessionActive.value,
-  (active) => {
-    if (active) {
-      openSyncStream()
-    } else {
-      closeSyncStream()
-    }
-  }
-)
 </script>
 
 <template>
