@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
+import CaptureSyncGraph from '../components/CaptureSyncGraph.vue'
+import CaptureTerminal from '../components/CaptureTerminal.vue'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 import { useHandTracking } from '../composables/useHandTracking.js'
@@ -38,7 +40,7 @@ const terminalLines = ref([])
 const terminalError = ref('')
 const isTerminalStreaming = ref(false)
 const terminalAutoScroll = ref(true)
-const terminalEl = ref(null)
+const terminalComponent = ref(null)
 const sensorSeries = ref([])
 const cvSeries = ref([])
 const sensorSpikeThreshold = ref(null)
@@ -342,8 +344,9 @@ const toggleTerminalStream = () => {
 }
 
 const scrollTerminalToBottom = () => {
-  if (!terminalEl.value || !terminalAutoScroll.value) return
-  terminalEl.value.scrollTop = terminalEl.value.scrollHeight
+  const el = terminalComponent.value?.terminalEl
+  if (!el || !terminalAutoScroll.value) return
+  el.scrollTop = el.scrollHeight
 }
 
 onMounted(() => {
@@ -649,142 +652,41 @@ watch(
             {{ isRequesting ? 'Requesting...' : 'Start Capture Session' }}
           </BaseBtn>
 
-          <BaseCard class="flex-1 h-12 px-3 py-2 border border-slate-800 bg-slate-950/70">
-            <div class="h-full flex items-center gap-3">
-              <div class="text-[10px] uppercase tracking-wider text-slate-500">Sync Spike</div>
-              <div class="flex-1 h-full">
-                <svg viewBox="0 0 100 24" class="w-full h-full">
-                  <defs>
-                    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.2" />
-                      <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.9" />
-                    </linearGradient>
-                  </defs>
-                  <rect x="0" y="0" width="100" height="24" fill="transparent" />
-                  <path
-                    :d="sparkPath"
-                    fill="none"
-                    stroke="url(#spark)"
-                    stroke-width="2"
-                  />
-                  <path
-                    :d="cvPath"
-                    fill="none"
-                    stroke="#f472b6"
-                    stroke-width="1.6"
-                    opacity="0.9"
-                  />
-                  <line
-                    v-if="sparkThreshold !== null"
-                    x1="0"
-                    x2="100"
-                    :y1="sparkThreshold"
-                    :y2="sparkThreshold"
-                    stroke="#f59e0b"
-                    stroke-width="1"
-                    stroke-dasharray="4 3"
-                    opacity="0.9"
-                  />
-                  <line
-                    v-if="cvThreshold !== null"
-                    x1="0"
-                    x2="100"
-                    :y1="cvThreshold"
-                    :y2="cvThreshold"
-                    stroke="#f472b6"
-                    stroke-width="1"
-                    stroke-dasharray="2 3"
-                    opacity="0.7"
-                  />
-                  <circle v-if="sparkPath" :cx="sparkPeak.x" :cy="sparkPeak.y" r="2.5" fill="#22c55e" />
-                  <circle
-                    v-if="sparkSpike"
-                    :cx="sparkSpike.x"
-                    :cy="sparkSpike.y"
-                    r="2.8"
-                    fill="#f59e0b"
-                  />
-                  <circle
-                    v-if="cvSpike"
-                    :cx="cvSpike.x"
-                    :cy="cvSpike.y"
-                    r="2.6"
-                    fill="#f472b6"
-                  />
-                </svg>
-              </div>
-              <div
-                class="text-[10px] font-semibold"
-                :class="sensorSpikeActive || cvSpikeActive ? 'text-amber-300' : 'text-slate-500'"
-              >
-                {{ sensorSpikeActive || cvSpikeActive ? 'spike' : 'live' }}
-              </div>
-              <div
-                class="text-[10px] font-semibold"
-                :class="syncWsConnected ? 'text-emerald-400' : 'text-slate-500'"
-              >
-                {{ syncWsConnected ? 'ws:on' : 'ws:off' }}
-              </div>
-            </div>
-          </BaseCard>
+          <CaptureSyncGraph
+            :spark-path="sparkPath"
+            :cv-path="cvPath"
+            :spark-threshold="sparkThreshold"
+            :cv-threshold="cvThreshold"
+            :spark-peak="sparkPeak"
+            :cv-peak="cvPeak"
+            :spark-spike="sparkSpike"
+            :cv-spike="cvSpike"
+            :sensor-spike-active="sensorSpikeActive"
+            :cv-spike-active="cvSpikeActive"
+            :sync-ws-connected="syncWsConnected"
+          />
         </div>
 
         <div class="mt-6">
-          <BaseCard class="bg-slate-950/70 border border-slate-800">
-            <div class="flex items-center justify-between mb-3">
-              <div>
-                <div class="text-sm font-semibold text-slate-200">Collector Logs</div>
-                <div class="text-xs text-slate-500">
-                  {{
-                    (sensorCaptureStatus.status === 'running'
-                      ? sensorCaptureStatus.mode
-                      : captureMode) === 'dual'
-                      ? 'Dual-hand'
-                      : 'Single-hand'
-                  }} collector output
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span
-                  class="text-xs font-semibold"
-                  :class="isTerminalStreaming ? 'text-green-400' : 'text-slate-500'"
-                >
-                  {{ isTerminalStreaming ? 'Live' : 'Idle' }}
-                </span>
-                <BaseBtn
-                  variant="secondary"
-                  class="px-3 py-1 text-xs"
-                  @click="toggleTerminalStream"
-                >
-                  {{ isTerminalStreaming ? 'Stop' : 'Connect' }}
-                </BaseBtn>
-              </div>
-            </div>
-
-            <div
-              ref="terminalEl"
-              class="h-44 overflow-y-auto rounded-lg border border-slate-800 bg-black/70 px-4 py-3 font-mono text-xs text-slate-200"
-            >
-              <div v-if="terminalError" class="text-red-400">{{ terminalError }}</div>
-              <div v-else-if="terminalLines.length === 0" class="text-slate-500">
-                No log output yet.
-              </div>
-              <div v-else class="space-y-1">
-                <div v-for="(line, idx) in terminalLines" :key="`term-${idx}`">
-                  <span class="text-emerald-400">$</span>
-                  <span class="ml-2">{{ line }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="terminalAutoScroll" type="checkbox" class="accent-teal-400" />
-                Auto-scroll
-              </label>
-              <span>Last 200 lines</span>
-            </div>
-          </BaseCard>
+          <CaptureTerminal
+            ref="terminalComponent"
+            :is-streaming="isTerminalStreaming"
+            :terminal-lines="terminalLines"
+            :terminal-error="terminalError"
+            :auto-scroll="terminalAutoScroll"
+            @toggle-stream="toggleTerminalStream"
+            @update:auto-scroll="terminalAutoScroll = $event"
+          >
+            <template #subtitle>
+              {{
+                (sensorCaptureStatus.status === 'running'
+                  ? sensorCaptureStatus.mode
+                  : captureMode) === 'dual'
+                  ? 'Dual-hand'
+                  : 'Single-hand'
+              }} collector output
+            </template>
+          </CaptureTerminal>
         </div>
       </div>
 
