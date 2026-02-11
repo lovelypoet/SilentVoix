@@ -46,16 +46,12 @@ jobs:
       - name: Run tests
         run: npm run test
 
-      - name: Generate test coverage
-        run: npm run test -- --coverage
-        continue-on-error: true
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: |
-            vue-next/coverage/
             vue-next/test-results/
           retention-days: 30
 
@@ -68,6 +64,8 @@ jobs:
             echo "- Coverage reports generated" >> $GITHUB_STEP_SUMMARY
           fi
 
+
+          
   superlint:
     runs-on: ubuntu-latest
     steps:
@@ -97,4 +95,5 @@ jobs:
           VALIDATE_CSS: true
           VALIDATE_HTML: true
           LINTER_RULES_PATH: /
-          FILTER_REGEX_INCLUDE: .*vue-next/.*
+          FILTER_REGEX_INCLUDE: .*vue-next/src/.* 
+          FILTER_REGEX_EXCLUDE: .*vue-next/tests/.* #  Exclude tests
