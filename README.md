@@ -50,16 +50,20 @@ DB_NAME=signglove
 # MONGO_URI=mongodb+srv://your_user:your_password@your_cluster.mongodb.net/your_db?retryWrites=true&w=majority
 ```
 
+> **⚠️ Security Note**: Never commit credentials to version control. Use environment variables and keep your `.env` file in `.gitignore`.
+
 **Create Default Users:**
 
 ```bash
 python3 create_users.py
 ```
 
-Default credentials:
+Default credentials (for development only):
 - Admin: `admin@signglove.com` / `admin123`
 - Editor: `editor@signglove.com` / `editor123`
 - User: `user@signglove.com` / `user123`
+
+> **⚠️ Security Warning**: These are default development credentials. Change all passwords before deploying to production.
 
 ### 2. Frontend Setup
 
