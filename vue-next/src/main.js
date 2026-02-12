@@ -14,7 +14,7 @@ const MyCustomPreset = definePreset(Aura, {
     semantic: {
         focus: {
             ring: {
-                color: '{indigo.500}',
+                color: '{teal.500}',
                 width: '2px',
                 style: 'solid',
                 offset: '2px'

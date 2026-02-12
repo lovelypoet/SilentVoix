@@ -106,10 +106,12 @@ class DualHandDataCollector:
         right_data = self.read_hand_data(self.right_serial, "Right")
         
         if left_data and right_data:
+            timestamp_ms = int(time.time() * 1000)
             return {
                 "left": left_data,
                 "right": right_data,
                 "timestamp": time.time(),
+                "timestamp_ms": timestamp_ms,
                 "session_id": SESSION_ID,
                 "label": LABEL
             }
@@ -126,7 +128,7 @@ class DualHandDataCollector:
                 
                 # Write header if new file
                 if not file_exists:
-                    header = ['session_id', 'label', 'timestamp']
+                    header = ['session_id', 'label', 'timestamp', 'timestamp_ms']
                     # Left hand sensors
                     for i in range(FLEX_SENSORS_PER_HAND):
                         header.append(f'left_flex_{i+1}')
@@ -144,7 +146,7 @@ class DualHandDataCollector:
                     writer.writerow(header)
                 
                 # Write data row
-                row = [data['session_id'], data['label'], data['timestamp']]
+                row = [data['session_id'], data['label'], data['timestamp'], data['timestamp_ms']]
                 row.extend(data['left'])  # 11 left hand values
                 row.extend(data['right']) # 11 right hand values
                 writer.writerow(row)
@@ -160,6 +162,7 @@ class DualHandDataCollector:
                 "session_id": data['session_id'],
                 "label": data['label'],
                 "timestamp": datetime.utcnow(),
+                "timestamp_ms": data['timestamp_ms'],
                 "left_hand": data['left'],
                 "right_hand": data['right'],
                 "combined_values": data['left'] + data['right'],  # 22 total values

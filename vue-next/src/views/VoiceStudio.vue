@@ -228,7 +228,7 @@ const uploadFile = async (file) => {
             <textarea 
               v-model="ttsText"
               rows="4"
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all resize-none"
               placeholder="Type something here (e.g., 'Hello, how can I help you?')..."
             ></textarea>
           </div>
@@ -240,7 +240,7 @@ const uploadFile = async (file) => {
               Play
             </BaseBtn>
             
-            <div v-if="ttsStatus" class="text-sm text-indigo-400 animate-pulse">
+            <div v-if="ttsStatus" class="text-sm text-teal-300 animate-pulse">
               {{ ttsStatus }}
             </div>
           </div>
@@ -258,11 +258,13 @@ const uploadFile = async (file) => {
         @dragleave.prevent="isDragging = false"
         @drop.prevent="onDrop"
         @click="triggerUpload"
+        class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer group"
+        :class="isDragging ? 'border-teal-500 bg-teal-500/10' : 'border-slate-700 hover:border-teal-500/50 hover:bg-slate-800/50'"
       >
         <input ref="fileInput" type="file" class="hidden" accept="audio/*" @change="handleFileUpload">
         <div class="flex flex-col items-center gap-3">
-          <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
-            <i class="ph ph-upload-simple text-2xl text-slate-400 group-hover:text-indigo-400"></i>
+          <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
+            <i class="ph ph-upload-simple text-2xl text-slate-400 group-hover:text-teal-300"></i>
           </div>
           <div>
             <h3 class="font-medium text-white mb-1">Upload Audio File</h3>
@@ -281,14 +283,14 @@ const uploadFile = async (file) => {
       </div>
 
       <div v-else class="grid grid-cols-1 gap-4">
-        <BaseCard v-for="file in filteredFiles" :key="file.filename" class="group hover:border-indigo-500/30 transition-colors">
+        <BaseCard v-for="file in filteredFiles" :key="file.filename" class="group hover:border-teal-400/30 transition-colors">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+              <div class="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-300">
                 <i class="ph ph-file-audio text-xl"></i>
               </div>
               <div>
-                <h3 class="font-medium text-white group-hover:text-indigo-300 transition-colors">{{ file.filename }}</h3>
+                <h3 class="font-medium text-white group-hover:text-teal-200 transition-colors">{{ file.filename }}</h3>
                 <div class="text-xs text-slate-500 flex items-center gap-2">
                   <span>{{ new Date(file.upload_time).toLocaleDateString() }}</span>
                   <span>•</span>
@@ -298,10 +300,10 @@ const uploadFile = async (file) => {
             </div>
             
             <div class="flex items-center gap-2">
-              <button class="p-2 rounded-lg hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors" title="Play on Glove" @click="playOnGlove(file.filename)">
+              <button @click="playOnGlove(file.filename)" class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Glove">
                 <i class="ph ph-speaker-high text-xl"></i>
               </button>
-              <button class="p-2 rounded-lg hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors" title="Play on Laptop" @click="playOnLaptop(file.filename)">
+              <button @click="playOnLaptop(file.filename)" class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Laptop">
                 <i class="ph ph-laptop text-xl"></i>
               </button>
               <button class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors" title="Delete" @click="deleteFile(file.filename)">

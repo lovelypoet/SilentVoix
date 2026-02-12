@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue'
-import { useRoute } from 'vue-router' // Import useRoute
+import { useRoute, useRouter } from 'vue-router' // Import useRoute
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
@@ -13,6 +13,7 @@ import VideoAnalyzer from '../components/VideoAnalyzer.vue'
 
 
 const route = useRoute() // Initialize useRoute
+const router = useRouter()
 
 const isTraining = ref(false)
 const showSettings = ref(false)
@@ -31,6 +32,8 @@ const currentLightingStatus = ref({ status: '--', colorClass: 'text-slate-400' }
 const currentAvgBrightness = ref(0)
 const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
+const recordingStartCount = ref(0)
+const cvFrameId = ref(0)
 
 // Refs for confidence score calculation
 const prevLandmarks = ref(null)
@@ -41,6 +44,7 @@ const {
   collectedLandmarks,
   isCollecting,
   currentGestureName,
+  metadata,
   startCollecting,
   stopCollecting,
   addLandmark,
@@ -101,7 +105,7 @@ const {
   stopStream
 } = useMediaPermissions()
 
-const { mirrorCamera, enableCamera, showLandmarks, fps } = useTrainingSettings()
+const { mirrorCamera, enableCamera, showLandmarks, frameLimit } = useTrainingSettings()
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
 
@@ -124,6 +128,10 @@ const startTraining = async () => {
   } finally {
     isStartingFreeTraining.value = false
   }
+}
+
+const startCaptureSession = () => {
+  router.push('/capture')
 }
 
 const startAdvancedTraining = async () => {
@@ -155,6 +163,20 @@ const stopTraining = () => {
   trainingMode.value = null // Reset training mode
 }
 
+const startRecording = () => {
+  metadata.value.fps = 30
+  metadata.value.frame_limit = frameLimit.value
+  recordingStartCount.value = collectedLandmarks.value.length
+  cvFrameId.value = 0
+  startCollecting(currentGestureName.value)
+}
+
+const resetRecording = () => {
+  stopCollecting()
+  clearData()
+  recordingStartCount.value = 0
+}
+
 
 watch(
   [isTraining, stream, videoEl, canvasEl, enableCamera],
@@ -184,8 +206,16 @@ watch(
     
     onFrame((results) => {
       frameCount++
+
+      if (isCollecting.value) {
+        const framesSinceStart = collectedLandmarks.value.length - recordingStartCount.value
+        if (framesSinceStart >= frameLimit.value) {
+          stopCollecting()
+          return
+        }
+      }
       
-      if (results.landmarks && results.landmarks.length > 0) {
+      if (results?.landmarks && results.landmarks.length > 0) {
         detectedGesture.value = 'Hand Detected'
         
         const landmarks = results.landmarks[0]
@@ -250,14 +280,26 @@ watch(
         //    no_flip_penalty: noFlipPenalty
         //  })
         //}
-        addLandmark(results.landmarks, results.handedness)
-
+        if (isCollecting.value) {
+          addLandmark(results.landmarks, results.handedness, {
+            frame_id: cvFrameId.value,
+            timestamp_ms: Date.now()
+          })
+          cvFrameId.value += 1
+        }
 
       } else {
         detectedGesture.value = 'No Hand Detected'
         confidence.value = '--%'
         prevLandmarks.value = null
         prevHandedness.value = null
+        if (isCollecting.value) {
+          addLandmark([], [], {
+            frame_id: cvFrameId.value,
+            timestamp_ms: Date.now()
+          })
+          cvFrameId.value += 1
+        }
       }
     })
   },
@@ -271,6 +313,16 @@ watch(currentAvgBrightness, (newValue) => {
 watch(currentLightingStatus, (newValue) => {
   console.log('Training: Received lightingStatus:', newValue);
 });
+
+watch(
+  () => [isCollecting.value, collectedLandmarks.value.length, frameLimit.value],
+  ([collecting, frameCountNow, limit]) => {
+    if (!collecting) return
+    if (frameCountNow - recordingStartCount.value >= limit) {
+      stopCollecting()
+    }
+  }
+)
 </script>
 
 <template>
@@ -328,7 +380,7 @@ watch(currentLightingStatus, (newValue) => {
         />
         <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
-            <div class="text-xs text-slate-400">FPS (Target: {{ fps }})</div>
+            <div class="text-xs text-slate-400">FPS (Target: 30)</div>
             <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
               {{ actualFps || '--' }}
             </div>
@@ -378,7 +430,7 @@ watch(currentLightingStatus, (newValue) => {
           />
           <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
             <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
-              <div class="text-xs text-slate-400">FPS (Target: {{ fps }})</div>
+              <div class="text-xs text-slate-400">FPS (Target: 30)</div>
               <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
                 {{ actualFps || '--' }}
               </div>
@@ -420,7 +472,7 @@ watch(currentLightingStatus, (newValue) => {
             v-model="currentGestureName"
             type="text" 
             placeholder="e.g., hello, thanks, yes, no"
-            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
+            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-teal-500 focus:outline-none"
             :disabled="isCollecting"
           />
         </div>
@@ -430,7 +482,7 @@ watch(currentLightingStatus, (newValue) => {
             v-if="!isCollecting"
             :disabled="!currentGestureName.trim()"
             variant="primary"
-            @click="startCollecting(currentGestureName)"
+            @click="startRecording"
           >
             Start Recording
           </BaseBtn>
@@ -457,6 +509,13 @@ watch(currentLightingStatus, (newValue) => {
           >
             Clear Data
           </BaseBtn>
+          
+          <BaseBtn 
+            variant="secondary"
+            @click="resetRecording"
+          >
+            Reset
+          </BaseBtn>
         </div>
 
         <div class="mt-4 text-sm">
@@ -464,17 +523,18 @@ watch(currentLightingStatus, (newValue) => {
             Recording "{{ currentGestureName }}"...
           </div>
           <div class="text-slate-400">
-            Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length }}</span>
+            Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length - recordingStartCount }}</span>
+            <span class="text-slate-500"> / {{ frameLimit }}</span>
           </div>
         </div>
       </BaseCard>
     </div>
 
     <!-- Initial State -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-      <BaseCard class="group hover:border-indigo-500/50 transition-colors cursor-pointer card" @click="startTraining">
+    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startTraining">
         <div
-          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-indigo-500 transition-colors">
+          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
           <span class="text-5xl">▶</span>
         </div>
         <h3 class="text-xl font-bold text-white mb-2">
@@ -485,6 +545,22 @@ watch(currentLightingStatus, (newValue) => {
         </p>
         <BaseBtn class="w-full" :disabled="isStartingFreeTraining || isRequesting">
           {{ isStartingFreeTraining ? 'Requesting...' : 'Start Session' }}
+        </BaseBtn>
+      </BaseCard>
+
+      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startCaptureSession">
+        <div
+          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
+          <span class="text-5xl">●</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">
+          Capture Session
+        </h3>
+        <p class="text-slate-400 text-sm mb-6">
+          Record a labeled gesture with sensor and CV data.
+        </p>
+        <BaseBtn class="w-full">
+          Start Capture
         </BaseBtn>
       </BaseCard>
 
@@ -503,8 +579,8 @@ watch(currentLightingStatus, (newValue) => {
         </BaseBtn>
       </BaseCard>
 
-      <BaseCard class="group hover:border-amber-500/50 transition-colors cursor-pointer card" @click="startAdvancedTraining">
-        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-amber-500">
+      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startAdvancedTraining">
+        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400">
           <span class="text-5xl">★</span>
         </div>
         <h3 class="text-xl font-bold text-white mb-2">
@@ -513,7 +589,7 @@ watch(currentLightingStatus, (newValue) => {
         <p class="text-slate-400 text-sm mb-6">
           Followed by AI guidance and real-time 3D modelling.
         </p>
-        <BaseBtn variant="amber" class="w-full" :disabled="isStartingAdvancedTraining || isRequesting">
+        <BaseBtn variant="primary" class="w-full" :disabled="isStartingAdvancedTraining || isRequesting">
           {{ isStartingAdvancedTraining ? 'Requesting...' : 'Start Advanced Session' }}
         </BaseBtn>
       </BaseCard>

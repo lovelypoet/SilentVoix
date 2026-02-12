@@ -96,6 +96,13 @@ export default {
   utils: {
     // Health
     health: () => api.get('/utils/health'),
+    serialStatus: () => api.get('/utils/serial-status'),
+    sensorCapture: {
+      start: (mode = 'single') => api.post(`/utils/sensor-capture/start?mode=${mode}`),
+      stop: () => api.post('/utils/sensor-capture/stop'),
+      status: () => api.get('/utils/sensor-capture/status'),
+    },
+    collectorLogs: (mode = 'single', lines = 200) => api.get(`/utils/collector/logs?mode=${mode}&lines=${lines}`),
     // TTS
     tts: {
       speakOnGlove: (text) => api.post('/utils/test_tts_to_esp32', { text }),
@@ -119,8 +126,15 @@ export default {
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');
-    // Replace http/https with ws/wss
-    const wsUrl = BASE_URL.replace(/^http/, 'ws') + path + (token ? `?token=${token}` : '');
+    let wsOrigin = '';
+    if (BASE_URL && /^https?:\/\//.test(BASE_URL)) {
+      wsOrigin = BASE_URL.replace(/^http/, 'ws');
+    } else if (import.meta.env.DEV) {
+      wsOrigin = `ws://${window.location.hostname}:8000`;
+    } else {
+      wsOrigin = window.location.origin.replace(/^http/, 'ws');
+    }
+    const wsUrl = wsOrigin + path + (token ? `?token=${token}` : '');
     return new WebSocket(wsUrl);
   }
 };

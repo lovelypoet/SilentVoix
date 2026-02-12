@@ -84,6 +84,11 @@ class Settings(BaseSettings):
 
     # ESP32 config
     ESP32_IP: str = Field("192.168.1.123", env="ESP32_IP")
+
+    # Serial ports (optional UI status checks)
+    SERIAL_PORT_SINGLE: str = Field("COM6", env="SERIAL_PORT_SINGLE")
+    SERIAL_PORT_LEFT: str = Field("COM5", env="SERIAL_PORT_LEFT")
+    SERIAL_PORT_RIGHT: str = Field("COM6", env="SERIAL_PORT_RIGHT")
     
     # Sensor/processing constants
     FLEX_SENSORS: int = 5

@@ -37,6 +37,7 @@ passlib==1.7.4
 fastapi==0.104.1
 starlette==0.27.0
 uvicorn==0.34.3
+websockets==11.0.3
 
 pydantic==2.9.2
 pydantic_core==2.23.4

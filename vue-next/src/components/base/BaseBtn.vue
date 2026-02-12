@@ -10,11 +10,12 @@ defineProps({
 
 <template>
   <button 
+    v-bind="$attrs"
     class="px-5 py-2.5 rounded-lg font-medium transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed"
     :class="{
       'btn-primary': variant === 'primary',
-      'bg-slate-800 hover:bg-slate-700 text-slate-200 focus:ring-slate-500': variant === 'secondary',
-      'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 focus:ring-red-500': variant === 'danger',
+      'btn-secondary': variant === 'secondary',
+      'btn-danger': variant === 'danger',
       'btn-amber': variant === 'amber'
     }"
   >
@@ -24,9 +25,9 @@ defineProps({
 
 <style scoped>
 .btn-primary {
-  --btn-hue: 246; /* indigo-600 hue */
-  --btn-saturation: 69%;
-  --btn-lightness: 51%;
+  --btn-hue: 174; /* teal-600 hue */
+  --btn-saturation: 62%;
+  --btn-lightness: 45%;
   background: hsl(var(--btn-hue) var(--btn-saturation) var(--btn-lightness));
   color: white;
   box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2);
@@ -38,16 +39,16 @@ defineProps({
 
 .btn-primary:hover,
 .btn-primary:focus-visible {
-  --btn-hue: 260; /* Shift hue on hover/focus */
-  --btn-saturation: 80%;
-  --btn-lightness: 67%; /* indigo-500 lightness */
+  --btn-hue: 186; /* Shift hue on hover/focus */
+  --btn-saturation: 70%;
+  --btn-lightness: 55%; /* teal-400 lightness */
   box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3);
 }
 
 .btn-amber {
-  --btn-hue: 36; /* amber-500 hue */
-  --btn-saturation: 100%;
-  --btn-lightness: 50%;
+  --btn-hue: 42; /* soft sand hue */
+  --btn-saturation: 45%;
+  --btn-lightness: 58%;
   background: hsl(var(--btn-hue) var(--btn-saturation) var(--btn-lightness));
   color: white;
   box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.2);
@@ -58,9 +59,40 @@ defineProps({
 
 .btn-amber:hover,
 .btn-amber:focus-visible {
-  --btn-hue: 30; /* amber-600 hue */
-  --btn-saturation: 100%;
-  --btn-lightness: 60%; /* Brighter amber lightness */
+  --btn-hue: 38; /* warmer sand on hover */
+  --btn-saturation: 55%;
+  --btn-lightness: 62%;
   box-shadow: 0 10px 15px -3px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3), 0 4px 6px -4px hsl(var(--btn-hue) var(--btn-saturation) calc(var(--btn-lightness) + 10%)/0.3);
+}
+
+.btn-secondary {
+  background: linear-gradient(180deg, rgba(14, 116, 144, 0.18), rgba(15, 23, 42, 0.2));
+  color: #d5e6e6;
+  border: 1px solid rgba(45, 212, 191, 0.25);
+  box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.12), 0 4px 6px -4px rgba(45, 212, 191, 0.12);
+  transition: all 300ms ease;
+  --tw-ring-color: rgba(45, 212, 191, 0.6);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus-visible {
+  background: linear-gradient(180deg, rgba(20, 184, 166, 0.22), rgba(15, 23, 42, 0.2));
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.22), 0 4px 6px -4px rgba(45, 212, 191, 0.22);
+}
+
+.btn-danger {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  transition: all 300ms ease;
+  --tw-ring-color: rgba(248, 113, 113, 0.55);
+}
+
+.btn-danger:hover,
+.btn-danger:focus-visible {
+  background: rgba(248, 113, 113, 0.2);
+  color: #fecaca;
+  box-shadow: 0 10px 15px -3px rgba(248, 113, 113, 0.2), 0 4px 6px -4px rgba(248, 113, 113, 0.2);
 }
 </style>

@@ -69,7 +69,7 @@ const saveChanges = async () => {
                    <div class="text-white font-medium">Haptic Feedback</div>
                    <div class="text-sm text-slate-400">Vibrate when gesture is recognized</div>
                 </div>
-                <div class="w-12 h-6 bg-indigo-600 rounded-full cursor-pointer relative">
+                <div class="w-12 h-6 bg-teal-600 rounded-full cursor-pointer relative">
                     <div class="absolute right-1 top-1 bottom-1 w-4 bg-white rounded-full"></div>
                 </div>
             </div>

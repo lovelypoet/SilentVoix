@@ -15,26 +15,26 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-200 flex">
+  <div class="min-h-screen bg-slate-950 text-slate-200 flex app-bg">
     <Toast /> <!-- Add Toast component here -->
     <!-- Sidebar (Hidden on login) -->
-    <aside v-if="route.meta.layout !== 'empty'" class="w-64 border-r border-slate-800 p-6 flex flex-col fixed h-screen top-0 left-0">
-      <RouterLink to="/" class="text-2xl font-bold text-indigo-500 mb-8 cursor-pointer">SilentVoix</RouterLink>
+    <aside v-if="route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen'" class="w-64 border-r border-slate-800 p-6 flex flex-col fixed h-screen top-0 left-0">
+      <RouterLink to="/" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
       
       <nav class="flex flex-col gap-2">
-        <RouterLink to="/" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Dashboard
         </RouterLink>
-        <RouterLink to="/training" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Training
         </RouterLink>
-        <RouterLink to="/library" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Library
         </RouterLink>
-        <RouterLink to="/voice" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/voice" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Voice Studio
         </RouterLink>
-        <RouterLink to="/profile" class="p-3 rounded hover:bg-slate-900 hover:text-indigo-400 transition-colors" active-class="bg-slate-900 text-indigo-400">
+        <RouterLink to="/profile" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Profile
         </RouterLink>
       </nav>
@@ -47,7 +47,7 @@ const handleLogout = async () => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-auto" :class="{ 'ml-64 p-8': route.meta.layout !== 'empty' }">
+    <main class="flex-1 overflow-auto" :class="{ 'p-8': route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen' }">
       <RouterView />
     </main>
   </div>
@@ -57,5 +57,37 @@ const handleLogout = async () => {
 /* Global styles if needed, can likely be empty if using Tailwind */
 body {
   @apply bg-slate-950;
+}
+
+.nav-link {
+  position: relative;
+  z-index: 0;
+}
+
+.nav-active {
+  color: #5eead4;
+  animation: nav-bounce 420ms ease;
+}
+
+.nav-active::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(20, 184, 166, 0.18), rgba(15, 23, 42, 0.25));
+  border: 1px solid rgba(45, 212, 191, 0.25);
+  z-index: -1;
+}
+
+@keyframes nav-bounce {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-active {
+    animation: none;
+  }
 }
 </style>

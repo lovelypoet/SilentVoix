@@ -89,7 +89,7 @@ def initialize_csv():
         if not os.path.exists(RAW_DATA_PATH):
             with open(RAW_DATA_PATH, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
-                header = ['session_id', 'label', 'flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']
+                header = ['session_id', 'label', 'timestamp_ms', 'flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']
                 writer.writerow(header)
             logger.info(f"CSV file created: {RAW_DATA_PATH}")
         return True
@@ -139,7 +139,8 @@ def main():
             while True:
                 data = read_data(ser)
                 if data:
-                    row = [SESSION_ID, LABEL] + data[:5] + data[5:8] + data[8:11]
+                    timestamp_ms = int(time.time() * 1000)
+                    row = [SESSION_ID, LABEL, timestamp_ms] + data[:5] + data[5:8] + data[8:11]
                     writer.writerow(row)
                     csvfile.flush()
 
@@ -148,6 +149,7 @@ def main():
                         "session_id": SESSION_ID,
                         "label": LABEL,
                         "timestamp": datetime.utcnow(),
+                        "timestamp_ms": timestamp_ms,
                         "values": data
                     }
                     sensor_collection.insert_one(mongo_doc)
@@ -157,7 +159,8 @@ def main():
                         "left": data[:5],
                         "right": data[5:8],
                         "imu": data[8:11],
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "timestamp_ms": timestamp_ms
                     }
                     data_queue.append(ws_payload)
 

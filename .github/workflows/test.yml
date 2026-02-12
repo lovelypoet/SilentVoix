@@ -1,0 +1,99 @@
+name: CI pipeline
+
+on:
+  push:
+    branches: [ main, mediapipe, dev ]
+  pull_request:
+    branches: [ main, mediapipe ]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./vue-next
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: vue-next/package-lock.json
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: vue-next/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('vue-next/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache build output
+        uses: actions/cache@v4
+        with:
+          path: vue-next/dist
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test
+
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            vue-next/test-results/
+          retention-days: 30
+
+      - name: Generate test statistics
+        run: |
+          echo "## Test Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests: ✅ Completed" >> $GITHUB_STEP_SUMMARY
+          if [ -d "coverage" ]; then
+            echo "- Coverage reports generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+
+          
+  superlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Super-Linter
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/super-linter
+          key: ${{ runner.os }}-super-linter-${{ hashFiles('**/*.js', '**/*.vue', '**/*.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-super-linter-
+
+      - name: Run Super-Linter
+        uses: github/super-linter@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: main
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_JAVASCRIPT_ES: true
+          VALIDATE_JAVASCRIPT_STANDARD: true
+          VALIDATE_TYPESCRIPT_ES: true
+          VALIDATE_VUE: true
+          VALIDATE_CSS: true
+          VALIDATE_HTML: true
+          LINTER_RULES_PATH: /
+          FILTER_REGEX_INCLUDE: .*vue-next/src/.* 
+          FILTER_REGEX_EXCLUDE: .*vue-next/tests/.* #  Exclude tests
