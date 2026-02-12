@@ -258,8 +258,6 @@ const uploadFile = async (file) => {
         @dragleave.prevent="isDragging = false"
         @drop.prevent="onDrop"
         @click="triggerUpload"
-        class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer group"
-        :class="isDragging ? 'border-teal-500 bg-teal-500/10' : 'border-slate-700 hover:border-teal-500/50 hover:bg-slate-800/50'"
       >
         <input ref="fileInput" type="file" class="hidden" accept="audio/*" @change="handleFileUpload">
         <div class="flex flex-col items-center gap-3">
