@@ -86,7 +86,7 @@ const saveChanges = async () => {
       </BaseCard>
 
         <div class="flex items-center justify-between">
-            <BaseBtn @click="handleLogout" class="bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20">
+            <BaseBtn class="bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20" @click="handleLogout">
                 Sign Out
             </BaseBtn>
         </div>
