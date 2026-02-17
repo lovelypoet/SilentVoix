@@ -225,7 +225,16 @@ export function useCollectData() {
     return csv
   }
 
-  const downloadMetadata = () => {
+  const buildExportId = () => {
+    const d = new Date()
+    const timestamp =
+      `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}_` +
+      `${d.getHours()}-${d.getMinutes()}-${d.getSeconds()}`
+    const suffix = Math.random().toString(36).slice(2, 6)
+    return `${timestamp}_${suffix}`
+  }
+
+  const downloadMetadata = (exportId = null) => {
     const hasLeft = collectedLandmarks.value.some(f => f.L_exist === 1)
     const hasRight = collectedLandmarks.value.some(f => f.R_exist === 1)
     const leftMissing = collectedLandmarks.value.filter(f => f.L_exist === 0).length
@@ -252,8 +261,9 @@ export function useCollectData() {
       right_missing_frames: rightMissing,
       left_missing_rate: totalFrames ? leftMissing / totalFrames : 0,
       right_missing_rate: totalFrames ? rightMissing / totalFrames : 0,
-      features: 128,
+      features: 126,
       preprocessing: metadata.value.preprocessing,
+      export_id: exportId,
       created_at: new Date().toISOString()
     }
 
@@ -265,7 +275,7 @@ export function useCollectData() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `landmarks_${currentGestureName.value || 'data'}_metadata.json`
+    a.download = `landmarks_${currentGestureName.value || 'data'}_${exportId || 'metadata'}_metadata.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -278,37 +288,37 @@ export function useCollectData() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
 
-    const d = new Date()
-    const timestamp =
-      `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}_` +
-      `${d.getHours()}-${d.getMinutes()}-${d.getSeconds()}`
+    const exportId = buildExportId()
 
     a.href = url
-    a.download = `landmarks_${currentGestureName.value || 'data'}_${timestamp}.csv`
+    a.download = `landmarks_${currentGestureName.value || 'data'}_${exportId}.csv`
     a.click()
     URL.revokeObjectURL(url)
 
-    downloadMetadata()
-    downloadTakeMetadata()
+    downloadMetadata(exportId)
+    downloadTakeMetadata(exportId)
   }
 
-  const downloadTakeMetadata = () => {
+  const downloadTakeMetadata = (exportId = null) => {
     if (!takes.value.length) return
+    const createdAt = new Date().toISOString()
     const blob = new Blob(
-      [JSON.stringify({ takes: takes.value }, null, 2)],
+      [JSON.stringify({
+        export_id: exportId,
+        label: currentGestureName.value || 'unknown',
+        fps: metadata.value.fps,
+        frame_limit: metadata.value.frame_limit,
+        created_at: createdAt,
+        takes: takes.value
+      }, null, 2)],
       { type: 'application/json' }
     )
 
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
 
-    const d = new Date()
-    const timestamp =
-      `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}_` +
-      `${d.getHours()}-${d.getMinutes()}-${d.getSeconds()}`
-
     a.href = url
-    a.download = `takes_${currentGestureName.value || 'data'}_${timestamp}.json`
+    a.download = `takes_${currentGestureName.value || 'data'}_${exportId || 'metadata'}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
