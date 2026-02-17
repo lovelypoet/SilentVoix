@@ -34,6 +34,7 @@ const detectedGesture = ref('Waiting...')
 const confidence = ref('--%')
 const recordingStartCount = ref(0)
 const cvFrameId = ref(0)
+const hasAutoSavedCurrentRun = ref(false)
 
 // Refs for confidence score calculation
 const prevLandmarks = ref(null)
@@ -168,6 +169,7 @@ const startRecording = () => {
   metadata.value.frame_limit = frameLimit.value
   recordingStartCount.value = collectedLandmarks.value.length
   cvFrameId.value = 0
+  hasAutoSavedCurrentRun.value = false
   startCollecting(currentGestureName.value)
 }
 
@@ -175,6 +177,14 @@ const resetRecording = () => {
   stopCollecting()
   clearData()
   recordingStartCount.value = 0
+  hasAutoSavedCurrentRun.value = false
+}
+
+const stopAndAutoSave = () => {
+  if (!isCollecting.value || hasAutoSavedCurrentRun.value) return
+  stopCollecting()
+  hasAutoSavedCurrentRun.value = true
+  downloadCSV()
 }
 
 
@@ -210,7 +220,7 @@ watch(
       if (isCollecting.value) {
         const framesSinceStart = collectedLandmarks.value.length - recordingStartCount.value
         if (framesSinceStart >= frameLimit.value) {
-          stopCollecting()
+          stopAndAutoSave()
           return
         }
       }
@@ -319,7 +329,7 @@ watch(
   ([collecting, frameCountNow, limit]) => {
     if (!collecting) return
     if (frameCountNow - recordingStartCount.value >= limit) {
-      stopCollecting()
+      stopAndAutoSave()
     }
   }
 )

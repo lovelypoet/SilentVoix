@@ -25,6 +25,7 @@ const prevLandmarks = ref(null)
 const prevHandedness = ref(null)
 const recordingStartCount = ref(0)
 const cvFrameId = ref(0)
+const hasAutoSavedCurrentRun = ref(false)
 const router = useRouter()
 const captureMode = ref('single')
 const syncCountdown = ref(0)
@@ -152,6 +153,7 @@ const startRecording = () => {
   metadata.value.frame_limit = frameLimit.value
   recordingStartCount.value = collectedLandmarks.value.length
   cvFrameId.value = 0
+  hasAutoSavedCurrentRun.value = false
   startCollecting(currentGestureName.value)
   triggerSyncCue()
 }
@@ -161,6 +163,14 @@ const resetRecording = () => {
   clearData()
   recordingStartCount.value = 0
   expectedSyncTimestampMs.value = null
+  hasAutoSavedCurrentRun.value = false
+}
+
+const stopAndAutoSave = () => {
+  if (!isCollecting.value || hasAutoSavedCurrentRun.value) return
+  stopCollecting()
+  hasAutoSavedCurrentRun.value = true
+  downloadCSV()
 }
 
 const triggerSyncCue = () => {
@@ -220,7 +230,7 @@ watch(
       if (isCollecting.value) {
         const framesSinceStart = collectedLandmarks.value.length - recordingStartCount.value
         if (framesSinceStart >= frameLimit.value) {
-          stopCollecting()
+          stopAndAutoSave()
           return
         }
       }
@@ -293,7 +303,7 @@ watch(
   ([collecting, frameCountNow, limit]) => {
     if (!collecting) return
     if (frameCountNow - recordingStartCount.value >= limit) {
-      stopCollecting()
+      stopAndAutoSave()
     }
   }
 )
