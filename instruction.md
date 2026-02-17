@@ -75,7 +75,7 @@ A convenience script `run_dev.sh` has been created in the project root to start 
 
 2.  **Run the development script:**
     ```bash
-    ./start_dev.sh
+    ./run_dev.sh
     ```
     This script will:
     *   Activate the Python virtual environment for the backend.
