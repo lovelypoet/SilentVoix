@@ -1,6 +1,6 @@
 services:
   frontend:
-    build: ./vue-next   # hoặc . nếu cùng thư mục
+    build: ./vue-next  
     ports:
       - "5173:5173"
     depends_on:
@@ -9,4 +9,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "8000:8080"
+    environment:
+    - MONGO_URI=mongodb+srv://namanh14122005:test123@signglove-cluster.2fgsv8h.mongodb.net/sign_glove?retryWrites=true&w=majority
+    - DB_NAME=sign_glove

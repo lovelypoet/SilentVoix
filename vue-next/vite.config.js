@@ -8,16 +8,20 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://backend:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       },
       '/ws': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://backend:8080',
         ws: true,
         changeOrigin: true,
         secure: false
-      }
+      },
+      '/auth': {  // 👈 thêm route /auth
+        target: 'http://backend:8080',
+        changeOrigin: true,
+      },
     }
   },
   build: {
