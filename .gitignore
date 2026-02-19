@@ -22,3 +22,5 @@ override.tf.json
 # Terraform CLI
 .terraformrc
 terraform.rc
+
+terraform/
