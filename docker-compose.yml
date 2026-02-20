@@ -1,8 +1,10 @@
 services:
   frontend:
-    build: ./vue-next  
+    build: 
+      context: ./vue-next
+      dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - backend
 
