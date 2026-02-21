@@ -32,6 +32,7 @@ const captureMode = ref('single')
 const simulateSensor = ref(false)
 const syncCountdown = ref(0)
 const expectedSyncTimestampMs = ref(null)
+const isAwaitingSyncCue = ref(false)
 const terminalComponent = ref(null)
 const isExportingSensorCsv = ref(false)
 
@@ -106,6 +107,7 @@ const expectedSyncLabel = computed(() => {
 let frameCount = 0
 let lastTime = performance.now()
 let fpsInterval = null
+let syncCueTimer = null
 
 const calculateFps = () => {
   frameCount++
@@ -144,6 +146,7 @@ const startSession = async () => {
 }
 
 const stopSession = () => {
+  cancelPendingRecording()
   stopHandTracking()
   stopFpsCounter()
   stopStream()
@@ -153,16 +156,22 @@ const stopSession = () => {
 }
 
 const startRecording = () => {
+  if (isCollecting.value || isAwaitingSyncCue.value || !currentGestureName.value.trim()) return
   metadata.value.fps = 30
   metadata.value.frame_limit = frameLimit.value
-  recordingStartCount.value = collectedLandmarks.value.length
   cvFrameId.value = 0
   hasAutoSavedCurrentRun.value = false
-  startCollecting(currentGestureName.value)
-  triggerSyncCue()
+  isAwaitingSyncCue.value = true
+  triggerSyncCue(() => {
+    if (!isAwaitingSyncCue.value) return
+    recordingStartCount.value = collectedLandmarks.value.length
+    startCollecting(currentGestureName.value)
+    isAwaitingSyncCue.value = false
+  })
 }
 
 const resetRecording = () => {
+  cancelPendingRecording()
   stopCollecting()
   clearData()
   recordingStartCount.value = 0
@@ -281,16 +290,32 @@ const downloadCvSensorCsv = async () => {
   }
 }
 
-const triggerSyncCue = () => {
+const triggerSyncCue = (onComplete = null) => {
   if (syncCountdown.value > 0) return
+  if (syncCueTimer) {
+    clearInterval(syncCueTimer)
+    syncCueTimer = null
+  }
   syncCountdown.value = 3
   expectedSyncTimestampMs.value = Date.now() + 3000
-  const timer = setInterval(() => {
+  syncCueTimer = setInterval(() => {
     syncCountdown.value -= 1
     if (syncCountdown.value <= 0) {
-      clearInterval(timer)
+      clearInterval(syncCueTimer)
+      syncCueTimer = null
+      if (typeof onComplete === 'function') onComplete()
     }
   }, 1000)
+}
+
+const cancelPendingRecording = () => {
+  isAwaitingSyncCue.value = false
+  syncCountdown.value = 0
+  expectedSyncTimestampMs.value = null
+  if (syncCueTimer) {
+    clearInterval(syncCueTimer)
+    syncCueTimer = null
+  }
 }
 
 const scrollTerminalToBottom = () => {
@@ -300,6 +325,7 @@ const scrollTerminalToBottom = () => {
 }
 
 onUnmounted(() => {
+  cancelPendingRecording()
 })
 
 watch(
@@ -610,18 +636,18 @@ watch(terminalLines, () => {
               type="text"
               placeholder="e.g., hello, thanks"
               class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-teal-500 focus:outline-none"
-              :disabled="isCollecting"
+              :disabled="isCollecting || isAwaitingSyncCue"
             />
           </div>
 
           <div class="flex flex-wrap gap-3">
             <BaseBtn
               v-if="!isCollecting"
-              :disabled="!currentGestureName.trim()"
+              :disabled="!currentGestureName.trim() || isAwaitingSyncCue"
               variant="primary"
               @click="startRecording"
             >
-              Start Recording
+              {{ isAwaitingSyncCue ? 'Syncing...' : 'Start Recording' }}
             </BaseBtn>
             <BaseBtn v-else variant="danger" @click="stopCollecting">Stop Recording</BaseBtn>
 
@@ -659,6 +685,9 @@ watch(terminalLines, () => {
           </div>
 
           <div class="mt-4 text-sm">
+            <div v-if="isAwaitingSyncCue" class="text-amber-400 font-semibold">
+              Sync cue active. Recording starts when countdown reaches 0.
+            </div>
             <div v-if="isCollecting" class="text-green-400 font-semibold">
               Recording "{{ currentGestureName }}"...
             </div>
