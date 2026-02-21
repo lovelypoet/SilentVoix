@@ -35,6 +35,7 @@ const expectedSyncTimestampMs = ref(null)
 const isAwaitingSyncCue = ref(false)
 const terminalComponent = ref(null)
 const isExportingSensorCsv = ref(false)
+const exportStatusMessage = ref('')
 
 const {
   collectedLandmarks,
@@ -256,11 +257,18 @@ const buildFusionCsv = (frames, sensorHeader, sensorRows) => {
 }
 
 const downloadCvSensorCsv = async () => {
-  if (collectedLandmarks.value.length === 0 || isExportingSensorCsv.value) return false
+  exportStatusMessage.value = ''
+  if (collectedLandmarks.value.length === 0 || isExportingSensorCsv.value) {
+    exportStatusMessage.value = 'No CV frames to export yet.'
+    return false
+  }
   const frames = collectedLandmarks.value
   const startMs = Number(frames[0]?.timestamp_ms)
   const endMs = Number(frames[frames.length - 1]?.timestamp_ms)
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return false
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    exportStatusMessage.value = 'Invalid frame timestamps. Record again and retry export.'
+    return false
+  }
 
   isExportingSensorCsv.value = true
   try {
@@ -268,9 +276,18 @@ const downloadCvSensorCsv = async () => {
       ? (sensorCaptureStatus.value?.mode || captureMode.value)
       : captureMode.value
 
-    const response = await api.sync.sensorWindow(activeMode, startMs, endMs, 3000)
-    const sensorHeader = response?.header || []
-    const sensorRows = response?.rows || []
+    let sensorHeader = []
+    let sensorRows = []
+    let usedFallback = false
+    try {
+      const response = await api.sync.sensorWindow(activeMode, startMs, endMs, 3000)
+      sensorHeader = response?.header || []
+      sensorRows = response?.rows || []
+    } catch (e) {
+      console.error('Failed to fetch sensor window for export. Falling back to CV-only export.', e)
+      usedFallback = true
+    }
+
     const csv = buildFusionCsv(frames, sensorHeader, sensorRows)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const label = (currentGestureName.value || 'data').replace(/\s+/g, '_')
@@ -281,9 +298,17 @@ const downloadCvSensorCsv = async () => {
     a.download = `cv_sensor_${label}_${stamp}.csv`
     a.click()
     URL.revokeObjectURL(url)
+    if (usedFallback) {
+      exportStatusMessage.value = 'Sensor API unavailable. Downloaded CV-only CSV.'
+    } else if (!sensorRows.length) {
+      exportStatusMessage.value = 'Downloaded CSV. No sensor rows matched this capture window.'
+    } else {
+      exportStatusMessage.value = `Downloaded CSV with ${sensorRows.length} sensor rows.`
+    }
     return true
   } catch (e) {
     console.error('Failed to export CV+Sensor CSV', e)
+    exportStatusMessage.value = 'Export failed. Check API connectivity and try again.'
     return false
   } finally {
     isExportingSensorCsv.value = false
@@ -690,6 +715,9 @@ watch(terminalLines, () => {
             </div>
             <div v-if="isCollecting" class="text-green-400 font-semibold">
               Recording "{{ currentGestureName }}"...
+            </div>
+            <div v-if="exportStatusMessage" class="text-xs text-sky-300 mt-1">
+              {{ exportStatusMessage }}
             </div>
             <div class="text-slate-400">
               Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length - recordingStartCount }}</span>
