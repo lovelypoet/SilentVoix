@@ -6,6 +6,7 @@ import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
 import CaptureSyncGraph from '../components/CaptureSyncGraph.vue'
 import CaptureTerminal from '../components/CaptureTerminal.vue'
+import api from '../services/api'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 import { useHandTracking } from '../composables/useHandTracking.js'
@@ -32,6 +33,7 @@ const simulateSensor = ref(false)
 const syncCountdown = ref(0)
 const expectedSyncTimestampMs = ref(null)
 const terminalComponent = ref(null)
+const isExportingSensorCsv = ref(false)
 
 const {
   collectedLandmarks,
@@ -42,7 +44,6 @@ const {
   startCollecting,
   stopCollecting,
   addLandmark,
-  downloadCSV,
   clearData
 } = useCollectData()
 
@@ -169,11 +170,115 @@ const resetRecording = () => {
   hasAutoSavedCurrentRun.value = false
 }
 
-const stopAndAutoSave = () => {
+const stopAndAutoSave = async () => {
   if (!isCollecting.value || hasAutoSavedCurrentRun.value) return
-  stopCollecting()
   hasAutoSavedCurrentRun.value = true
-  downloadCSV()
+  stopCollecting()
+  await downloadCvSensorCsv()
+}
+
+const buildFusionCsv = (frames, sensorHeader, sensorRows) => {
+  const cvHeader = [
+    'frame_id', 'timestamp_ms', 'gesture', 'take_id', 'take_quality', 'quality_score',
+    'bad_reasons', 'primary_hand', 'lighting_status', 'L_exist', 'R_exist', 'L_missing', 'R_missing'
+  ]
+
+  for (let i = 0; i < 21; i++) cvHeader.push(`L_x${i}`, `L_y${i}`, `L_z${i}`)
+  for (let i = 0; i < 21; i++) cvHeader.push(`R_x${i}`, `R_y${i}`, `R_z${i}`)
+
+  const sensorPrefixed = sensorHeader.map((key) => `sensor_${key}`)
+  const header = [...cvHeader, 'sensor_match_delta_ms', ...sensorPrefixed]
+
+  const safeCell = (value) => {
+    const text = value === null || value === undefined ? '' : String(value)
+    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+      return `"${text.replace(/"/g, '""')}"`
+    }
+    return text
+  }
+
+  const sensorEntries = sensorRows.map((row) => ({
+    ...row,
+    timestamp_ms: Number(row.timestamp_ms)
+  })).filter((row) => Number.isFinite(row.timestamp_ms))
+
+  const nearestSensor = (ts) => {
+    if (!sensorEntries.length) return { row: null, delta: '' }
+    let best = sensorEntries[0]
+    let bestDelta = Math.abs(sensorEntries[0].timestamp_ms - ts)
+    for (let i = 1; i < sensorEntries.length; i++) {
+      const delta = Math.abs(sensorEntries[i].timestamp_ms - ts)
+      if (delta < bestDelta) {
+        best = sensorEntries[i]
+        bestDelta = delta
+      }
+    }
+    return { row: best, delta: best.timestamp_ms - ts }
+  }
+
+  const lines = [header.map(safeCell).join(',')]
+  frames.forEach((frame) => {
+    const L_missing = frame.L_exist ? 0 : 1
+    const R_missing = frame.R_exist ? 0 : 1
+    const badReasons = (frame.bad_reasons || '').replace(/,/g, ';')
+    const cvCells = [
+      frame.frame_id,
+      frame.timestamp_ms,
+      frame.gesture,
+      frame.take_id ?? '',
+      frame.take_quality ?? '',
+      frame.quality_score ?? '',
+      badReasons,
+      frame.primary_hand ?? '',
+      frame.lighting_status ?? '',
+      frame.L_exist,
+      frame.R_exist,
+      L_missing,
+      R_missing,
+      ...frame.features
+    ]
+
+    const { row: sensorRow, delta } = nearestSensor(Number(frame.timestamp_ms))
+    const sensorCells = sensorHeader.map((key) => (sensorRow ? (sensorRow[key] ?? '') : ''))
+    lines.push([...cvCells, delta, ...sensorCells].map(safeCell).join(','))
+  })
+
+  return lines.join('\n') + '\n'
+}
+
+const downloadCvSensorCsv = async () => {
+  if (collectedLandmarks.value.length === 0 || isExportingSensorCsv.value) return false
+  const frames = collectedLandmarks.value
+  const startMs = Number(frames[0]?.timestamp_ms)
+  const endMs = Number(frames[frames.length - 1]?.timestamp_ms)
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return false
+
+  isExportingSensorCsv.value = true
+  try {
+    const activeMode = sensorCaptureStatus.value?.status === 'running'
+      ? (sensorCaptureStatus.value?.mode || captureMode.value)
+      : captureMode.value
+
+    const response = await api.sync.sensorWindow(activeMode, startMs, endMs, 3000)
+    const sensorHeader = response?.header || []
+    const sensorRows = response?.rows || []
+    const csv = buildFusionCsv(frames, sensorHeader, sensorRows)
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const label = (currentGestureName.value || 'data').replace(/\s+/g, '_')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `cv_sensor_${label}_${stamp}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    return true
+  } catch (e) {
+    console.error('Failed to export CV+Sensor CSV', e)
+    return false
+  } finally {
+    isExportingSensorCsv.value = false
+  }
 }
 
 const triggerSyncCue = () => {
@@ -233,7 +338,7 @@ watch(
       if (isCollecting.value) {
         const framesSinceStart = collectedLandmarks.value.length - recordingStartCount.value
         if (framesSinceStart >= frameLimit.value) {
-          stopAndAutoSave()
+          void stopAndAutoSave()
           return
         }
       }
@@ -306,7 +411,7 @@ watch(
   ([collecting, frameCountNow, limit]) => {
     if (!collecting) return
     if (frameCountNow - recordingStartCount.value >= limit) {
-      stopAndAutoSave()
+      void stopAndAutoSave()
     }
   }
 )
@@ -521,11 +626,11 @@ watch(terminalLines, () => {
             <BaseBtn v-else variant="danger" @click="stopCollecting">Stop Recording</BaseBtn>
 
             <BaseBtn
-              :disabled="collectedLandmarks.length === 0"
+              :disabled="collectedLandmarks.length === 0 || isExportingSensorCsv"
               variant="secondary"
-              @click="downloadCSV"
+              @click="downloadCvSensorCsv"
             >
-              Download CSV
+              {{ isExportingSensorCsv ? 'Preparing...' : 'Download CV+Sensor CSV' }}
             </BaseBtn>
 
             <BaseBtn

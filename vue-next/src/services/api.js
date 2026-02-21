@@ -123,6 +123,12 @@ export default {
     }
   },
 
+  // ===================== Sync API =====================
+  sync: {
+    sensorWindow: (mode = 'single', startMs, endMs, padMs = 0) =>
+      api.get(`/sync/sensor-window?mode=${mode}&start_ms=${startMs}&end_ms=${endMs}&pad_ms=${padMs}`)
+  },
+
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');
