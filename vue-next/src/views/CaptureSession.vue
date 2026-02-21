@@ -77,6 +77,8 @@ const {
 } = useCollectorLogs(captureMode, sensorCaptureStatus)
 
 const {
+  sensorSeries,
+  sensorTimestampsMs,
   sensorSpikeActive,
   cvSpikeActive,
   syncOffsetMs,
@@ -187,7 +189,7 @@ const stopAndAutoSave = async () => {
   await downloadCvSensorCsv()
 }
 
-const buildFusionCsv = (frames, sensorHeader, sensorRows) => {
+const buildFusionCsv = (frames, sensorHeader, sensorRows, sensorSource = 'unknown') => {
   const cvHeader = [
     'frame_id', 'timestamp_ms', 'gesture', 'take_id', 'take_quality', 'quality_score',
     'bad_reasons', 'primary_hand', 'lighting_status', 'L_exist', 'R_exist', 'L_missing', 'R_missing'
@@ -197,7 +199,7 @@ const buildFusionCsv = (frames, sensorHeader, sensorRows) => {
   for (let i = 0; i < 21; i++) cvHeader.push(`R_x${i}`, `R_y${i}`, `R_z${i}`)
 
   const sensorPrefixed = sensorHeader.map((key) => `sensor_${key}`)
-  const header = [...cvHeader, 'sensor_match_delta_ms', ...sensorPrefixed]
+  const header = [...cvHeader, 'capture_sensor_source', 'sensor_match_delta_ms', ...sensorPrefixed]
 
   const safeCell = (value) => {
     const text = value === null || value === undefined ? '' : String(value)
@@ -250,7 +252,7 @@ const buildFusionCsv = (frames, sensorHeader, sensorRows) => {
 
     const { row: sensorRow, delta } = nearestSensor(Number(frame.timestamp_ms))
     const sensorCells = sensorHeader.map((key) => (sensorRow ? (sensorRow[key] ?? '') : ''))
-    lines.push([...cvCells, delta, ...sensorCells].map(safeCell).join(','))
+    lines.push([...cvCells, sensorSource, delta, ...sensorCells].map(safeCell).join(','))
   })
 
   return lines.join('\n') + '\n'
@@ -279,26 +281,46 @@ const downloadCvSensorCsv = async () => {
     let sensorHeader = []
     let sensorRows = []
     let usedFallback = false
-    try {
-      const response = await api.sync.sensorWindow(activeMode, startMs, endMs, 3000)
-      sensorHeader = response?.header || []
-      sensorRows = response?.rows || []
-    } catch (e) {
-      console.error('Failed to fetch sensor window for export. Falling back to CV-only export.', e)
-      usedFallback = true
+    let usedMockStream = false
+
+    if (simulateSensor.value) {
+      sensorHeader = ['timestamp_ms', 'value']
+      sensorRows = sensorSeries.value
+        .map((value, index) => ({
+          timestamp_ms: Number(sensorTimestampsMs.value[index]),
+          value: Number(value)
+        }))
+        .filter((row) => Number.isFinite(row.timestamp_ms) && Number.isFinite(row.value))
+      usedMockStream = sensorRows.length > 0
+      if (!usedMockStream) usedFallback = true
+    } else {
+      try {
+        const response = await api.sync.sensorWindow(activeMode, startMs, endMs, 3000)
+        sensorHeader = response?.header || []
+        sensorRows = response?.rows || []
+      } catch (e) {
+        console.error('Failed to fetch sensor window for export. Falling back to CV-only export.', e)
+        usedFallback = true
+      }
     }
 
-    const csv = buildFusionCsv(frames, sensorHeader, sensorRows)
+    const sensorSource = simulateSensor.value
+      ? 'mock'
+      : (sensorRows.length ? 'real' : 'none')
+    const csv = buildFusionCsv(frames, sensorHeader, sensorRows, sensorSource)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const label = (currentGestureName.value || 'data').replace(/\s+/g, '_')
+    const sourceSuffix = sensorSource === 'mock' ? '_mock' : ''
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `cv_sensor_${label}_${stamp}.csv`
+    a.download = `cv_sensor_${label}_${stamp}${sourceSuffix}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    if (usedFallback) {
+    if (usedMockStream) {
+      exportStatusMessage.value = `Downloaded CSV with ${sensorRows.length} mock sensor rows.`
+    } else if (usedFallback) {
       exportStatusMessage.value = 'Sensor API unavailable. Downloaded CV-only CSV.'
     } else if (!sensorRows.length) {
       exportStatusMessage.value = 'Downloaded CSV. No sensor rows matched this capture window.'
