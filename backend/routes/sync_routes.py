@@ -1,7 +1,7 @@
 import time
 import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from ingestion.sync_stream import SyncStreamBuffer, load_sensor_series
+from ingestion.sync_stream import SyncStreamBuffer, load_sensor_samples
 
 ws_router = APIRouter(prefix="/ws", tags=["WebSocket"])
 http_router = APIRouter(prefix="/sync", tags=["Sync"])
@@ -35,28 +35,48 @@ async def websocket_sync_stream(websocket: WebSocket):
             if msg_type == "cv_sample":
                 velocity = data.get("velocity")
                 if velocity is not None:
-                    buffer.add_cv_sample(float(velocity))
+                    timestamp_ms = data.get("timestamp_ms")
+                    parsed_ts = None
+                    if timestamp_ms is not None:
+                        try:
+                            parsed_ts = int(timestamp_ms)
+                        except (TypeError, ValueError):
+                            parsed_ts = None
+                    buffer.add_cv_sample(float(velocity), parsed_ts)
 
             now = time.time()
             if msg_type == "tick" or (now - last_send) >= 0.1:
-                sensor_series = load_sensor_series(mode=mode, limit=200, max_points=60, simulate=simulate)
-                sensor_stats = buffer.compute_sensor_stats(sensor_series)
-                cv_series = buffer.get_cv_series()
-                cv_stats = buffer.compute_cv_stats(cv_series)
+                sensor_samples = load_sensor_samples(mode=mode, limit=200, max_points=60, simulate=simulate)
+                sensor_stats = buffer.compute_sensor_stats(sensor_samples)
+                sensor_series = [float(item["value"]) for item in sensor_samples]
+                sensor_timestamps = [int(item["timestamp_ms"]) for item in sensor_samples]
+
+                cv_samples = buffer.get_cv_samples()
+                cv_stats = buffer.compute_cv_stats(cv_samples)
+                cv_series = [float(item["value"]) for item in cv_samples]
+                cv_timestamps = [int(item["timestamp_ms"]) for item in cv_samples]
+                sync_offset_ms = None
+                if sensor_stats["spike_timestamp_ms"] is not None and cv_stats["spike_timestamp_ms"] is not None:
+                    sync_offset_ms = int(sensor_stats["spike_timestamp_ms"] - cv_stats["spike_timestamp_ms"])
                 payload = {
                     "type": "sync_series",
                     "mode": mode,
+                    "offset_ms": sync_offset_ms,
                     "sensor": {
                         "series": sensor_series,
+                        "timestamps_ms": sensor_timestamps,
                         "threshold": sensor_stats["threshold"],
                         "spike_index": sensor_stats["spike_index"],
                         "spike_active": sensor_stats["spike_active"],
+                        "spike_timestamp_ms": sensor_stats["spike_timestamp_ms"],
                     },
                     "cv": {
                         "series": cv_series,
+                        "timestamps_ms": cv_timestamps,
                         "threshold": cv_stats["threshold"],
                         "spike_index": cv_stats["spike_index"],
                         "spike_active": cv_stats["spike_active"],
+                        "spike_timestamp_ms": cv_stats["spike_timestamp_ms"],
                     },
                 }
                 async with _payload_lock:

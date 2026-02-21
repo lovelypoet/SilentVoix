@@ -1,6 +1,11 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import api from '../services/api'
 
+const pointX = (index, length, width = 100) => {
+  if (length <= 1) return 0
+  return (index / (length - 1)) * width
+}
+
 const buildPath = (values) => {
   if (!values.length) return ''
   const width = 100
@@ -10,7 +15,7 @@ const buildPath = (values) => {
   const range = Math.max(1, max - min)
   return values
     .map((v, i) => {
-      const x = (i / (values.length - 1)) * width
+      const x = pointX(i, values.length, width)
       const y = height - ((v - min) / range) * (height - 4) - 2
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`
     })
@@ -20,12 +25,17 @@ const buildPath = (values) => {
 export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
   const sensorSeries = ref([])
   const cvSeries = ref([])
+  const sensorTimestampsMs = ref([])
+  const cvTimestampsMs = ref([])
   const sensorSpikeThreshold = ref(null)
   const sensorSpikeIndex = ref(-1)
   const sensorSpikeActive = ref(false)
+  const sensorSpikeTimestampMs = ref(null)
   const cvSpikeThreshold = ref(null)
   const cvSpikeIndex = ref(-1)
   const cvSpikeActive = ref(false)
+  const cvSpikeTimestampMs = ref(null)
+  const syncOffsetMs = ref(null)
   const syncWsConnected = ref(false)
   const syncWs = ref(null)
   let syncTick = null
@@ -42,7 +52,7 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
     const min = Math.min(...values)
     const range = Math.max(1, max - min)
     const peakIndex = values.indexOf(max)
-    const x = (peakIndex / (values.length - 1)) * width
+    const x = pointX(peakIndex, values.length, width)
     const y = height - ((max - min) / range) * (height - 4) - 2
     return { x, y }
   })
@@ -56,7 +66,7 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
     const min = Math.min(...values)
     const range = Math.max(1, max - min)
     const peakIndex = values.indexOf(max)
-    const x = (peakIndex / (values.length - 1)) * width
+    const x = pointX(peakIndex, values.length, width)
     const y = height - ((max - min) / range) * (height - 4) - 2
     return { x, y }
   })
@@ -91,7 +101,7 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
     const max = Math.max(...values)
     const min = Math.min(...values)
     const range = Math.max(1, max - min)
-    const x = (sensorSpikeIndex.value / (values.length - 1)) * width
+    const x = pointX(sensorSpikeIndex.value, values.length, width)
     const y = height - ((values[sensorSpikeIndex.value] - min) / range) * (height - 4) - 2
     return { x, y }
   })
@@ -104,7 +114,7 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
     const max = Math.max(...values)
     const min = Math.min(...values)
     const range = Math.max(1, max - min)
-    const x = (cvSpikeIndex.value / (values.length - 1)) * width
+    const x = pointX(cvSpikeIndex.value, values.length, width)
     const y = height - ((values[cvSpikeIndex.value] - min) / range) * (height - 4) - 2
     return { x, y }
   })
@@ -130,16 +140,21 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
         if (data.type !== 'sync_series') return
         if (data.sensor) {
           sensorSeries.value = data.sensor.series || []
+          sensorTimestampsMs.value = data.sensor.timestamps_ms || []
           sensorSpikeThreshold.value = data.sensor.threshold ?? null
           sensorSpikeIndex.value = data.sensor.spike_index ?? -1
           sensorSpikeActive.value = Boolean(data.sensor.spike_active)
+          sensorSpikeTimestampMs.value = data.sensor.spike_timestamp_ms ?? null
         }
         if (data.cv) {
           cvSeries.value = data.cv.series || []
+          cvTimestampsMs.value = data.cv.timestamps_ms || []
           cvSpikeThreshold.value = data.cv.threshold ?? null
           cvSpikeIndex.value = data.cv.spike_index ?? -1
           cvSpikeActive.value = Boolean(data.cv.spike_active)
+          cvSpikeTimestampMs.value = data.cv.spike_timestamp_ms ?? null
         }
+        syncOffsetMs.value = data.offset_ms ?? null
       } catch (e) {
         // Ignore malformed payloads
       }
@@ -216,12 +231,17 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
   return {
     sensorSeries,
     cvSeries,
+    sensorTimestampsMs,
+    cvTimestampsMs,
     sensorSpikeThreshold,
     sensorSpikeIndex,
     sensorSpikeActive,
+    sensorSpikeTimestampMs,
     cvSpikeThreshold,
     cvSpikeIndex,
     cvSpikeActive,
+    cvSpikeTimestampMs,
+    syncOffsetMs,
     syncWsConnected,
     sparkPath,
     cvPath,

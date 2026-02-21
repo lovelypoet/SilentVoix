@@ -3,32 +3,75 @@ import math
 import random
 import re
 import time
-from typing import Dict, List, Tuple, Optional
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 
 
-def _compute_stats(series: List[float], sigma_multiplier: float, window_size: int) -> Dict:
+def _compute_stats(
+    series: List[float],
+    timestamps_ms: Optional[List[int]],
+    sigma_multiplier: float,
+    window_size: int,
+    persistence: int = 2,
+) -> Dict:
     if not series:
-        return {"threshold": None, "spike_index": -1, "spike_active": False}
+        return {
+            "threshold": None,
+            "spike_index": -1,
+            "spike_active": False,
+            "spike_timestamp_ms": None,
+        }
+
+    if persistence < 2:
+        persistence = 2
+
     start = max(0, len(series) - window_size)
     window = series[start:]
-    mean = sum(window) / len(window)
-    variance = sum((v - mean) ** 2 for v in window) / len(window)
+    baseline = window[:-persistence] if len(window) > persistence else window
+    mean = sum(baseline) / len(baseline)
+    variance = sum((v - mean) ** 2 for v in baseline) / len(baseline)
     sigma = math.sqrt(variance)
     threshold = mean + sigma_multiplier * sigma
+
     spike_index = -1
-    spike_active = False
-    if len(series) >= 2:
-        i = len(series) - 1
-        if series[i] > threshold and series[i - 1] > threshold:
-            spike_index = i
-            spike_active = True
-    return {"threshold": threshold, "spike_index": spike_index, "spike_active": spike_active}
+    for i in range(1, len(window)):
+        if i - 1 + persistence > len(window):
+            break
+        if window[i] <= threshold:
+            continue
+        if all(window[j] > threshold for j in range(i - 1, i - 1 + persistence)):
+            spike_index = start + i
+            break
+
+    spike_timestamp_ms = None
+    if spike_index >= 0 and timestamps_ms and 0 <= spike_index < len(timestamps_ms):
+        spike_timestamp_ms = int(timestamps_ms[spike_index])
+
+    return {
+        "threshold": threshold,
+        "spike_index": spike_index,
+        "spike_active": spike_index >= 0,
+        "spike_timestamp_ms": spike_timestamp_ms,
+    }
 
 
-def _extract_accel_magnitude_from_line(line: str) -> Optional[float]:
+def _parse_log_timestamp_ms(line: str) -> Optional[int]:
+    match = re.match(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})", line)
+    if not match:
+        return None
+    try:
+        dt = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S,%f")
+    except ValueError:
+        return None
+    return int(dt.timestamp() * 1000)
+
+
+def _extract_accel_magnitude_from_line(line: str) -> Optional[Tuple[int, float]]:
     matches = re.findall(r"\[([^\]]+)\]", line)
     if not matches:
         return None
+
+    timestamp_ms = _parse_log_timestamp_ms(line)
     line_peak = None
     for m in matches:
         nums = []
@@ -42,25 +85,35 @@ def _extract_accel_magnitude_from_line(line: str) -> Optional[float]:
             ax, ay, az = nums[5], nums[6], nums[7]
             mag = math.sqrt(ax * ax + ay * ay + az * az)
             line_peak = mag if line_peak is None else max(line_peak, mag)
-    return line_peak
+    if line_peak is None:
+        return None
+    if timestamp_ms is None:
+        timestamp_ms = int(time.time() * 1000)
+    return timestamp_ms, line_peak
 
 
-def _simulate_sensor_series(max_points: int = 60) -> List[float]:
+def _simulate_sensor_samples(max_points: int = 60) -> List[Dict[str, float]]:
     now = time.time()
     phase = now * 1.7
     base = 0.35 + 0.05 * math.sin(phase / 2.0)
-    series: List[float] = []
+    start_ts = int(now * 1000) - (max_points * 100)
+    samples: List[Dict[str, float]] = []
     for i in range(max_points):
         wave = 0.12 * math.sin((i + phase) / 6.0)
         noise = random.uniform(-0.03, 0.03)
-        series.append(max(0.0, base + wave + noise))
+        samples.append(
+            {
+                "timestamp_ms": start_ts + (i * 100),
+                "value": max(0.0, base + wave + noise),
+            }
+        )
 
     # Inject an occasional spike near the end for sync visualization
-    if int(now * 2) % 8 == 0 and series:
+    if int(now * 2) % 8 == 0 and samples:
         spike_index = max_points - 3
-        series[spike_index] = series[spike_index] + 0.6
-        series[spike_index + 1] = series[spike_index + 1] + 0.4
-    return series
+        samples[spike_index]["value"] = samples[spike_index]["value"] + 0.6
+        samples[spike_index + 1]["value"] = samples[spike_index + 1]["value"] + 0.4
+    return samples
 
 
 def _truthy_env(value: Optional[str]) -> bool:
@@ -69,45 +122,52 @@ def _truthy_env(value: Optional[str]) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def load_sensor_series(mode: str, limit: int = 200, max_points: int = 60, simulate: bool = False) -> List[float]:
+def load_sensor_samples(mode: str, limit: int = 200, max_points: int = 60, simulate: bool = False) -> List[Dict[str, float]]:
     if simulate or _truthy_env(os.getenv("SYNC_SENSOR_SIM")):
-        return _simulate_sensor_series(max_points=max_points)
+        return _simulate_sensor_samples(max_points=max_points)
 
     log_filename = "data_collection.log" if mode == "single" else "dual_hand_data_collection.log"
     base_dir = os.path.join(os.path.dirname(__file__))
     path = os.path.abspath(os.path.join(base_dir, log_filename))
     if not os.path.exists(path):
-        return _simulate_sensor_series(max_points=max_points) if _truthy_env(os.getenv("SYNC_SENSOR_SIM")) else []
+        return _simulate_sensor_samples(max_points=max_points) if _truthy_env(os.getenv("SYNC_SENSOR_SIM")) else []
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()[-limit:]
     except Exception:
         return []
-    series: List[float] = []
+    samples: List[Dict[str, float]] = []
     for line in lines:
-        mag = _extract_accel_magnitude_from_line(line)
-        if mag is not None:
-            series.append(mag)
-    return series[-max_points:]
+        sample = _extract_accel_magnitude_from_line(line)
+        if sample is not None:
+            timestamp_ms, mag = sample
+            samples.append({"timestamp_ms": int(timestamp_ms), "value": float(mag)})
+    return samples[-max_points:]
 
 
 class SyncStreamBuffer:
     def __init__(self, max_points: int = 60):
         self.max_points = max_points
-        self.cv_series: List[float] = []
+        self.cv_samples: List[Dict[str, float]] = []
 
-    def add_cv_sample(self, velocity: float) -> None:
+    def add_cv_sample(self, velocity: float, timestamp_ms: Optional[int] = None) -> None:
         if not math.isfinite(velocity):
             return
-        self.cv_series.append(float(velocity))
-        if len(self.cv_series) > self.max_points:
-            self.cv_series = self.cv_series[-self.max_points:]
+        if timestamp_ms is None:
+            timestamp_ms = int(time.time() * 1000)
+        self.cv_samples.append({"timestamp_ms": int(timestamp_ms), "value": float(velocity)})
+        if len(self.cv_samples) > self.max_points:
+            self.cv_samples = self.cv_samples[-self.max_points:]
 
-    def get_cv_series(self) -> List[float]:
-        return list(self.cv_series)
+    def get_cv_samples(self) -> List[Dict[str, float]]:
+        return list(self.cv_samples)
 
-    def compute_sensor_stats(self, series: List[float], window_size: int = 20) -> Dict:
-        return _compute_stats(series, sigma_multiplier=6.0, window_size=window_size)
+    def compute_sensor_stats(self, samples: List[Dict[str, float]], window_size: int = 20) -> Dict:
+        series = [float(item["value"]) for item in samples]
+        timestamps = [int(item["timestamp_ms"]) for item in samples]
+        return _compute_stats(series, timestamps, sigma_multiplier=6.0, window_size=window_size)
 
-    def compute_cv_stats(self, series: List[float], window_size: int = 20) -> Dict:
-        return _compute_stats(series, sigma_multiplier=5.0, window_size=window_size)
+    def compute_cv_stats(self, samples: List[Dict[str, float]], window_size: int = 20) -> Dict:
+        series = [float(item["value"]) for item in samples]
+        timestamps = [int(item["timestamp_ms"]) for item in samples]
+        return _compute_stats(series, timestamps, sigma_multiplier=5.0, window_size=window_size)

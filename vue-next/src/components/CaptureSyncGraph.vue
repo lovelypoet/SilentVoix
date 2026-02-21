@@ -11,6 +11,7 @@ defineProps({
   cvSpike: { type: Object, default: null },
   sensorSpikeActive: { type: Boolean, default: false },
   cvSpikeActive: { type: Boolean, default: false },
+  syncOffsetMs: { type: [Number, null], default: null },
   syncWsConnected: { type: Boolean, default: false },
   expectedSyncLabel: { type: String, default: '' }
 })
@@ -81,6 +82,13 @@ defineProps({
         :class="syncWsConnected ? 'text-emerald-400' : 'text-slate-500'"
       >
         {{ syncWsConnected ? 'ws:on' : 'ws:off' }}
+      </div>
+      <div
+        v-if="syncOffsetMs !== null"
+        class="text-[10px] font-semibold"
+        :class="Math.abs(syncOffsetMs) <= 150 ? 'text-emerald-300' : 'text-amber-300'"
+      >
+        Δ {{ syncOffsetMs }}ms
       </div>
       <div v-if="expectedSyncLabel" class="text-[10px] text-slate-500">
         {{ expectedSyncLabel }}

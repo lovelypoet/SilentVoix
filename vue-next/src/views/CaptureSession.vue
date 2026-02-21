@@ -76,6 +76,7 @@ const {
 const {
   sensorSpikeActive,
   cvSpikeActive,
+  syncOffsetMs,
   syncWsConnected,
   sparkPath,
   cvPath,
@@ -405,6 +406,7 @@ watch(terminalLines, () => {
             :cv-spike="cvSpike"
             :sensor-spike-active="sensorSpikeActive"
             :cv-spike-active="cvSpikeActive"
+            :sync-offset-ms="syncOffsetMs"
             :sync-ws-connected="syncWsConnected"
             :expected-sync-label="expectedSyncLabel"
           />
