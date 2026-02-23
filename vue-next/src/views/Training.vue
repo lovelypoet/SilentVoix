@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router' // Import useRoute
 import { useAuthStore } from '../stores/auth'
 import BaseCard from '../components/base/BaseCard.vue'
@@ -24,6 +24,18 @@ const videoEl = ref(null)
 const canvasEl = ref(null)
 const actualFps = ref(0)
 const trainingMode = ref(null) // 'free' or 'advanced'
+const trainingCardsScroller = ref(null)
+const isDraggingCards = ref(false)
+const hasDraggedCards = ref(false)
+const suppressNextCardClick = ref(false)
+const dragStartX = ref(0)
+const dragStartScrollLeft = ref(0)
+const isAdjustingInfiniteScroll = ref(false)
+const dragLastX = ref(0)
+const dragLastTime = ref(0)
+const dragVelocityPerFrame = ref(0)
+let momentumAnimationFrameId = null
+let momentumVelocityPerFrame = 0
 
 // Local loading states for buttons
 const isStartingFreeTraining = ref(false)
@@ -121,6 +133,59 @@ const videoClasses = computed(() => [
   { '-scale-x-100': mirrorCamera.value },
 ])
 
+const trainingCards = computed(() => {
+  const cards = [
+    {
+      id: 'free-practice',
+      icon: '▶',
+      title: 'Free Practice',
+      description: 'Practice any gesture freely with real-time analysis and feedback.',
+      buttonLabel: isStartingFreeTraining.value ? 'Requesting...' : 'Start Session',
+      buttonVariant: 'primary',
+      disabled: isStartingFreeTraining.value || isRequesting.value,
+      locked: false,
+      onClick: startTraining
+    },
+    {
+      id: 'guided-lessons',
+      icon: '★',
+      title: 'Guided Lessons',
+      description: 'Step-by-step curriculum to learn from basics to advanced signs.',
+      buttonLabel: 'Start Lesson 1',
+      buttonVariant: 'secondary',
+      disabled: true,
+      locked: true
+    },
+    {
+      id: 'advanced-practice',
+      icon: '★',
+      title: 'Advanced Practice',
+      description: 'Followed by AI guidance and real-time 3D modelling.',
+      buttonLabel: isStartingAdvancedTraining.value ? 'Requesting...' : 'Start Advanced Session',
+      buttonVariant: 'primary',
+      disabled: isStartingAdvancedTraining.value || isRequesting.value,
+      locked: false,
+      onClick: startAdvancedTraining
+    }
+  ]
+
+  if (canAccessCaptureSession.value) {
+    cards.splice(1, 0, {
+      id: 'capture-session',
+      icon: '●',
+      title: 'Capture Session',
+      description: 'Record a labeled gesture with sensor and CV data.',
+      buttonLabel: 'Start Capture',
+      buttonVariant: 'primary',
+      disabled: false,
+      locked: false,
+      onClick: startCaptureSession
+    })
+  }
+
+  return cards
+})
+
 
 const startTraining = async () => {
   isStartingFreeTraining.value = true
@@ -190,6 +255,186 @@ const stopAndAutoSave = () => {
   hasAutoSavedCurrentRun.value = true
   downloadCSV()
 }
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+const stopTrainingCardsMomentum = () => {
+  if (momentumAnimationFrameId) {
+    cancelAnimationFrame(momentumAnimationFrameId)
+    momentumAnimationFrameId = null
+  }
+  momentumVelocityPerFrame = 0
+}
+
+const startTrainingCardsMomentum = (initialVelocityPerFrame) => {
+  const scroller = trainingCardsScroller.value
+  if (!scroller) return
+  if (scroller.scrollWidth <= scroller.clientWidth) return
+
+  momentumVelocityPerFrame = clamp(initialVelocityPerFrame, -80, 80)
+  if (Math.abs(momentumVelocityPerFrame) < 0.4) return
+
+  if (momentumAnimationFrameId) return
+
+  const step = () => {
+    const el = trainingCardsScroller.value
+    if (!el || isDraggingCards.value) {
+      stopTrainingCardsMomentum()
+      return
+    }
+
+    el.scrollLeft += momentumVelocityPerFrame
+    normalizeInfiniteTrainingCardsScroll()
+    momentumVelocityPerFrame *= 0.92
+
+    if (Math.abs(momentumVelocityPerFrame) < 0.35) {
+      stopTrainingCardsMomentum()
+      return
+    }
+
+    momentumAnimationFrameId = requestAnimationFrame(step)
+  }
+
+  momentumAnimationFrameId = requestAnimationFrame(step)
+}
+
+const handleTrainingCardsWheel = (event) => {
+  const scroller = trainingCardsScroller.value
+  if (!scroller) return
+  if (scroller.scrollWidth <= scroller.clientWidth) return
+
+  stopTrainingCardsMomentum()
+
+  const delta = clamp(event.deltaY, -120, 120)
+  const immediateStep = delta * 0.85
+  const velocityBoost = delta * 0.18
+
+  const previousLeft = scroller.scrollLeft
+  scroller.scrollLeft += immediateStep
+
+  if (scroller.scrollLeft !== previousLeft) {
+    normalizeInfiniteTrainingCardsScroll()
+    startTrainingCardsMomentum(velocityBoost)
+    event.preventDefault()
+  }
+}
+
+const normalizeInfiniteTrainingCardsScroll = () => {
+  const scroller = trainingCardsScroller.value
+  if (!scroller) return
+  if (scroller.scrollWidth <= scroller.clientWidth) return
+
+  const segmentWidth = scroller.scrollWidth / 3
+  if (!segmentWidth || !Number.isFinite(segmentWidth)) return
+
+  const current = scroller.scrollLeft
+  const lowerBound = segmentWidth * 0.5
+  const upperBound = segmentWidth * 1.5
+
+  if (current < lowerBound) {
+    isAdjustingInfiniteScroll.value = true
+    scroller.scrollLeft = current + segmentWidth
+    requestAnimationFrame(() => {
+      isAdjustingInfiniteScroll.value = false
+    })
+  } else if (current > upperBound) {
+    isAdjustingInfiniteScroll.value = true
+    scroller.scrollLeft = current - segmentWidth
+    requestAnimationFrame(() => {
+      isAdjustingInfiniteScroll.value = false
+    })
+  }
+}
+
+const resetInfiniteTrainingCardsPosition = async () => {
+  const scroller = trainingCardsScroller.value
+  if (!scroller) return
+  if (scroller.scrollWidth <= scroller.clientWidth) return
+
+  await nextTick()
+  scroller.scrollLeft = scroller.scrollWidth / 3
+}
+
+const handleTrainingCardsScroll = () => {
+  if (isAdjustingInfiniteScroll.value) return
+  normalizeInfiniteTrainingCardsScroll()
+}
+
+const startTrainingCardsDrag = (event) => {
+  if (event.pointerType === 'mouse' && event.button !== 0) return
+  const scroller = trainingCardsScroller.value
+  if (!scroller) return
+  if (scroller.scrollWidth <= scroller.clientWidth) return
+
+  stopTrainingCardsMomentum()
+  isDraggingCards.value = true
+  hasDraggedCards.value = false
+  dragStartX.value = event.clientX
+  dragStartScrollLeft.value = scroller.scrollLeft
+  dragLastX.value = event.clientX
+  dragLastTime.value = performance.now()
+  dragVelocityPerFrame.value = 0
+  event.currentTarget?.setPointerCapture?.(event.pointerId)
+}
+
+const moveTrainingCardsDrag = (event) => {
+  if (!isDraggingCards.value) return
+  const scroller = trainingCardsScroller.value
+  if (!scroller) return
+
+  const deltaX = event.clientX - dragStartX.value
+  if (Math.abs(deltaX) > 6) {
+    hasDraggedCards.value = true
+  }
+
+  if (hasDraggedCards.value) {
+    event.preventDefault()
+    scroller.scrollLeft = dragStartScrollLeft.value - deltaX
+    normalizeInfiniteTrainingCardsScroll()
+  }
+
+  const now = performance.now()
+  const elapsed = now - dragLastTime.value
+  if (elapsed > 0) {
+    const deltaPointer = event.clientX - dragLastX.value
+    // Convert pointer movement to scroll velocity (per animation frame).
+    dragVelocityPerFrame.value = clamp(((-deltaPointer / elapsed) * 16), -80, 80)
+    dragLastX.value = event.clientX
+    dragLastTime.value = now
+  }
+}
+
+const stopTrainingCardsDrag = (event) => {
+  if (!isDraggingCards.value) return
+
+  if (hasDraggedCards.value) {
+    suppressNextCardClick.value = true
+    startTrainingCardsMomentum(dragVelocityPerFrame.value)
+  }
+  isDraggingCards.value = false
+  event.currentTarget?.releasePointerCapture?.(event.pointerId)
+}
+
+const handleTrainingCardsClickCapture = (event) => {
+  if (!suppressNextCardClick.value) return
+  event.preventDefault()
+  event.stopPropagation()
+  suppressNextCardClick.value = false
+}
+
+const handleTrainingCardClick = (card) => {
+  if (card.locked || card.disabled || !card.onClick) return
+  card.onClick()
+}
+
+onMounted(async () => {
+  await nextTick()
+  resetInfiniteTrainingCardsPosition()
+})
+
+onBeforeUnmount(() => {
+  stopTrainingCardsMomentum()
+})
 
 
 watch(
@@ -337,6 +582,15 @@ watch(
     if (frameCountNow - recordingStartCount.value >= limit) {
       stopAndAutoSave()
     }
+  }
+)
+
+watch(
+  () => [isTraining.value, trainingCards.value.length],
+  async ([training]) => {
+    if (training) return
+    await nextTick()
+    resetInfiniteTrainingCardsPosition()
   }
 )
 </script>
@@ -562,68 +816,63 @@ watch(
     </div>
 
     <!-- Initial State -->
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">
-      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startTraining">
+    <div v-else class="mt-12">
+      <div
+        ref="trainingCardsScroller"
+        class="training-cards-scroll flex gap-8 overflow-x-auto pb-2"
+        :class="{ 'is-dragging': isDraggingCards }"
+        @wheel="handleTrainingCardsWheel"
+        @scroll="handleTrainingCardsScroll"
+        @pointerdown="startTrainingCardsDrag"
+        @pointermove="moveTrainingCardsDrag"
+        @pointerup="stopTrainingCardsDrag"
+        @pointercancel="stopTrainingCardsDrag"
+        @pointerleave="stopTrainingCardsDrag"
+        @click.capture="handleTrainingCardsClickCapture"
+      >
+      <template v-for="loopIndex in 3" :key="`training-loop-${loopIndex}`">
+      <BaseCard
+        v-for="card in trainingCards"
+        :key="`${loopIndex}-${card.id}`"
+        class="card min-w-[280px] sm:min-w-[320px] xl:min-w-[340px] flex-none transition-colors"
+        :class="card.locked ? 'group opacity-50 cursor-not-allowed' : 'group hover:border-teal-400/50 cursor-pointer'"
+        @click="handleTrainingCardClick(card)"
+      >
         <div
-          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
-          <span class="text-5xl">▶</span>
+          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 transition-colors"
+          :class="card.locked ? '' : 'group-hover:text-teal-400'"
+        >
+          <span class="text-5xl">{{ card.icon }}</span>
         </div>
         <h3 class="text-xl font-bold text-teal-300 mb-2">
-          Free Practice
+          {{ card.title }}
         </h3>
         <p class="text-slate-400 text-sm mb-6">
-          Practice any gesture freely with real-time analysis and feedback.
+          {{ card.description }}
         </p>
-        <BaseBtn class="w-full" :disabled="isStartingFreeTraining || isRequesting">
-          {{ isStartingFreeTraining ? 'Requesting...' : 'Start Session' }}
+        <BaseBtn class="w-full" :variant="card.buttonVariant" :disabled="card.disabled">
+          {{ card.buttonLabel }}
         </BaseBtn>
       </BaseCard>
-
-      <BaseCard v-if="canAccessCaptureSession" class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startCaptureSession">
-        <div
-          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
-          <span class="text-5xl">●</span>
-        </div>
-        <h3 class="text-xl font-bold text-teal-300 mb-2">
-          Capture Session
-        </h3>
-        <p class="text-slate-400 text-sm mb-6">
-          Record a labeled gesture with sensor and CV data.
-        </p>
-        <BaseBtn class="w-full">
-          Start Capture
-        </BaseBtn>
-      </BaseCard>
-
-      <BaseCard class="group opacity-50 cursor-not-allowed card">
-        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600">
-          <span class="text-5xl">★</span>
-        </div>
-        <h3 class="text-xl font-bold text-teal-300 mb-2">
-          Guided Lessons
-        </h3>
-        <p class="text-slate-400 text-sm mb-6">
-          Step-by-step curriculum to learn from basics to advanced signs.
-        </p>
-        <BaseBtn variant="secondary" class="w-full" disabled>
-          Start Lesson 1
-        </BaseBtn>
-      </BaseCard>
-
-      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startAdvancedTraining">
-        <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400">
-          <span class="text-5xl">★</span>
-        </div>
-        <h3 class="text-xl font-bold text-teal-300 mb-2">
-          Advanced Practice
-        </h3>
-        <p class="text-slate-400 text-sm mb-6">
-          Followed by AI guidance and real-time 3D modelling.
-        </p>
-        <BaseBtn variant="primary" class="w-full" :disabled="isStartingAdvancedTraining || isRequesting">
-          {{ isStartingAdvancedTraining ? 'Requesting...' : 'Start Advanced Session' }}
-        </BaseBtn>
-      </BaseCard>
+      </template>
+      </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.training-cards-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.training-cards-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.training-cards-scroll.is-dragging {
+  cursor: grabbing;
+}
+</style>
