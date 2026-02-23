@@ -1,144 +1,177 @@
 """
-Async WebSocket API for real-time gesture prediction using trained AI
-with a prediction queue, stale-message skipping, and proper startup of the worker.
+Live sensor WebSocket route used by serial bridge (producer) and training UI (consumer).
+
+Supported producer payloads:
+- v1: {"type":"sensor_frame_v1","frame":{"flex":[5],"accel":[3],"gyro":[3]}, ...}
+- legacy split: {"left":[5],"right":[3],"imu":[3], ...}
+- legacy flat: {"values":[11]} or {"sensor_values":[[11], ...]}
+- raw csv text: "v1,v2,...,v11"
 """
 
-import logging
-import asyncio
 import json
+import logging
 import time
-import os
-import numpy as np
-from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect
-import tensorflow as tf
+from typing import Any, Dict, List, Set, Tuple
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger("signglove")
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
 
-# ------------------- CONFIG -------------------
-RATE_LIMIT_SECONDS = 0.5  # ~ messages/sec per client
-rate_limiter = {}
+SCHEMA_NAME = "silentvoix.sensor_frame.v1"
+SCHEMA_VERSION = "1.0"
+TOTAL_VALUES = 11
 
-# Load TFLite model
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TFLITE_MODEL_PATH = os.path.join(BASE_DIR, "AI", "gesture_model.tflite")
+active_connections: Set[WebSocket] = set()
 
-interpreter = tf.lite.Interpreter(model_path=TFLITE_MODEL_PATH)
-interpreter.allocate_tensors()
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
 
-GESTURE_LABELS = ["Hello", "Yes", "No", "We", "Are", "Students", "Rest"]
+def _to_float_list(values: Any) -> List[float]:
+    if not isinstance(values, list):
+        raise ValueError("values must be a list")
+    out = []
+    for value in values:
+        out.append(float(value))
+    return out
 
-# ------------------- HELPER FUNCTIONS -------------------
-def preprocess_sensor_data(sensor_values):
-    if len(sensor_values) != 11:
-        raise ValueError(f"Expected 11 features, got {len(sensor_values)}")
-    x = np.array(sensor_values, dtype=np.float32).reshape(1, 11)
-    for i in range(5):  # normalize flex sensors
-        x[0, i] /= 1023.0
-    return x
 
-def predict_gesture(sensor_values):
-    x = preprocess_sensor_data(sensor_values)
-    start = time.time()
-    interpreter.set_tensor(input_details[0]['index'], x)
-    interpreter.invoke()
-    y_pred = interpreter.get_tensor(output_details[0]['index'])[0]
-    end = time.time()
-    print(f"[TFLite] Prediction took {end - start:.4f} seconds")
-    pred_index = int(np.argmax(y_pred))
-    return GESTURE_LABELS[pred_index], float(y_pred[pred_index])
+def _from_v1(payload: Dict[str, Any]) -> Tuple[List[float], Dict[str, List[float]]]:
+    frame = payload.get("frame")
+    if isinstance(frame, dict):
+        flex = _to_float_list(frame.get("flex", []))
+        accel = _to_float_list(frame.get("accel", []))
+        gyro = _to_float_list(frame.get("gyro", []))
+        values = flex + accel + gyro
+    elif isinstance(frame, list):
+        values = _to_float_list(frame)
+        flex = values[:5]
+        accel = values[5:8]
+        gyro = values[8:11]
+    else:
+        raise ValueError("v1 frame must be object or list")
 
-# ------------------- PREDICTION QUEUE -------------------
-prediction_queue = asyncio.Queue()
-queue_lock = asyncio.Lock()  # ensure only one prediction at a time
-latest_message_per_client = {}  # store latest sensor data per client
+    if len(values) != TOTAL_VALUES:
+        raise ValueError(f"Expected {TOTAL_VALUES} values, got {len(values)}")
+    if len(flex) != 5 or len(accel) != 3 or len(gyro) != 3:
+        raise ValueError("frame must contain flex(5), accel(3), gyro(3)")
+    return values, {"flex": flex, "accel": accel, "gyro": gyro}
 
-async def prediction_worker():
-    print("[Worker] Prediction worker started")
-    while True:
-        websocket, sensor_values, client_ip = await prediction_queue.get()
+
+def _normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    payload_type = payload.get("type")
+    session_id = payload.get("session_id")
+    source = str(payload.get("source", "livews"))
+    sequence = payload.get("sequence")
+    timestamp_ms_raw = payload.get("timestamp_ms")
+    timestamp_ms = int(timestamp_ms_raw) if timestamp_ms_raw is not None else int(time.time() * 1000)
+
+    if payload_type == "sensor_frame_v1":
+        values, channels = _from_v1(payload)
+    elif isinstance(payload.get("left"), list) and isinstance(payload.get("right"), list) and isinstance(payload.get("imu"), list):
+        flex = _to_float_list(payload.get("left", []))
+        accel = _to_float_list(payload.get("right", []))
+        gyro = _to_float_list(payload.get("imu", []))
+        values = flex + accel + gyro
+        if len(values) != TOTAL_VALUES:
+            raise ValueError("legacy split payload must have left(5)+right(3)+imu(3)")
+        channels = {"flex": flex, "accel": accel, "gyro": gyro}
+    elif isinstance(payload.get("values"), list):
+        values = _to_float_list(payload["values"])
+        if len(values) != TOTAL_VALUES:
+            raise ValueError(f"values must have {TOTAL_VALUES} entries")
+        channels = {"flex": values[:5], "accel": values[5:8], "gyro": values[8:11]}
+    elif isinstance(payload.get("sensor_values"), list):
+        sensor_values = payload["sensor_values"]
+        if not sensor_values:
+            raise ValueError("sensor_values must not be empty")
+        latest = sensor_values[-1]
+        values = _to_float_list(latest)
+        if len(values) != TOTAL_VALUES:
+            raise ValueError(f"sensor_values frame must have {TOTAL_VALUES} entries")
+        channels = {"flex": values[:5], "accel": values[5:8], "gyro": values[8:11]}
+    else:
+        raise ValueError("Unsupported payload shape")
+
+    return {
+        "type": "sensor_frame",
+        "schema": SCHEMA_NAME,
+        "schema_version": SCHEMA_VERSION,
+        "session_id": session_id,
+        "source": source,
+        "sequence": sequence,
+        "timestamp_ms": timestamp_ms,
+        "received_at_ms": int(time.time() * 1000),
+        "channels": channels,
+        "values": values,
+    }
+
+
+def _parse_text_payload(text: str) -> Dict[str, Any]:
+    stripped = text.strip()
+    if not stripped:
+        raise ValueError("Empty payload")
+
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError:
+        parts = [p.strip() for p in stripped.split(",")]
+        if len(parts) != TOTAL_VALUES:
+            raise ValueError("Invalid CSV frame, expected 11 comma-separated values")
+        payload = {"values": [float(p) for p in parts]}
+
+    if not isinstance(payload, dict):
+        raise ValueError("Payload must be a JSON object")
+    return payload
+
+
+async def _broadcast_json(message: Dict[str, Any]) -> None:
+    dead: List[WebSocket] = []
+    for connection in active_connections:
         try:
-            # Skip stale messages if newer ones exist for this client
-            if latest_message_per_client.get(client_ip) != sensor_values:
-                print(f"[Worker] Skipping stale message from {client_ip}")
-                prediction_queue.task_done()
-                continue
+            await connection.send_json(message)
+        except Exception:
+            dead.append(connection)
+    for connection in dead:
+        active_connections.discard(connection)
 
-            async with queue_lock:
-                print(f"[Worker] Processing message from {client_ip}: {sensor_values}")
-                pred, conf = await asyncio.get_event_loop().run_in_executor(None, predict_gesture, sensor_values)
-                response = {
-                    "timestamp": time.time(),
-                    "prediction": pred,
-                    "confidence": conf
-                }
-                await websocket.send_json(response)
-        except Exception as e:
-            logger.error(f"Prediction worker error: {e}")
-            try:
-                await websocket.send_json({"error": str(e)})
-            except Exception:
-                pass  # websocket may be closed
-        finally:
-            prediction_queue.task_done()
 
-# ------------------- WEBSOCKET ENDPOINT -------------------
 @router.websocket("/stream")
 async def websocket_stream(websocket: WebSocket):
-    client_ip = websocket.client.host
     await websocket.accept()
-    logger.info(f"WebSocket connected: {client_ip}")
+    active_connections.add(websocket)
+    client_ip = websocket.client.host if websocket.client else "unknown"
+    logger.info(f"livews connected: {client_ip} (clients={len(active_connections)})")
+
+    await websocket.send_json(
+        {
+            "type": "connection_established",
+            "endpoint": "/ws/stream",
+            "schema": SCHEMA_NAME,
+            "schema_version": SCHEMA_VERSION,
+            "server_time_ms": int(time.time() * 1000),
+        }
+    )
 
     try:
         while True:
-            data_text = await websocket.receive_text()
-
-            # Rate limiting
-            now = time.time()
-            last_time = rate_limiter.get(client_ip, 0)
-            if now - last_time < RATE_LIMIT_SECONDS:
-                continue
-            rate_limiter[client_ip] = now
-
+            raw_text = await websocket.receive_text()
             try:
-                payload = json.loads(data_text)
-                sensor_values = payload.get("right", [])
+                payload = _parse_text_payload(raw_text)
+                msg_type = payload.get("type")
 
-                if not sensor_values or len(sensor_values) != 11:
-                    await websocket.send_json({"error": "Invalid sensor data"})
+                # Allow non-producer clients (training UI) to keep socket alive.
+                if msg_type in {"subscribe", "ping", "status"}:
+                    if msg_type == "ping":
+                        await websocket.send_json({"type": "pong", "server_time_ms": int(time.time() * 1000)})
+                    else:
+                        await websocket.send_json({"type": "ack", "subscribed": True, "clients": len(active_connections)})
                     continue
 
-                # Update latest message per client
-                latest_message_per_client[client_ip] = sensor_values
-
-                # Add to prediction queue
-                await prediction_queue.put((websocket, sensor_values, client_ip))
-
-            except json.JSONDecodeError:
-                logger.warning(f"{client_ip}: invalid JSON received")
-            except Exception as e:
-                logger.error(f"{client_ip}: WebSocket error: {e}")
-                await websocket.send_json({"error": str(e)})
-
+                normalized = _normalize_payload(payload)
+                await _broadcast_json(normalized)
+            except Exception as exc:
+                await websocket.send_json({"type": "error", "message": str(exc)})
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected: {client_ip}")
-        rate_limiter.pop(client_ip, None)
-        latest_message_per_client.pop(client_ip, None)
-    except Exception as e:
-        logger.error(f"WebSocket error ({client_ip}): {e}")
-        await websocket.close()
-
-# ------------------- FASTAPI APP -------------------
-app = FastAPI()
-
-# Include the WebSocket router
-app = FastAPI()
-app.include_router(router)
-
-@app.on_event("startup")
-async def start_prediction_worker():
-    # Properly start worker after event loop is ready
-    asyncio.create_task(prediction_worker())
-    print("[Startup] Prediction worker task scheduled")
+        pass
+    finally:
+        active_connections.discard(websocket)
+        logger.info(f"livews disconnected: {client_ip} (clients={len(active_connections)})")

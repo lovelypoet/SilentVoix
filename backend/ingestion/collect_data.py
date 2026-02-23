@@ -100,7 +100,7 @@ def initialize_csv():
 
 async def send_to_backend(data_queue):
     try:
-        ws_url = app_settings.BACKEND_BASE_URL.replace("http://", "ws://").replace("https://", "wss://") + "/ws/predict"
+        ws_url = app_settings.BACKEND_BASE_URL.replace("http://", "ws://").replace("https://", "wss://") + "/ws/stream"
         async with websockets.connect(ws_url) as ws:
             logger.info(f"WebSocket connected to {ws_url}.")
             while True:
@@ -156,11 +156,16 @@ def main():
 
                     # Send to WebSocket
                     ws_payload = {
-                        "left": data[:5],
-                        "right": data[5:8],
-                        "imu": data[8:11],
-                        "timestamp": time.time(),
-                        "timestamp_ms": timestamp_ms
+                        "type": "sensor_frame_v1",
+                        "schema_version": "1.0",
+                        "session_id": SESSION_ID,
+                        "source": "pyserial.collect_data",
+                        "timestamp_ms": timestamp_ms,
+                        "frame": {
+                            "flex": data[:5],
+                            "accel": data[5:8],
+                            "gyro": data[8:11],
+                        },
                     }
                     data_queue.append(ws_payload)
 
