@@ -31,6 +31,10 @@ const saveChanges = async () => {
       email: form.value.email,
       // device: form.value.device, // Include if device is part of user profile update
     })
+    if (updatedUser.access_token) {
+      authStore.token = updatedUser.access_token
+      localStorage.setItem('access_token', updatedUser.access_token)
+    }
     authStore.user = updatedUser
     localStorage.setItem('user', JSON.stringify(updatedUser))
     toast.add({ severity: 'success', summary: 'Success', detail: 'Profile updated successfully!', life: 3000 });

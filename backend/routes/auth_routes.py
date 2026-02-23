@@ -19,10 +19,15 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
+class UpdateProfileRequest(BaseModel):
+    display_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
 class UserPublic(BaseModel):
     id: str
     email: EmailStr
     role: Literal["guest", "editor", "admin"]
+    display_name: Optional[str] = None
 
 COOKIE_NAME = "access_token"
 
@@ -142,7 +147,56 @@ async def logout(response: Response):
 
 @router.get("/me", response_model=UserPublic)
 async def me(user: dict = Depends(get_current_user)):
-    return {"id": str(user.get("_id")), "email": user["email"], "role": user.get("role", "guest")}
+    return {
+        "id": str(user.get("_id")),
+        "email": user["email"],
+        "role": user.get("role", "guest"),
+        "display_name": user.get("display_name")
+    }
+
+@router.put("/me")
+async def update_me(data: UpdateProfileRequest, response: Response, user: dict = Depends(get_current_user)):
+    update_fields = {}
+    email_changed = False
+
+    if data.display_name is not None:
+        update_fields["display_name"] = data.display_name.strip()
+
+    if data.email is not None and data.email != user.get("email"):
+        existing = await get_user_by_email(data.email)
+        if existing:
+            raise HTTPException(status_code=409, detail="Email already exists")
+        update_fields["email"] = data.email
+        email_changed = True
+
+    if update_fields:
+        await users_collection.update_one({"_id": user["_id"]}, {"$set": update_fields})
+
+    updated_user = await users_collection.find_one({"_id": user["_id"]})
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    result = {
+        "id": str(updated_user.get("_id")),
+        "email": updated_user["email"],
+        "role": updated_user.get("role", "guest"),
+        "display_name": updated_user.get("display_name")
+    }
+
+    if email_changed:
+        token = create_access_token({"sub": updated_user["email"], "role": updated_user.get("role", "guest")})
+        response.set_cookie(
+            key=COOKIE_NAME,
+            value=token,
+            httponly=True,
+            secure=settings.COOKIE_SECURE,
+            samesite="lax",
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            path="/",
+        )
+        result["access_token"] = token
+
+    return result
 
 # Expose utilities for other routers
 get_current_user_dep = get_current_user
