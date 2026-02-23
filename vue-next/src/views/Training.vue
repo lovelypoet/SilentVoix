@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router' // Import useRoute
+import { useAuthStore } from '../stores/auth'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
@@ -14,6 +15,8 @@ import VideoAnalyzer from '../components/VideoAnalyzer.vue'
 
 const route = useRoute() // Initialize useRoute
 const router = useRouter()
+const authStore = useAuthStore()
+const canAccessCaptureSession = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
 
 const isTraining = ref(false)
 const showSettings = ref(false)
@@ -576,7 +579,7 @@ watch(
         </BaseBtn>
       </BaseCard>
 
-      <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startCaptureSession">
+      <BaseCard v-if="canAccessCaptureSession" class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startCaptureSession">
         <div
           class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
           <span class="text-5xl">●</span>

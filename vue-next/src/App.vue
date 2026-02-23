@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'; // Import Toast component
 import BaseBtn from './components/base/BaseBtn.vue' // Import BaseBtn
@@ -9,6 +9,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const isMobileNavOpen = ref(false)
+const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
 
 watch(
   () => route.fullPath,
@@ -37,7 +38,7 @@ const handleLogout = async () => {
         <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Training
         </RouterLink>
-        <RouterLink to="/sensor-training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+        <RouterLink v-if="canAccessExtendedPages" to="/sensor-training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Sensor Training
         </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
@@ -83,7 +84,7 @@ const handleLogout = async () => {
         <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Training
         </RouterLink>
-        <RouterLink to="/sensor-training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+        <RouterLink v-if="canAccessExtendedPages" to="/sensor-training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Sensor Training
         </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">

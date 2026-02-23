@@ -32,13 +32,13 @@ const router = createRouter({
             path: '/sensor-training',
             name: 'sensor-training',
             component: () => import('../views/SensorTraining.vue'),
-            meta: { requiresAuth: true, layout: 'fullscreen' }
+            meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
             path: '/capture',
             name: 'capture',
             component: () => import('../views/CaptureSession.vue'),
-            meta: { requiresAuth: true, layout: 'fullscreen' }
+            meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
             path: '/voice',
@@ -66,6 +66,8 @@ router.beforeEach((to, from, next) => {
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
         next('/login')
+    } else if (to.meta.allowedRoles && !to.meta.allowedRoles.includes(authStore.user?.role)) {
+        next('/')
     } else if ((to.name === 'login' || to.name === 'register') && authStore.isAuthenticated) {
         next('/')
     } else {
