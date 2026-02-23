@@ -15,6 +15,10 @@ const form = ref({
   email: authStore.user?.email || '',
   device: 'SignGlove-V2'
 })
+const deviceSettings = ref({
+  hapticFeedback: true,
+  autoConnect: false
+})
 
 onMounted(() => {
   if (authStore.user) {
@@ -77,18 +81,38 @@ const handleLogout = async () => {
                    <div class="text-white font-medium">Haptic Feedback</div>
                    <div class="text-sm text-slate-400">Vibrate when gesture is recognized</div>
                 </div>
-                <div class="w-12 h-6 bg-teal-600 rounded-full cursor-pointer relative">
-                    <div class="absolute right-1 top-1 bottom-1 w-4 bg-white rounded-full"></div>
-                </div>
+                <button
+                  type="button"
+                  class="w-12 h-6 rounded-full cursor-pointer relative transition-colors"
+                  role="switch"
+                  :aria-checked="deviceSettings.hapticFeedback"
+                  :class="deviceSettings.hapticFeedback ? 'bg-teal-600' : 'bg-slate-700'"
+                  @click="deviceSettings.hapticFeedback = !deviceSettings.hapticFeedback"
+                >
+                  <span
+                    class="absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all"
+                    :class="deviceSettings.hapticFeedback ? 'right-1' : 'left-1'"
+                  ></span>
+                </button>
             </div>
              <div class="flex items-center justify-between py-2">
                 <div>
                    <div class="text-white font-medium">Auto-Connect</div>
                    <div class="text-sm text-slate-400">Connect to glove on startup</div>
                 </div>
-                <div class="w-12 h-6 bg-slate-700 rounded-full cursor-pointer relative">
-                    <div class="absolute left-1 top-1 bottom-1 w-4 bg-white rounded-full"></div>
-                </div>
+                <button
+                  type="button"
+                  class="w-12 h-6 rounded-full cursor-pointer relative transition-colors"
+                  role="switch"
+                  :aria-checked="deviceSettings.autoConnect"
+                  :class="deviceSettings.autoConnect ? 'bg-teal-600' : 'bg-slate-700'"
+                  @click="deviceSettings.autoConnect = !deviceSettings.autoConnect"
+                >
+                  <span
+                    class="absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all"
+                    :class="deviceSettings.autoConnect ? 'right-1' : 'left-1'"
+                  ></span>
+                </button>
             </div>
         </div>
       </BaseCard>
