@@ -15,6 +15,10 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+
 class UserPublic(BaseModel):
     id: str
     email: EmailStr
@@ -112,6 +116,24 @@ async def login(data: LoginRequest, response: Response):
         path="/",
     )
     return {"status": "success", "access_token": token, "token_type": "bearer"}
+
+@router.post("/register")
+async def register(data: RegisterRequest):
+    await ensure_default_editor()
+
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    existing = await get_user_by_email(data.email)
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already exists")
+
+    user_id = await create_user(data.email, data.password, role="guest")
+    return {
+        "status": "success",
+        "message": "Account created successfully",
+        "user_id": user_id
+    }
 
 @router.post("/logout")
 async def logout(response: Response):

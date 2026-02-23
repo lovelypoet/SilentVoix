@@ -11,6 +11,12 @@ const router = createRouter({
             meta: { layout: 'empty' }
         },
         {
+            path: '/register',
+            name: 'register',
+            component: () => import('../views/Register.vue'),
+            meta: { layout: 'empty' }
+        },
+        {
             path: '/',
             name: 'dashboard',
             component: () => import('../views/Dashboard.vue'),
@@ -60,7 +66,7 @@ router.beforeEach((to, from, next) => {
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
         next('/login')
-    } else if (to.name === 'login' && authStore.isAuthenticated) {
+    } else if ((to.name === 'login' || to.name === 'register') && authStore.isAuthenticated) {
         next('/')
     } else {
         next()

@@ -66,6 +66,13 @@ const handleLogin = async () => {
             <span v-else>Sign In</span>
         </BaseBtn>
       </form>
+
+      <div class="mt-6 text-center text-sm text-slate-300">
+        New here?
+        <button class="text-teal-300 hover:text-teal-200 underline underline-offset-2 ml-1" @click="router.push('/register')">
+          Create account
+        </button>
+      </div>
     </div>
   </div>
 </template>
