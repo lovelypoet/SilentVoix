@@ -9,6 +9,10 @@ data/
 checkpoints/
 .env
 .venv/
+venv/
 *.log
 *.db
 node_modules/
+.git/
+.pytest_cache/
+.mypy_cache/

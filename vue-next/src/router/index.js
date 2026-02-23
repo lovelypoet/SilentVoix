@@ -23,6 +23,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/sensor-training',
+            name: 'sensor-training',
+            component: () => import('../views/SensorTraining.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/capture',
             name: 'capture',
             component: () => import('../views/CaptureSession.vue'),

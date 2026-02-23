@@ -28,6 +28,9 @@ const handleLogout = async () => {
         <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Training
         </RouterLink>
+        <RouterLink to="/sensor-training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+          Sensor Training
+        </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Library
         </RouterLink>
@@ -47,7 +50,13 @@ const handleLogout = async () => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-auto" :class="{ 'p-8': route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen' }">
+    <main
+      class="flex-1 overflow-auto"
+      :class="{
+        'p-8': route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen',
+        'lg:ml-64': route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen'
+      }"
+    >
       <RouterView />
     </main>
   </div>
