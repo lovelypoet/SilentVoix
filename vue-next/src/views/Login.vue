@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseInput from '../components/base/BaseInput.vue'
+import LoginGalaxyBackground from '../components/LoginGalaxyBackground.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -28,11 +29,12 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl">
+  <div class="min-h-screen login-page flex items-center justify-center p-4">
+    <LoginGalaxyBackground />
+    <div class="login-card bg-slate-900/75 backdrop-blur-md border border-teal-500/20 p-8 rounded-2xl w-full max-w-md shadow-2xl">
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-white mb-2">SilentVoix</h1>
-        <p class="text-slate-400">Sign Language Translation System</p>
+        <h1 class="text-3xl font-bold text-teal-300 mb-2">SilentVoix</h1>
+        <p class="text-slate-300">Sign Language Translation System</p>
       </div>
 
       <form class="space-y-6" @submit.prevent="handleLogin">
@@ -69,6 +71,16 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
+.login-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.login-card {
+  position: relative;
+  z-index: 2;
+}
+
 @keyframes fadeToTransparent {
   to {
     opacity: 0;
