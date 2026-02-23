@@ -1,9 +1,12 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import { useSensorTraining } from '../composables/useSensorTraining'
 import { usePortSession } from '../composables/usePortSession'
+
+const router = useRouter()
 
 const {
   canExport,
@@ -72,11 +75,24 @@ const channelPercent = (value, index) => {
 
 <template>
   <div class="max-w-7xl mx-auto">
-    <section class="mb-6">
-      <h1 class="text-3xl font-bold text-teal-300">Sensor Training</h1>
+    <section class="mb-6 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
+      <div class="flex justify-start">
+        <BaseBtn
+          variant="secondary"
+          title="Return to dashboard"
+          class="px-3"
+          @click="router.push('/')"
+        >
+          &larr;
+        </BaseBtn>
+      </div>
+      <div class="text-left md:text-center">
+      <h1 class="text-2xl md:text-3xl font-bold text-teal-300">Sensor Training</h1>
       <p class="text-slate-400 mt-1">
         Live websocket capture from <code>/ws/stream</code> with label-aware recording and export.
       </p>
+      </div>
+      <div class="hidden md:block"></div>
     </section>
 
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-5 mb-6">

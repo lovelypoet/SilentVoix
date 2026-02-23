@@ -20,13 +20,13 @@ const router = createRouter({
             path: '/training',
             name: 'training',
             component: () => import('../views/Training.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, layout: 'fullscreen' }
         },
         {
             path: '/sensor-training',
             name: 'sensor-training',
             component: () => import('../views/SensorTraining.vue'),
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true, layout: 'fullscreen' }
         },
         {
             path: '/capture',

@@ -342,13 +342,26 @@ watch(
   <div class="max-w-4xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div class="mb-8 text-center">
-      <h1 class="text-3xl font-bold text-white mb-2">
+    <div class="mb-8 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
+      <div class="flex justify-start">
+        <BaseBtn
+          variant="secondary"
+          title="Return to dashboard"
+          class="px-3"
+          @click="router.push('/')"
+        >
+          &larr;
+        </BaseBtn>
+      </div>
+      <div class="text-left md:text-center">
+      <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">
         {{ trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center' }}
       </h1>
       <p class="text-slate-400">
         Master your sign language gestures with real-time feedback
       </p>
+      </div>
+      <div class="hidden md:block"></div>
     </div>
 
     <!-- Permissions Denied -->
@@ -563,7 +576,7 @@ watch(
           class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
           <span class="text-5xl">▶</span>
         </div>
-        <h3 class="text-xl font-bold text-white mb-2">
+        <h3 class="text-xl font-bold text-teal-300 mb-2">
           Free Practice
         </h3>
         <p class="text-slate-400 text-sm mb-6">
@@ -579,7 +592,7 @@ watch(
           class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
           <span class="text-5xl">●</span>
         </div>
-        <h3 class="text-xl font-bold text-white mb-2">
+        <h3 class="text-xl font-bold text-teal-300 mb-2">
           Capture Session
         </h3>
         <p class="text-slate-400 text-sm mb-6">
@@ -594,7 +607,7 @@ watch(
         <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600">
           <span class="text-5xl">★</span>
         </div>
-        <h3 class="text-xl font-bold text-white mb-2">
+        <h3 class="text-xl font-bold text-teal-300 mb-2">
           Guided Lessons
         </h3>
         <p class="text-slate-400 text-sm mb-6">
@@ -609,7 +622,7 @@ watch(
         <div class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400">
           <span class="text-5xl">★</span>
         </div>
-        <h3 class="text-xl font-bold text-white mb-2">
+        <h3 class="text-xl font-bold text-teal-300 mb-2">
           Advanced Practice
         </h3>
         <p class="text-slate-400 text-sm mb-6">
