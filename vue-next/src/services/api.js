@@ -97,6 +97,10 @@ export default {
     // Health
     health: () => api.get('/utils/health'),
     serialStatus: () => api.get('/utils/serial-status'),
+    serialConfig: {
+      update: (payload) => api.post('/utils/serial-config', payload),
+      auto: () => api.post('/utils/serial-config', { auto_detect: true }),
+    },
     sensorCapture: {
       start: (mode = 'single') => api.post(`/utils/sensor-capture/start?mode=${mode}`),
       stop: () => api.post('/utils/sensor-capture/stop'),

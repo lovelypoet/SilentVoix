@@ -1,26 +1,10 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import api from '../services/api'
 
-export const useSensorStatus = () => {
-  const serialStatus = ref({
-    single_connected: false,
-    left_connected: false,
-    right_connected: false,
-    available_ports: []
-  })
+export function useSensorCaptureSession() {
   const sensorCaptureStatus = ref({ status: 'stopped', mode: 'single' })
-  let serialPoll = null
-
-  const fetchSerialStatus = async () => {
-    try {
-      const res = await api.utils.serialStatus()
-      if (res?.data) {
-        serialStatus.value = res.data
-      }
-    } catch (e) {
-      // Keep last known status
-    }
-  }
+  const captureError = ref('')
+  let capturePoll = null
 
   const fetchCaptureStatus = async () => {
     try {
@@ -28,8 +12,9 @@ export const useSensorStatus = () => {
       if (res) {
         sensorCaptureStatus.value = res
       }
-    } catch (e) {
-      // Keep last known status
+      captureError.value = ''
+    } catch (_) {
+      captureError.value = 'Unable to reach sensor capture status endpoint.'
     }
   }
 
@@ -44,23 +29,20 @@ export const useSensorStatus = () => {
   }
 
   onMounted(() => {
-    fetchSerialStatus()
     fetchCaptureStatus()
-    serialPoll = setInterval(() => {
-      fetchSerialStatus()
+    capturePoll = setInterval(() => {
       fetchCaptureStatus()
     }, 3000)
   })
 
   onUnmounted(() => {
-    if (serialPoll) clearInterval(serialPoll)
+    if (capturePoll) clearInterval(capturePoll)
   })
 
   return {
-    serialStatus,
-    sensorCaptureStatus,
-    fetchSerialStatus,
+    captureError,
     fetchCaptureStatus,
+    sensorCaptureStatus,
     startSensorCapture,
     stopSensorCapture
   }

@@ -22,6 +22,7 @@ import subprocess
 import sys
 import os
 from routes.auth_routes import get_current_user
+from update_env import upsert_env_values, detect_serial_ports
 
 router = APIRouter(prefix="/utils", tags=["Utilities"])
 
@@ -31,6 +32,13 @@ SENSOR_CAPTURE_MODE: Optional[str] = None
 
 class TTSRequest(BaseModel):
     text: str
+
+
+class SerialConfigRequest(BaseModel):
+    single_port: Optional[str] = None
+    left_port: Optional[str] = None
+    right_port: Optional[str] = None
+    auto_detect: bool = False
 
 @router.get(
     "/health",
@@ -163,6 +171,60 @@ async def get_serial_status() -> Dict[str, Any]:
         return {"status": "success", "data": status}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read serial ports: {str(e)}")
+
+
+@router.post("/serial-config")
+async def update_serial_config(req: SerialConfigRequest) -> Dict[str, Any]:
+    """
+    Update configured serial ports in backend/.env.
+    Supports manual set or auto-detection.
+    """
+    try:
+        updates: Dict[str, str] = {}
+        if req.auto_detect:
+            ports = detect_serial_ports()
+            if not ports:
+                raise HTTPException(status_code=400, detail="No serial ports detected for auto configuration.")
+            updates["SERIAL_PORT_SINGLE"] = ports[0]
+            updates["SERIAL_PORT_LEFT"] = ports[0]
+            updates["SERIAL_PORT_RIGHT"] = ports[1] if len(ports) > 1 else ports[0]
+        else:
+            if req.single_port:
+                updates["SERIAL_PORT_SINGLE"] = req.single_port
+            if req.left_port:
+                updates["SERIAL_PORT_LEFT"] = req.left_port
+            if req.right_port:
+                updates["SERIAL_PORT_RIGHT"] = req.right_port
+
+        if not updates:
+            raise HTTPException(status_code=400, detail="Provide ports or set auto_detect=true.")
+
+        env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+        upsert_env_values(env_path, updates)
+
+        if "SERIAL_PORT_SINGLE" in updates:
+            settings.SERIAL_PORT_SINGLE = updates["SERIAL_PORT_SINGLE"]
+        if "SERIAL_PORT_LEFT" in updates:
+            settings.SERIAL_PORT_LEFT = updates["SERIAL_PORT_LEFT"]
+        if "SERIAL_PORT_RIGHT" in updates:
+            settings.SERIAL_PORT_RIGHT = updates["SERIAL_PORT_RIGHT"]
+
+        ports = list_ports.comports()
+        available = [p.device for p in ports]
+        status = {
+            "single_port": settings.SERIAL_PORT_SINGLE,
+            "left_port": settings.SERIAL_PORT_LEFT,
+            "right_port": settings.SERIAL_PORT_RIGHT,
+            "available_ports": available,
+            "single_connected": settings.SERIAL_PORT_SINGLE in available,
+            "left_connected": settings.SERIAL_PORT_LEFT in available,
+            "right_connected": settings.SERIAL_PORT_RIGHT in available
+        }
+        return {"status": "success", "updated": updates, "data": status}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update serial config: {str(e)}")
 
 @router.post("/sensor-capture/start")
 async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:

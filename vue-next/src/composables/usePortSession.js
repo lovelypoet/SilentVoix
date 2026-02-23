@@ -14,7 +14,9 @@ const DEFAULT_STATUS = {
 export function usePortSession() {
   const serialStatus = ref({ ...DEFAULT_STATUS })
   const isLoading = ref(false)
+  const isUpdatingConfig = ref(false)
   const error = ref('')
+  const message = ref('')
   const autoRefresh = ref(true)
   const lastCheckedAt = ref(null)
   const consecutiveFailures = ref(0)
@@ -26,6 +28,7 @@ export function usePortSession() {
       const res = await api.utils.serialStatus()
       serialStatus.value = res?.data ? res.data : { ...DEFAULT_STATUS }
       error.value = ''
+      message.value = ''
       consecutiveFailures.value = 0
       lastCheckedAt.value = new Date()
     } catch (e) {
@@ -53,6 +56,55 @@ export function usePortSession() {
     poll = null
   }
 
+  const applyAutoDetectedPorts = async () => {
+    isUpdatingConfig.value = true
+    try {
+      const res = await api.utils.serialConfig.auto()
+      if (res?.data) {
+        serialStatus.value = res.data
+      }
+      message.value = 'Serial port config updated from detected ports.'
+      error.value = ''
+      autoRefresh.value = true
+      consecutiveFailures.value = 0
+      lastCheckedAt.value = new Date()
+    } catch (_) {
+      error.value = 'Auto-detect failed. No ports detected or backend unavailable.'
+      message.value = ''
+    } finally {
+      isUpdatingConfig.value = false
+    }
+  }
+
+  const applySinglePort = async (singlePort) => {
+    if (!singlePort) {
+      error.value = 'Select a port first.'
+      return
+    }
+    isUpdatingConfig.value = true
+    try {
+      const payload = {
+        single_port: singlePort,
+        left_port: singlePort,
+        right_port: singlePort,
+      }
+      const res = await api.utils.serialConfig.update(payload)
+      if (res?.data) {
+        serialStatus.value = res.data
+      }
+      message.value = `Configured ports updated to ${singlePort}.`
+      error.value = ''
+      autoRefresh.value = true
+      consecutiveFailures.value = 0
+      lastCheckedAt.value = new Date()
+    } catch (_) {
+      error.value = 'Failed to update serial port config.'
+      message.value = ''
+    } finally {
+      isUpdatingConfig.value = false
+    }
+  }
+
   onMounted(() => {
     fetchSerialStatus()
     startPolling()
@@ -63,11 +115,15 @@ export function usePortSession() {
   })
 
   return {
+    applyAutoDetectedPorts,
+    applySinglePort,
     autoRefresh,
     error,
     fetchSerialStatus,
     isLoading,
+    isUpdatingConfig,
     lastCheckedAt,
+    message,
     serialStatus
   }
 }

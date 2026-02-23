@@ -13,7 +13,8 @@ import { useHandTracking } from '../composables/useHandTracking.js'
 import { useCollectData } from '../composables/useCollectData.js'
 import { useCollectorLogs } from '../composables/useCollectorLogs.js'
 import { useSyncStream } from '../composables/useSyncStream.js'
-import { useSensorStatus } from '../composables/useSensorStatus.js'
+import { usePortSession } from '../composables/usePortSession.js'
+import { useSensorCaptureSession } from '../composables/useSensorCaptureSession.js'
 
 const isSessionActive = ref(false)
 const showSettings = ref(false)
@@ -63,10 +64,13 @@ const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorC
 
 const {
   serialStatus,
+} = usePortSession()
+
+const {
   sensorCaptureStatus,
   startSensorCapture,
   stopSensorCapture
-} = useSensorStatus()
+} = useSensorCaptureSession()
 
 const {
   terminalLines,

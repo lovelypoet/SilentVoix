@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import { useSensorTraining } from '../composables/useSensorTraining'
@@ -31,13 +31,18 @@ const {
 } = useSensorTraining()
 
 const {
+  applyAutoDetectedPorts,
+  applySinglePort,
   autoRefresh,
   error: portError,
   fetchSerialStatus,
   isLoading: isPortLoading,
+  isUpdatingConfig,
   lastCheckedAt,
+  message: portMessage,
   serialStatus
 } = usePortSession()
+const selectedPort = ref('')
 
 const lastFrames = computed(() => {
   if (!liveFrames.value.length) return []
@@ -116,7 +121,20 @@ const channelPercent = (value, index) => {
         <p class="text-xs text-slate-500 mt-2 truncate">
           Detected: {{ (serialStatus.available_ports || []).length ? serialStatus.available_ports.join(', ') : 'none' }}
         </p>
+        <label class="block text-xs text-slate-400 mt-2">
+          Set Port
+          <select
+            v-model="selectedPort"
+            class="mt-1 w-full rounded border border-slate-700 bg-slate-950/70 px-2 py-1 text-slate-200"
+          >
+            <option value="">Select detected port</option>
+            <option v-for="port in (serialStatus.available_ports || [])" :key="port" :value="port">
+              {{ port }}
+            </option>
+          </select>
+        </label>
         <p v-if="portError" class="text-xs text-rose-300 mt-2">{{ portError }}</p>
+        <p v-if="portMessage" class="text-xs text-emerald-300 mt-2">{{ portMessage }}</p>
         <div class="flex items-center justify-between mt-3">
           <p class="text-[11px] text-slate-500">
             Last check: {{ lastCheckedAt ? lastCheckedAt.toLocaleTimeString() : '--' }}
@@ -124,10 +142,28 @@ const channelPercent = (value, index) => {
           <BaseBtn
             variant="secondary"
             class="!px-2 !py-1 text-xs"
-            :disabled="isPortLoading"
+            :disabled="isPortLoading || isUpdatingConfig"
             @click="fetchSerialStatus"
           >
             {{ isPortLoading ? 'Checking...' : 'Refresh' }}
+          </BaseBtn>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <BaseBtn
+            variant="secondary"
+            class="!px-2 !py-1 text-xs"
+            :disabled="isUpdatingConfig"
+            @click="applyAutoDetectedPorts"
+          >
+            {{ isUpdatingConfig ? 'Applying...' : 'Auto Detect' }}
+          </BaseBtn>
+          <BaseBtn
+            variant="secondary"
+            class="!px-2 !py-1 text-xs"
+            :disabled="isUpdatingConfig || !selectedPort"
+            @click="applySinglePort(selectedPort)"
+          >
+            Use Selected
           </BaseBtn>
         </div>
         <p class="text-[11px] mt-2" :class="autoRefresh ? 'text-teal-300' : 'text-amber-300'">
