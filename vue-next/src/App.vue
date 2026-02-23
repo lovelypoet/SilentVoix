@@ -1,12 +1,10 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import Toast from 'primevue/toast'; // Import Toast component
-import BaseBtn from './components/base/BaseBtn.vue' // Import BaseBtn
 import { useAuthStore } from './stores/auth' // Import useAuthStore
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 const isMobileNavOpen = ref(false)
 const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
@@ -17,11 +15,6 @@ watch(
     isMobileNavOpen.value = false
   }
 )
-
-const handleLogout = async () => {
-  await authStore.logout()
-  router.push('/login')
-}
 </script>
 
 <template>
@@ -52,11 +45,7 @@ const handleLogout = async () => {
         </RouterLink>
       </nav>
 
-      <div class="mt-auto"> <!-- This div will push the logout button to the bottom -->
-        <BaseBtn variant="danger" class="w-full justify-center" @click="handleLogout">
-          Logout
-        </BaseBtn>
-      </div>
+      <div class="mt-auto"></div>
     </aside>
 
     <div
@@ -98,11 +87,7 @@ const handleLogout = async () => {
         </RouterLink>
       </nav>
 
-      <div class="mt-auto">
-        <BaseBtn variant="danger" class="w-full justify-center" @click="handleLogout">
-          Logout
-        </BaseBtn>
-      </div>
+      <div class="mt-auto"></div>
     </aside>
 
     <!-- Main Content -->

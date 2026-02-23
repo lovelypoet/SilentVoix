@@ -43,6 +43,10 @@ const saveChanges = async () => {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to update profile.', life: 3000 });
   }
 }
+
+const handleLogout = async () => {
+  await authStore.logout()
+}
 </script>
 
 <template>
