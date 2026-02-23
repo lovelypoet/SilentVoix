@@ -342,17 +342,7 @@ watch(
   <div class="max-w-4xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div class="mb-8 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
-      <div class="flex justify-start">
-        <BaseBtn
-          variant="secondary"
-          title="Return to dashboard"
-          class="px-3"
-          @click="router.push('/')"
-        >
-          &larr;
-        </BaseBtn>
-      </div>
+    <div class="mb-8 text-center">
       <div class="text-left md:text-center">
       <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">
         {{ trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center' }}
@@ -361,7 +351,6 @@ watch(
         Master your sign language gestures with real-time feedback
       </p>
       </div>
-      <div class="hidden md:block"></div>
     </div>
 
     <!-- Permissions Denied -->
