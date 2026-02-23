@@ -179,12 +179,12 @@ const uploadFile = async (file) => {
       </div>
       
       <!-- Tab Navigation -->
-      <div class="flex bg-slate-800 p-1 rounded-lg">
+      <div class="flex bg-teal-500/10 border border-teal-500/30 p-1 rounded-lg">
         <button 
           v-for="tab in ['tts', 'library', 'live']" 
           :key="tab"
           class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          :class="activeTab === tab ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'"
+          :class="activeTab === tab ? 'bg-teal-500 text-slate-950 shadow shadow-teal-500/30' : 'text-teal-200 hover:text-teal-100'"
           @click="activeTab = tab"
         >
           {{ tab === 'tts' ? 'Text to Speech' : tab === 'library' ? 'Audio Library' : 'Live Voice' }}
@@ -204,17 +204,17 @@ const uploadFile = async (file) => {
         <div class="space-y-6">
           <!-- Engine Selector -->
           <div class="flex gap-4">
-            <div class="inline-flex bg-slate-900 p-1 rounded-lg border border-slate-700">
+            <div class="inline-flex bg-teal-500/10 p-1 rounded-lg border border-teal-500/30">
                <button 
                  class="px-4 py-2 rounded-md text-sm font-medium transition-all"
-                 :class="ttsEngine === 'gtts' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+                 :class="ttsEngine === 'gtts' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/30' : 'text-teal-200 hover:text-teal-100'"
                  @click="ttsEngine = 'gtts'"
                >
                  GTTS
                </button>
                <button 
                  class="px-4 py-2 rounded-md text-sm font-medium transition-all"
-                 :class="ttsEngine === 'os' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+                 :class="ttsEngine === 'os' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/30' : 'text-teal-200 hover:text-teal-100'"
                  @click="ttsEngine = 'os'"
                >
                  Device Default
