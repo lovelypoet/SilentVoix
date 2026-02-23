@@ -504,7 +504,7 @@ watch(terminalLines, () => {
   <div class="max-w-6xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div class="mb-8 grid grid-cols-3 items-center">
+    <div class="mb-8 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
       <div class="flex justify-start">
         <BaseBtn
           variant="secondary"
@@ -515,13 +515,13 @@ watch(terminalLines, () => {
           &larr;
         </BaseBtn>
       </div>
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-white mb-2">Capture Session</h1>
+      <div class="text-left md:text-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Capture Session</h1>
         <p class="text-slate-400">
           Record labeled gestures with consistent frame caps and CSV export.
         </p>
       </div>
-      <div></div>
+      <div class="hidden md:block"></div>
     </div>
 
     <div v-if="error" class="text-center mt-12">
@@ -572,7 +572,7 @@ watch(terminalLines, () => {
           </div>
         </div>
 
-        <div class="mt-6 flex items-stretch gap-4">
+        <div class="mt-6 flex flex-col md:flex-row items-stretch gap-4">
           <BaseBtn variant="primary" :disabled="isRequesting" class="flex-none" @click="startSession">
             {{ isRequesting ? 'Requesting...' : 'Start Capture Session' }}
           </BaseBtn>
@@ -664,7 +664,7 @@ watch(terminalLines, () => {
                 {{ sensorCaptureStatus.status === 'running' ? 'Running' : 'Stopped' }}
               </span>
             </div>
-            <div class="flex gap-3">
+            <div class="flex flex-wrap gap-3">
               <BaseBtn variant="primary" @click="startSensorCapture(captureMode)">Start Sensor</BaseBtn>
               <BaseBtn variant="secondary" @click="stopSensorCapture">Stop Sensor</BaseBtn>
               <BaseBtn

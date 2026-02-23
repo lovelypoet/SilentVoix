@@ -415,7 +415,7 @@ watch(
         </div>
       </div>
 
-      <div v-else-if="trainingMode === 'advanced'" class="w-full grid grid-cols-2 gap-4 aspect-video">
+      <div v-else-if="trainingMode === 'advanced'" class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 md:aspect-video">
         <!-- Left Placeholder: 3D Model -->
         <div class="bg-slate-900 rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl flex items-center justify-center">
           <span class="text-slate-500 text-2xl font-bold">3D Model</span>
@@ -466,7 +466,7 @@ watch(
         </div>
       </div>
 
-      <div class="flex gap-4 mt-8">
+      <div class="flex flex-wrap gap-4 mt-8">
         <BaseBtn variant="danger" @click="stopTraining">
           End Session
         </BaseBtn>
@@ -557,7 +557,7 @@ watch(
     </div>
 
     <!-- Initial State -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">
       <BaseCard class="group hover:border-teal-400/50 transition-colors cursor-pointer card" @click="startTraining">
         <div
           class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">

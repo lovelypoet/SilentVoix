@@ -48,7 +48,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-6">
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
       <div>
         <h1 class="text-3xl font-bold text-white">Gesture Library</h1>
         <p class="text-slate-400">View and manage your learned signs</p>
@@ -58,7 +58,7 @@ onMounted(async () => {
 
     <!-- Filter/Search Bar -->
     <div class="flex gap-4">
-       <input type="text" placeholder="Search gestures..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white w-64 focus:border-teal-500 focus:outline-none" />
+       <input type="text" placeholder="Search gestures..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white w-full sm:w-64 focus:border-teal-500 focus:outline-none" />
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -91,7 +91,7 @@ onMounted(async () => {
        </BaseCard>
     </div>
 
-    <Dialog v-model:visible="displayDialog" modal header="Record New Gesture" :style="{ width: '30rem' }" @hide="cancelRecordNewGesture">
+    <Dialog v-model:visible="displayDialog" modal header="Record New Gesture" :style="{ width: 'min(30rem, 92vw)' }" @hide="cancelRecordNewGesture">
      <div class="p-fluid w-full">
   <div class="field w-full">
     <label

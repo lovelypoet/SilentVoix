@@ -262,13 +262,13 @@ const channelPercent = (value, index) => {
           </label>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 mt-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-5">
           <BaseBtn v-if="!isRecording" variant="primary" @click="startRecording">Start</BaseBtn>
           <BaseBtn v-else variant="amber" @click="stopRecording">Stop</BaseBtn>
           <BaseBtn variant="danger" @click="resetRecording">Reset</BaseBtn>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 mt-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
           <BaseBtn :disabled="!canExport" variant="secondary" @click="exportRecordedCsv">Export CSV</BaseBtn>
           <BaseBtn :disabled="!canExport" variant="secondary" @click="exportRecordedJson">Export JSON</BaseBtn>
         </div>
