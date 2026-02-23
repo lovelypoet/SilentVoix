@@ -819,7 +819,7 @@ watch(
     <div v-else class="mt-12">
       <div
         ref="trainingCardsScroller"
-        class="training-cards-scroll flex gap-8 overflow-x-auto pb-2"
+        class="training-cards-scroll flex items-stretch gap-8 overflow-x-auto pb-2"
         :class="{ 'is-dragging': isDraggingCards }"
         @wheel="handleTrainingCardsWheel"
         @scroll="handleTrainingCardsScroll"
@@ -834,12 +834,12 @@ watch(
       <BaseCard
         v-for="card in trainingCards"
         :key="`${loopIndex}-${card.id}`"
-        class="card min-w-[280px] sm:min-w-[320px] xl:min-w-[340px] flex-none transition-colors"
+        class="card w-[280px] sm:w-[320px] xl:w-[340px] h-[430px] flex-none flex flex-col transition-colors"
         :class="card.locked ? 'group opacity-50 cursor-not-allowed' : 'group hover:border-teal-400/50 cursor-pointer'"
         @click="handleTrainingCardClick(card)"
       >
         <div
-          class="h-48 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 transition-colors"
+          class="h-40 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 transition-colors"
           :class="card.locked ? '' : 'group-hover:text-teal-400'"
         >
           <span class="text-5xl">{{ card.icon }}</span>
@@ -847,10 +847,10 @@ watch(
         <h3 class="text-xl font-bold text-teal-300 mb-2">
           {{ card.title }}
         </h3>
-        <p class="text-slate-400 text-sm mb-6">
+        <p class="text-slate-400 text-sm flex-1">
           {{ card.description }}
         </p>
-        <BaseBtn class="w-full" :variant="card.buttonVariant" :disabled="card.disabled">
+        <BaseBtn class="w-full mt-6" :variant="card.buttonVariant" :disabled="card.disabled">
           {{ card.buttonLabel }}
         </BaseBtn>
       </BaseCard>
