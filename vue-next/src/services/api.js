@@ -24,6 +24,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     const detail = error.response?.data?.detail || error.message;
     console.error('API Error:', detail);
     return Promise.reject(error);

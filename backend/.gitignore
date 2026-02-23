@@ -1,13 +1,11 @@
-tests/*
+test/*
 
-venv
+venv/
 
-.pyc
-
-node_modules/
+__pycache__/
 
 data/
 
 logs/
 
-__pycache__
+.pyc
