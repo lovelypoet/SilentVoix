@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import { useSensorTraining } from '../composables/useSensorTraining'
+import { usePortSession } from '../composables/usePortSession'
 
 const {
   canExport,
@@ -28,6 +29,15 @@ const {
   startRecording,
   stopRecording
 } = useSensorTraining()
+
+const {
+  autoRefresh,
+  error: portError,
+  fetchSerialStatus,
+  isLoading: isPortLoading,
+  lastCheckedAt,
+  serialStatus
+} = usePortSession()
 
 const lastFrames = computed(() => {
   if (!liveFrames.value.length) return []
@@ -64,7 +74,7 @@ const channelPercent = (value, index) => {
       </p>
     </section>
 
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
+    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-5 mb-6">
       <BaseCard>
         <p class="text-xs uppercase tracking-wide text-slate-400">Connection</p>
         <p class="text-lg font-semibold mt-2" :class="isConnected ? 'text-emerald-300' : 'text-amber-300'">
@@ -93,6 +103,36 @@ const channelPercent = (value, index) => {
           {{ lastFrameAt ? lastFrameAt.toLocaleTimeString() : '--' }}
         </p>
         <p class="text-xs text-slate-500 mt-2">Schema: silentvoix.sensor_frame.v1</p>
+      </BaseCard>
+
+      <BaseCard>
+        <p class="text-xs uppercase tracking-wide text-slate-400">Arduino Port</p>
+        <p class="text-sm font-semibold mt-2" :class="serialStatus.single_connected ? 'text-emerald-300' : 'text-amber-300'">
+          {{ serialStatus.single_connected ? 'Connected' : 'Not Connected' }}
+        </p>
+        <p class="text-xs text-slate-500 mt-1">
+          Configured: {{ serialStatus.single_port || '--' }}
+        </p>
+        <p class="text-xs text-slate-500 mt-2 truncate">
+          Detected: {{ (serialStatus.available_ports || []).length ? serialStatus.available_ports.join(', ') : 'none' }}
+        </p>
+        <p v-if="portError" class="text-xs text-rose-300 mt-2">{{ portError }}</p>
+        <div class="flex items-center justify-between mt-3">
+          <p class="text-[11px] text-slate-500">
+            Last check: {{ lastCheckedAt ? lastCheckedAt.toLocaleTimeString() : '--' }}
+          </p>
+          <BaseBtn
+            variant="secondary"
+            class="!px-2 !py-1 text-xs"
+            :disabled="isPortLoading"
+            @click="fetchSerialStatus"
+          >
+            {{ isPortLoading ? 'Checking...' : 'Refresh' }}
+          </BaseBtn>
+        </div>
+        <p class="text-[11px] mt-2" :class="autoRefresh ? 'text-teal-300' : 'text-amber-300'">
+          Auto-refresh: {{ autoRefresh ? 'on' : 'paused' }}
+        </p>
       </BaseCard>
     </section>
 
