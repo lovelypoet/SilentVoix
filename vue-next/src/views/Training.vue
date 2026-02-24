@@ -34,6 +34,8 @@ const isAdjustingInfiniteScroll = ref(false)
 const dragLastX = ref(0)
 const dragLastTime = ref(0)
 const dragVelocityPerFrame = ref(0)
+const activeDragPointerId = ref(null)
+const hasPointerCapture = ref(false)
 let momentumAnimationFrameId = null
 let momentumVelocityPerFrame = 0
 
@@ -369,22 +371,28 @@ const startTrainingCardsDrag = (event) => {
   stopTrainingCardsMomentum()
   isDraggingCards.value = true
   hasDraggedCards.value = false
+  activeDragPointerId.value = event.pointerId
+  hasPointerCapture.value = false
   dragStartX.value = event.clientX
   dragStartScrollLeft.value = scroller.scrollLeft
   dragLastX.value = event.clientX
   dragLastTime.value = performance.now()
   dragVelocityPerFrame.value = 0
-  event.currentTarget?.setPointerCapture?.(event.pointerId)
 }
 
 const moveTrainingCardsDrag = (event) => {
   if (!isDraggingCards.value) return
+  if (event.pointerId !== activeDragPointerId.value) return
   const scroller = trainingCardsScroller.value
   if (!scroller) return
 
   const deltaX = event.clientX - dragStartX.value
   if (Math.abs(deltaX) > 6) {
     hasDraggedCards.value = true
+    if (!hasPointerCapture.value) {
+      event.currentTarget?.setPointerCapture?.(event.pointerId)
+      hasPointerCapture.value = true
+    }
   }
 
   if (hasDraggedCards.value) {
@@ -406,13 +414,18 @@ const moveTrainingCardsDrag = (event) => {
 
 const stopTrainingCardsDrag = (event) => {
   if (!isDraggingCards.value) return
+  if (activeDragPointerId.value !== null && event.pointerId !== activeDragPointerId.value) return
 
   if (hasDraggedCards.value) {
     suppressNextCardClick.value = true
     startTrainingCardsMomentum(dragVelocityPerFrame.value)
   }
   isDraggingCards.value = false
-  event.currentTarget?.releasePointerCapture?.(event.pointerId)
+  if (hasPointerCapture.value) {
+    event.currentTarget?.releasePointerCapture?.(event.pointerId)
+  }
+  activeDragPointerId.value = null
+  hasPointerCapture.value = false
 }
 
 const handleTrainingCardsClickCapture = (event) => {
