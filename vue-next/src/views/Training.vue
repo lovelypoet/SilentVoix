@@ -288,6 +288,7 @@ const stopAndAutoSave = () => {
   stopCollecting()
   hasAutoSavedCurrentRun.value = true
   downloadCSV()
+  resetRecording()
 }
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))

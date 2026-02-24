@@ -189,7 +189,9 @@ const resetRecording = () => {
 const stopAndAutoSave = async () => {
   if (!isCollecting.value || hasAutoSavedCurrentRun.value) return
   hasAutoSavedCurrentRun.value = true
+  
   stopCollecting()
+  resetRecording()
   await downloadCvSensorCsv()
 }
 
@@ -342,6 +344,11 @@ const downloadCvSensorCsv = async () => {
 }
 
 const triggerSyncCue = (onComplete = null) => {
+  downloadCSV()
+  
+}
+
+const triggerSyncCue = () => {
   if (syncCountdown.value > 0) return
   if (syncCueTimer) {
     clearInterval(syncCueTimer)
