@@ -14,7 +14,7 @@ import threading
 import websockets
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 # Backend imports
 backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if backend_path not in sys.path:
@@ -148,7 +148,7 @@ def main():
                     mongo_doc = {
                         "session_id": SESSION_ID,
                         "label": LABEL,
-                        "timestamp": datetime.utcnow(),
+                        "timestamp": datetime.now(timezone.utc),
                         "timestamp_ms": timestamp_ms,
                         "values": data
                     }

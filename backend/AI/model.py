@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from itertools import cycle
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 import asyncio
 
@@ -274,7 +274,7 @@ try:
     if model_collection is not None and ModelResult is not None:
         result = ModelResult(
             session_id=str(uuid4()),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             accuracy=float(acc),
             model_name="SignGloveModel",
             notes="Training completed successfully with 11-feature optimized input"
