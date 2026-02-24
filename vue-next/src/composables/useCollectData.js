@@ -8,6 +8,8 @@ export function useCollectData() {
   const takeLogs = ref([])
   const takeCounter = ref(0)
   const currentTakeId = ref(null)
+  const autoGestureFolderIndex = ref(1)
+  const autoDownloadRootHandle = ref(null)
 
   const metadata = ref({
     fps: 30,
@@ -34,7 +36,6 @@ export function useCollectData() {
     const timestamp_ms = frameMeta.timestamp_ms ?? Date.now()
     const frame_id = frameMeta.frame_id ?? collectedLandmarks.value.length
     const take_id = frameMeta.take_id ?? currentTakeId.value
-    const lighting_status = frameMeta.lighting_status ?? null
     const primary_hand = handednessArray?.[0]?.[0]?.categoryName || null
     if (!landmarksArray || landmarksArray.length === 0) {
       const features = []
@@ -45,7 +46,6 @@ export function useCollectData() {
         timestamp_ms,
         take_id,
         primary_hand,
-        lighting_status,
         take_quality: null,
         quality_score: null,
         bad_reasons: '',
@@ -90,7 +90,6 @@ export function useCollectData() {
       timestamp_ms,
       take_id,
       primary_hand,
-      lighting_status,
       take_quality: null,
       quality_score: null,
       bad_reasons: '',
@@ -98,17 +97,6 @@ export function useCollectData() {
       R_exist: rightHand ? 1 : 0,
       features
     })
-  }
-
-  const summarizeLighting = (frames) => {
-    const samples = frames.filter(f => f.lighting_status)
-    if (!samples.length) return null
-    const poorCount = samples.filter(f => f.lighting_status === 'Poor').length
-    return {
-      total: samples.length,
-      poor_count: poorCount,
-      poor_pct: samples.length ? poorCount / samples.length : 0
-    }
   }
 
   const computeFlipCount = (frames) => {
@@ -131,7 +119,6 @@ export function useCollectData() {
     const framePct = frameLimit ? totalFrames / frameLimit : 1
     const handPresencePct = totalFrames ? handFrames / totalFrames : 0
     const flipCount = computeFlipCount(takeFrames)
-    const lighting = summarizeLighting(takeFrames)
 
     const reasons = []
     let score = 100
@@ -149,11 +136,6 @@ export function useCollectData() {
     if (flipCount > 1) {
       reasons.push('handedness flip detected')
       score -= Math.min(20, 5 + (flipCount - 1) * 5)
-    }
-
-    if (lighting && lighting.poor_pct > 0.5) {
-      reasons.push('lighting too poor')
-      score -= 15
     }
 
     score = Math.max(0, Math.min(100, Math.round(score)))
@@ -179,7 +161,6 @@ export function useCollectData() {
       frame_pct: framePct,
       hand_presence_pct: handPresencePct,
       flip_count: flipCount,
-      lighting_poor_pct: lighting ? lighting.poor_pct : null,
       quality_score: score,
       quality,
       bad_reasons,
@@ -196,7 +177,7 @@ export function useCollectData() {
   }
 
   const convertToCSV = () => {
-    let header = 'frame_id,timestamp_ms,gesture,take_id,take_quality,quality_score,bad_reasons,primary_hand,lighting_status,L_exist,R_exist,L_missing,R_missing'
+    let header = 'frame_id,timestamp_ms,gesture,primary_hand,L_exist,R_exist,L_missing,R_missing'
 
     for (let i = 0; i < 21; i++) {
       header += `,L_x${i},L_y${i},L_z${i}`
@@ -211,10 +192,8 @@ export function useCollectData() {
     collectedLandmarks.value.forEach(frame => {
       const L_missing = frame.L_exist ? 0 : 1
       const R_missing = frame.R_exist ? 0 : 1
-      const badReasons = (frame.bad_reasons || '').replace(/,/g, ';')
-      let row = `${frame.frame_id},${frame.timestamp_ms},${frame.gesture},${frame.take_id ?? ''},` +
-        `${frame.take_quality ?? ''},${frame.quality_score ?? ''},${badReasons},` +
-        `${frame.primary_hand ?? ''},${frame.lighting_status ?? ''},` +
+      let row = `${frame.frame_id},${frame.timestamp_ms},${frame.gesture},` +
+        `${frame.primary_hand ?? ''},` +
         `${frame.L_exist},${frame.R_exist},${L_missing},${R_missing}`
       frame.features.forEach(v => {
         row += `,${v}`
@@ -234,7 +213,15 @@ export function useCollectData() {
     return `${timestamp}_${suffix}`
   }
 
-  const downloadMetadata = (exportId = null) => {
+  const nextGestureFolderName = () => {
+    const folderName = `gesture_${String(autoGestureFolderIndex.value).padStart(3, '0')}`
+    autoGestureFolderIndex.value = autoGestureFolderIndex.value >= 10 ? 1 : autoGestureFolderIndex.value + 1
+    return folderName
+  }
+
+  const sanitizeFileName = (value) => (value || 'data').replace(/[\\/:*?"<>|]+/g, '_')
+
+  const buildMetadata = (exportId = null) => {
     const hasLeft = collectedLandmarks.value.some(f => f.L_exist === 1)
     const hasRight = collectedLandmarks.value.some(f => f.R_exist === 1)
     const leftMissing = collectedLandmarks.value.filter(f => f.L_exist === 0).length
@@ -248,7 +235,7 @@ export function useCollectData() {
     else if (hasLeft) hands = 'left'
     else if (hasRight) hands = 'right'
 
-    const meta = {
+    return {
       label: currentGestureName.value || 'unknown',
       fps: metadata.value.fps,
       frame_limit: metadata.value.frame_limit,
@@ -266,6 +253,19 @@ export function useCollectData() {
       export_id: exportId,
       created_at: new Date().toISOString()
     }
+  }
+
+  const buildTakeMetadata = (exportId = null) => ({
+    export_id: exportId,
+    label: currentGestureName.value || 'unknown',
+    fps: metadata.value.fps,
+    frame_limit: metadata.value.frame_limit,
+    created_at: new Date().toISOString(),
+    takes: takes.value
+  })
+
+  const downloadMetadata = (exportId = null) => {
+    const meta = buildMetadata(exportId)
 
     const blob = new Blob(
       [JSON.stringify(meta, null, 2)],
@@ -280,37 +280,102 @@ export function useCollectData() {
     URL.revokeObjectURL(url)
   }
 
-  const downloadCSV = () => {
-    if (collectedLandmarks.value.length === 0) return
+  const writeTextFile = async (dirHandle, fileName, content) => {
+    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
+    const writable = await fileHandle.createWritable()
+    await writable.write(content)
+    await writable.close()
+  }
 
-    const csv = convertToCSV()
-    const blob = new Blob([csv], { type: 'text/csv' })
+  const supportsFolderWrite = () =>
+    typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'
+
+  const prepareAutoDownloadFolder = async () => {
+    if (!supportsFolderWrite()) return false
+    if (autoDownloadRootHandle.value) return true
+    autoDownloadRootHandle.value = await window.showDirectoryPicker({ mode: 'readwrite' })
+    return true
+  }
+
+  const saveThreeFilesToFolder = async (folderData) => {
+    if (!supportsFolderWrite()) return false
+
+    if (!autoDownloadRootHandle.value) return false
+
+    const folderName = nextGestureFolderName()
+    const folderHandle = await autoDownloadRootHandle.value.getDirectoryHandle(folderName, { create: true })
+
+    await writeTextFile(
+      folderHandle,
+      `landmarks_${folderData.gestureName}_${folderData.exportId}.csv`,
+      folderData.csvContent
+    )
+    await writeTextFile(
+      folderHandle,
+      `landmarks_${folderData.gestureName}_${folderData.exportId}_metadata.json`,
+      JSON.stringify(folderData.metaPayload, null, 2)
+    )
+    await writeTextFile(
+      folderHandle,
+      `takes_${folderData.gestureName}_${folderData.exportId}.json`,
+      JSON.stringify(folderData.takePayload, null, 2)
+    )
+
+    takeLogs.value.push(`auto-saved to folder ${folderName}`)
+    return true
+  }
+
+  const downloadCSV = async () => {
+    if (collectedLandmarks.value.length === 0) return
+    const exportId = buildExportId()
+    const gestureName = sanitizeFileName(currentGestureName.value || 'data')
+    const csvContent = convertToCSV()
+    const metaPayload = buildMetadata(exportId)
+    const takePayload = buildTakeMetadata(exportId)
+
+    try {
+      const wroteFolder = await saveThreeFilesToFolder({
+        exportId,
+        gestureName,
+        csvContent,
+        metaPayload,
+        takePayload
+      })
+      if (wroteFolder) return
+    } catch (error) {
+      console.error('Auto folder download failed, fallback to file downloads:', error)
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-
-    const exportId = buildExportId()
-
     a.href = url
-    a.download = `landmarks_${currentGestureName.value || 'data'}_${exportId}.csv`
+    a.download = `landmarks_${gestureName}_${exportId}.csv`
     a.click()
     URL.revokeObjectURL(url)
 
-    downloadMetadata(exportId)
-    downloadTakeMetadata(exportId)
+    const metaBlob = new Blob([JSON.stringify(metaPayload, null, 2)], { type: 'application/json' })
+    const metaUrl = URL.createObjectURL(metaBlob)
+    const metaA = document.createElement('a')
+    metaA.href = metaUrl
+    metaA.download = `landmarks_${gestureName}_${exportId}_metadata.json`
+    metaA.click()
+    URL.revokeObjectURL(metaUrl)
+
+    const takeBlob = new Blob([JSON.stringify(takePayload, null, 2)], { type: 'application/json' })
+    const takeUrl = URL.createObjectURL(takeBlob)
+    const takeA = document.createElement('a')
+    takeA.href = takeUrl
+    takeA.download = `takes_${gestureName}_${exportId}.json`
+    takeA.click()
+    URL.revokeObjectURL(takeUrl)
   }
 
   const downloadTakeMetadata = (exportId = null) => {
     if (!takes.value.length) return
-    const createdAt = new Date().toISOString()
+    const payload = buildTakeMetadata(exportId)
     const blob = new Blob(
-      [JSON.stringify({
-        export_id: exportId,
-        label: currentGestureName.value || 'unknown',
-        fps: metadata.value.fps,
-        frame_limit: metadata.value.frame_limit,
-        created_at: createdAt,
-        takes: takes.value
-      }, null, 2)],
+      [JSON.stringify(payload, null, 2)],
       { type: 'application/json' }
     )
 
@@ -344,6 +409,7 @@ export function useCollectData() {
     downloadCSV,
     downloadMetadata,
     downloadTakeMetadata,
+    prepareAutoDownloadFolder,
     clearData,
     convertToCSV
   }

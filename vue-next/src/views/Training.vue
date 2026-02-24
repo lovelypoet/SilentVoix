@@ -68,6 +68,7 @@ const {
   stopCollecting,
   addLandmark,
   downloadCSV,
+  prepareAutoDownloadFolder,
   clearData
 } = useCollectData()
 
@@ -267,7 +268,12 @@ const returnToTrainingCards = () => {
   trainingMode.value = null // Reset training mode
 }
 
-const startRecording = () => {
+const startRecording = async () => {
+  try {
+    await prepareAutoDownloadFolder()
+  } catch (error) {
+    console.warn('Folder picker skipped or unavailable, fallback to file downloads.', error)
+  }
   metadata.value.fps = 30
   metadata.value.frame_limit = frameLimit.value
   recordingStartCount.value = collectedLandmarks.value.length
