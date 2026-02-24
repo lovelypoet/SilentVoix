@@ -28,15 +28,12 @@ class Settings(BaseSettings):
     
     # Security
     JWT_SECRET_KEY: str = Field("your-secret-key-change-in-production", env="JWT_SECRET_KEY")
-    JWT_ALGORITHM: str = Field("HS256", env="JWT_ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(7, env="REFRESH_TOKEN_EXPIRE_DAYS")
     
     # Database
     MONGO_URI: str = Field("mongodb://localhost:27017", env="MONGO_URI")
     DB_NAME: str = Field("signglove", env="DB_NAME")
     TEST_DB_NAME: str = "test_signglove"
-    # Legacy duplicates removed (ENVIRONMENT/SECRET_KEY/ALGORITHM/ACCESS_TOKEN_EXPIRE_MINUTES)
 
     
     # Model/data paths

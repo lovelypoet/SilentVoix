@@ -15,7 +15,7 @@ import json
 import asyncio
 import time
 from typing import Dict, Set
-from datetime import datetime
+from datetime import datetime, timezone
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
@@ -188,7 +188,7 @@ async def websocket_voice_stream(websocket: WebSocket):
     # Add to active connections
     active_connections.add(websocket)
     connection_status["active_connections"] = len(active_connections)
-    connection_status["last_activity"] = datetime.utcnow().isoformat()
+    connection_status["last_activity"] = datetime.now(timezone.utc).isoformat()
     
     # Create session
     voice_sessions[session_id] = {
@@ -214,7 +214,7 @@ async def websocket_voice_stream(websocket: WebSocket):
             try:
                 # Receive audio data with timeout
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
-                connection_status["last_activity"] = datetime.utcnow().isoformat()
+                connection_status["last_activity"] = datetime.now(timezone.utc).isoformat()
                 
                 if data.get("type") == "voice_data":
                     # Process audio chunk
@@ -257,7 +257,7 @@ async def websocket_voice_stream(websocket: WebSocket):
                             try:
                                 voice_doc = {
                                     "session_id": session_id,
-                                    "timestamp": datetime.utcnow(),
+                                    "timestamp": datetime.now(timezone.utc),
                                     "volume": volume,
                                     "audio_duration": chunk_duration,
                                     "has_speech": True,
@@ -372,7 +372,7 @@ async def start_voice_session():
     }
     
     connection_status["total_sessions"] += 1
-    connection_status["last_activity"] = datetime.utcnow().isoformat()
+    connection_status["last_activity"] = datetime.now(timezone.utc).isoformat()
     
     return JSONResponse({
         "status": "success",
@@ -410,7 +410,7 @@ async def voice_health_check():
         "voice_system": "operational",
         "active_connections": len(active_connections),
         "voice_recognition_available": HAS_SPEECH_RECOGNITION or HAS_WHISPER,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
 @router.get("/sessions")
@@ -479,7 +479,7 @@ async def process_manual_voice():
                     # Save audio to file for debugging
                     import os
                     os.makedirs("debug_audio", exist_ok=True)
-                    debug_file = f"debug_audio/audio_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.wav"
+                    debug_file = f"debug_audio/audio_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.wav"
                     with open(debug_file, "wb") as f:
                         f.write(audio.get_wav_data())
                     logger.info(f"Saved audio to {debug_file}")

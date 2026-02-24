@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse
 from core.settings import settings
 from core.database import db
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 import shutil
 import requests
@@ -61,7 +61,7 @@ async def upload_audio_file(
         f.write(contents)
     meta = {
         "filename": filename,
-        "upload_time": datetime.utcnow(),
+        "upload_time": datetime.now(timezone.utc),
         "uploader": uploader
     }
     await db["audio_files"].insert_one(meta)

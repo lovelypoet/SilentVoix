@@ -15,7 +15,7 @@ import threading
 import websockets
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 # Backend imports
@@ -161,7 +161,7 @@ class DualHandDataCollector:
             mongo_doc = {
                 "session_id": data['session_id'],
                 "label": data['label'],
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(timezone.utc),
                 "timestamp_ms": data['timestamp_ms'],
                 "left_hand": data['left'],
                 "right_hand": data['right'],
