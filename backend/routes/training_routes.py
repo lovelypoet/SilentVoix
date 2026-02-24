@@ -435,7 +435,7 @@ async def convert_gesture_to_dual_hand(session_id: str, _user=Depends(role_or_in
             "session_id": new_session_id,
             "label": gesture.get("label", "unknown"),
             "values": dual_hand_values,
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "source": "converted_from_single_hand",
             "original_session_id": session_id
         }
