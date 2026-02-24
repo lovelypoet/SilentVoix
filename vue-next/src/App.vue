@@ -8,6 +8,10 @@ const route = useRoute()
 const authStore = useAuthStore()
 const isMobileNavOpen = ref(false)
 const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
+const isFullscreenLayout = computed(() => {
+  if (route.meta.layout === 'empty' || route.meta.layout === 'fullscreen') return true
+  return route.name === 'training' && route.query.trainingSession === '1'
+})
 
 watch(
   () => route.fullPath,
@@ -21,7 +25,7 @@ watch(
   <div class="min-h-screen bg-slate-950 text-slate-200 flex app-bg">
     <Toast /> <!-- Add Toast component here -->
     <!-- Sidebar (Hidden on login) -->
-    <aside v-if="route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen'" class="hidden lg:flex w-52 border-r border-slate-800 p-5 flex-col fixed h-screen top-0 left-0">
+    <aside v-if="!isFullscreenLayout" class="hidden lg:flex w-52 border-r border-slate-800 p-5 flex-col fixed h-screen top-0 left-0">
       <RouterLink to="/" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
       
       <nav class="flex flex-col gap-2">
@@ -49,13 +53,13 @@ watch(
     </aside>
 
     <div
-      v-if="route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen' && isMobileNavOpen"
+      v-if="!isFullscreenLayout && isMobileNavOpen"
       class="fixed inset-0 z-40 bg-black/60 lg:hidden"
       @click="isMobileNavOpen = false"
     ></div>
 
     <aside
-      v-if="route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen'"
+      v-if="!isFullscreenLayout"
       class="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-800 bg-slate-950 p-6 flex flex-col transform transition-transform duration-200 lg:hidden"
       :class="isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
     >
@@ -94,12 +98,12 @@ watch(
     <main
       class="flex-1 overflow-auto"
       :class="{
-        'p-4 sm:p-6 lg:py-8 lg:pr-8 lg:pl-0': route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen',
-        'lg:ml-52': route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen'
+        'p-4 sm:p-6 lg:py-8 lg:pr-8 lg:pl-0': !isFullscreenLayout,
+        'lg:ml-52': !isFullscreenLayout
       }"
     >
       <div
-        v-if="route.meta.layout !== 'empty' && route.meta.layout !== 'fullscreen'"
+        v-if="!isFullscreenLayout"
         class="mb-4 flex items-center gap-3 lg:hidden"
       >
         <button class="p-2 rounded border border-slate-700 text-slate-200" @click="isMobileNavOpen = true">

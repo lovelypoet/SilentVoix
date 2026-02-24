@@ -77,6 +77,20 @@ if (route.query.newGestureName) {
   isTraining.value = true; // Automatically start training if a new gesture name is provided
 }
 
+const syncTrainingSessionRouteState = async (active) => {
+  const targetValue = active ? '1' : undefined
+  if (route.query.trainingSession === targetValue) return
+
+  const nextQuery = { ...route.query }
+  if (active) {
+    nextQuery.trainingSession = '1'
+  } else {
+    delete nextQuery.trainingSession
+  }
+
+  await router.replace({ path: route.path, query: nextQuery })
+}
+
 // FPS calculation
 let frameCount = 0
 let lastTime = performance.now()
@@ -620,6 +634,14 @@ watch(
     await nextTick()
     resetInfiniteTrainingCardsPosition()
   }
+)
+
+watch(
+  isTraining,
+  (active) => {
+    void syncTrainingSessionRouteState(active)
+  },
+  { immediate: true }
 )
 </script>
 
