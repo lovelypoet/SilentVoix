@@ -196,7 +196,8 @@ export function useCollectData() {
   }
 
   const convertToCSV = () => {
-    let header = 'frame_id,timestamp_ms,gesture,take_id,take_quality,quality_score,bad_reasons,primary_hand,lighting_status,L_exist,R_exist,L_missing,R_missing'
+    // Đã bỏ 6 cột: take_id, take_quality, quality_score, bad_reasons, primary_hand, lighting_status
+    let header = 'frame_id,timestamp_ms,gesture,L_exist,R_exist,L_missing,R_missing'
 
     for (let i = 0; i < 21; i++) {
       header += `,L_x${i},L_y${i},L_z${i}`
@@ -211,10 +212,7 @@ export function useCollectData() {
     collectedLandmarks.value.forEach(frame => {
       const L_missing = frame.L_exist ? 0 : 1
       const R_missing = frame.R_exist ? 0 : 1
-      const badReasons = (frame.bad_reasons || '').replace(/,/g, ';')
-      let row = `${frame.frame_id},${frame.timestamp_ms},${frame.gesture},${frame.take_id ?? ''},` +
-        `${frame.take_quality ?? ''},${frame.quality_score ?? ''},${badReasons},` +
-        `${frame.primary_hand ?? ''},${frame.lighting_status ?? ''},` +
+      let row = `${frame.frame_id},${frame.timestamp_ms},${frame.gesture},` +
         `${frame.L_exist},${frame.R_exist},${L_missing},${R_missing}`
       frame.features.forEach(v => {
         row += `,${v}`
@@ -297,6 +295,9 @@ export function useCollectData() {
 
     downloadMetadata(exportId)
     downloadTakeMetadata(exportId)
+
+    // Tự động clear & reset sau khi download xong
+    clearData()
   }
 
   const downloadTakeMetadata = (exportId = null) => {
