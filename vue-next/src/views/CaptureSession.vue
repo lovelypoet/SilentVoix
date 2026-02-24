@@ -344,11 +344,6 @@ const downloadCvSensorCsv = async () => {
 }
 
 const triggerSyncCue = (onComplete = null) => {
-  downloadCSV()
-  
-}
-
-const triggerSyncCue = () => {
   if (syncCountdown.value > 0) return
   if (syncCueTimer) {
     clearInterval(syncCueTimer)
