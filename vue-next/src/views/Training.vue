@@ -192,6 +192,7 @@ const trainingCards = computed(() => {
 const startTraining = async () => {
   isStartingFreeTraining.value = true
   try {
+    enableCamera.value = true
     await requestPermissions()
     if (hasPermissions.value) {
       isTraining.value = true
@@ -209,6 +210,7 @@ const startCaptureSession = () => {
 const startAdvancedTraining = async () => {
   isStartingAdvancedTraining.value = true
   try {
+    enableCamera.value = true
     await requestPermissions()
     if (hasPermissions.value) {
       isTraining.value = true
@@ -226,10 +228,26 @@ const handlePermissionRequest = async () => {
   }
 }
 
-const stopTraining = () => {
+const resetLiveFeedback = () => {
+  prevLandmarks.value = null
+  prevHandedness.value = null
+  confidence.value = '--%'
+  detectedGesture.value = 'Waiting...'
+}
+
+const endTrainingSession = () => {
+  if (isCollecting.value) {
+    stopCollecting()
+  }
+  enableCamera.value = false
   stopHandTracking()
   stopFpsCounter()
   stopStream()
+  resetLiveFeedback()
+}
+
+const returnToTrainingCards = () => {
+  endTrainingSession()
   isTraining.value = false
   showSettings.value = false
   trainingMode.value = null // Reset training mode
@@ -457,10 +475,7 @@ watch(
       stopHandTracking()
       stopFpsCounter()
       // Reset states when stopping
-      prevLandmarks.value = null
-      prevHandedness.value = null
-      confidence.value = '--%'
-      detectedGesture.value = 'Waiting...'
+      resetLiveFeedback()
       return
     }
 
@@ -612,15 +627,29 @@ watch(
   <div class="max-w-4xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div class="mb-8 text-center">
-      <div class="text-left md:text-center">
-      <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">
-        {{ trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center' }}
-      </h1>
-      <p class="text-slate-400">
-        Master your sign language gestures with real-time feedback
-      </p>
+    <div
+      class="mb-8"
+      :class="isTraining && hasPermissions ? 'grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3' : 'text-center'"
+    >
+      <div v-if="isTraining && hasPermissions" class="flex justify-start">
+        <BaseBtn
+          variant="secondary"
+          title="Return to training cards"
+          class="px-3"
+          @click="returnToTrainingCards"
+        >
+          &larr;
+        </BaseBtn>
       </div>
+      <div class="text-left md:text-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">
+          {{ trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center' }}
+        </h1>
+        <p class="text-slate-400">
+          Master your sign language gestures with real-time feedback
+        </p>
+      </div>
+      <div v-if="isTraining && hasPermissions" class="hidden md:block"></div>
     </div>
 
     <!-- Permissions Denied -->
@@ -739,7 +768,7 @@ watch(
       </div>
 
       <div class="flex flex-wrap gap-4 mt-8">
-        <BaseBtn variant="danger" @click="stopTraining">
+        <BaseBtn variant="danger" @click="endTrainingSession">
           End Session
         </BaseBtn>
         <BaseBtn variant="secondary" @click="showSettings = true">
