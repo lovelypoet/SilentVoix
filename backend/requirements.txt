@@ -52,6 +52,14 @@ typing_extensions==4.14.0
 motor==3.7.1
 pymongo==4.13.2
 
+# ===============================
+# Optional: PostgreSQL migration path
+# Install these when migrating from MongoDB to PostgreSQL.
+# SQLAlchemyRepository in db/sqlalchemy_repository.py requires both.
+# ===============================
+# sqlalchemy[asyncio]==2.0.46
+# asyncpg==0.31.0
+
 python-jose==3.3.0
 passlib==1.7.4
 bcrypt==4.0.1
