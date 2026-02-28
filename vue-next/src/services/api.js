@@ -109,11 +109,6 @@ export default {
       update: (payload) => api.post('/utils/serial-config', payload),
       auto: () => api.post('/utils/serial-config', { auto_detect: true }),
     },
-    sensorCapture: {
-      start: (mode = 'single') => api.post(`/utils/sensor-capture/start?mode=${mode}`),
-      stop: () => api.post('/utils/sensor-capture/stop'),
-      status: () => api.get('/utils/sensor-capture/status'),
-    },
     collectorLogs: (mode = 'single', lines = 200) => api.get(`/utils/collector/logs?mode=${mode}&lines=${lines}`),
     // TTS
     tts: {
@@ -132,6 +127,15 @@ export default {
       getLanguages: () => api.get('/utils/tts/languages'),
       setLanguage: (language) => api.post(`/utils/tts/language?language=${language}`),
       getConfig: () => api.get('/utils/tts/config'),
+    }
+  },
+
+  // ===================== Capture Controls API =====================
+  captureControls: {
+    sensorCapture: {
+      start: (mode = 'single') => api.post(`/capture-controls/sensor-capture/start?mode=${mode}`),
+      stop: () => api.post('/capture-controls/sensor-capture/stop'),
+      status: () => api.get('/capture-controls/sensor-capture/status'),
     }
   },
 

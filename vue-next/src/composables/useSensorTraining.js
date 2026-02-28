@@ -110,7 +110,7 @@ export function useSensorTraining() {
 
   const fetchCaptureStatus = async () => {
     try {
-      const res = await api.utils.sensorCapture.status()
+      const res = await api.captureControls.sensorCapture.status()
       applyCaptureStatus(res || {})
       captureError.value = ''
       return res
@@ -128,7 +128,7 @@ export function useSensorTraining() {
     try {
       const status = await fetchCaptureStatus()
       if (status?.status === 'running') return true
-      const started = await api.utils.sensorCapture.start('single')
+      const started = await api.captureControls.sensorCapture.start('single')
       applyCaptureStatus(started || {})
       captureError.value = ''
       return true
@@ -144,7 +144,7 @@ export function useSensorTraining() {
     if (isCaptureBusy.value) return
     isCaptureBusy.value = true
     try {
-      const res = await api.utils.sensorCapture.stop()
+      const res = await api.captureControls.sensorCapture.stop()
       applyCaptureStatus(res || { status: 'stopped' })
       captureError.value = ''
     } catch (_) {

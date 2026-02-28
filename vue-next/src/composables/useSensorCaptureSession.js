@@ -8,7 +8,7 @@ export function useSensorCaptureSession() {
 
   const fetchCaptureStatus = async () => {
     try {
-      const res = await api.utils.sensorCapture.status()
+      const res = await api.captureControls.sensorCapture.status()
       if (res) {
         sensorCaptureStatus.value = res
       }
@@ -19,12 +19,12 @@ export function useSensorCaptureSession() {
   }
 
   const startSensorCapture = async (mode) => {
-    await api.utils.sensorCapture.start(mode)
+    await api.captureControls.sensorCapture.start(mode)
     await fetchCaptureStatus()
   }
 
   const stopSensorCapture = async () => {
-    await api.utils.sensorCapture.stop()
+    await api.captureControls.sensorCapture.stop()
     await fetchCaptureStatus()
   }
 

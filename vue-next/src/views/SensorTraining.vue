@@ -192,43 +192,6 @@ const channelPercent = (value, index) => {
         <p class="text-[11px] mt-2" :class="autoRefresh ? 'text-teal-300' : 'text-amber-300'">
           Auto-refresh: {{ autoRefresh ? 'on' : 'paused' }}
         </p>
-        <div class="mt-3 border-t border-slate-800 pt-2">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">Capture Service</p>
-          <p class="text-xs mt-1" :class="captureStatus === 'running' ? 'text-emerald-300' : 'text-amber-300'">
-            {{ captureStatus }}
-            <span v-if="capturePid"> (pid {{ capturePid }})</span>
-          </p>
-          <p v-if="captureError" class="text-xs text-rose-300 mt-1">{{ captureError }}</p>
-          <p v-if="captureLogPath" class="text-[11px] text-slate-500 mt-1 truncate">
-            Log: {{ captureLogPath }}
-          </p>
-          <div class="grid grid-cols-2 gap-2 mt-2">
-            <BaseBtn
-              variant="secondary"
-              class="!px-2 !py-1 text-xs"
-              :disabled="isCaptureBusy"
-              @click="connect"
-            >
-              {{ isCaptureBusy ? 'Working...' : 'Start Capture' }}
-            </BaseBtn>
-            <BaseBtn
-              variant="secondary"
-              class="!px-2 !py-1 text-xs"
-              :disabled="isCaptureBusy"
-              @click="stopCapture"
-            >
-              Stop Capture
-            </BaseBtn>
-          </div>
-          <BaseBtn
-            variant="secondary"
-            class="!px-2 !py-1 text-xs mt-2 w-full"
-            :disabled="isCaptureBusy"
-            @click="fetchCaptureStatus"
-          >
-            Refresh Capture Status
-          </BaseBtn>
-        </div>
       </BaseCard>
     </section>
 
@@ -290,6 +253,34 @@ const channelPercent = (value, index) => {
 
       <BaseCard>
         <h2 class="text-xl font-semibold text-slate-100 mb-4">Capture Controls</h2>
+        <div class="mb-4 border border-slate-800 rounded-lg p-3 bg-slate-950/40">
+          <p class="text-[11px] uppercase tracking-wide text-slate-400">Capture Service</p>
+          <p class="text-xs mt-1" :class="captureStatus === 'running' ? 'text-emerald-300' : 'text-amber-300'">
+            {{ captureStatus }}
+            <span v-if="capturePid"> (pid {{ capturePid }})</span>
+          </p>
+          <p v-if="captureError" class="text-xs text-rose-300 mt-1">{{ captureError }}</p>
+          <p v-if="captureLogPath" class="text-[11px] text-slate-500 mt-1 truncate">
+            Log: {{ captureLogPath }}
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+            <BaseBtn variant="secondary" :disabled="isCaptureBusy" @click="connect">
+              {{ isCaptureBusy ? 'Working...' : 'Start Capture' }}
+            </BaseBtn>
+            <BaseBtn variant="secondary" :disabled="isCaptureBusy" @click="stopCapture">
+              Stop Capture
+            </BaseBtn>
+          </div>
+          <BaseBtn
+            variant="secondary"
+            class="mt-2 w-full"
+            :disabled="isCaptureBusy"
+            @click="fetchCaptureStatus"
+          >
+            Refresh Capture Status
+          </BaseBtn>
+        </div>
+
         <div class="space-y-3">
           <label class="block text-sm text-slate-300">
             Session ID
