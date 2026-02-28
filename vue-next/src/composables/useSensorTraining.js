@@ -53,6 +53,11 @@ export function useSensorTraining() {
   const isConnected = ref(false)
   const connectionState = ref('disconnected')
   const connectionError = ref('')
+  const captureStatus = ref('unknown')
+  const captureError = ref('')
+  const isCaptureBusy = ref(false)
+  const capturePid = ref(null)
+  const captureLogPath = ref('')
   const liveFrames = ref([])
   const recordedFrames = ref([])
   const isRecording = ref(false)
@@ -95,6 +100,58 @@ export function useSensorTraining() {
       // Ignore socket close errors.
     }
     ws.value = null
+  }
+
+  const applyCaptureStatus = (payload) => {
+    captureStatus.value = payload?.status || 'unknown'
+    capturePid.value = payload?.pid ?? null
+    captureLogPath.value = payload?.log_path || ''
+  }
+
+  const fetchCaptureStatus = async () => {
+    try {
+      const res = await api.utils.sensorCapture.status()
+      applyCaptureStatus(res || {})
+      captureError.value = ''
+      return res
+    } catch (_) {
+      captureError.value = 'Unable to fetch sensor capture status.'
+      captureStatus.value = 'unknown'
+      capturePid.value = null
+      return null
+    }
+  }
+
+  const ensureCaptureRunning = async () => {
+    if (isCaptureBusy.value) return false
+    isCaptureBusy.value = true
+    try {
+      const status = await fetchCaptureStatus()
+      if (status?.status === 'running') return true
+      const started = await api.utils.sensorCapture.start('single')
+      applyCaptureStatus(started || {})
+      captureError.value = ''
+      return true
+    } catch (_) {
+      captureError.value = 'Failed to auto-start sensor capture.'
+      return false
+    } finally {
+      isCaptureBusy.value = false
+    }
+  }
+
+  const stopCapture = async () => {
+    if (isCaptureBusy.value) return
+    isCaptureBusy.value = true
+    try {
+      const res = await api.utils.sensorCapture.stop()
+      applyCaptureStatus(res || { status: 'stopped' })
+      captureError.value = ''
+    } catch (_) {
+      captureError.value = 'Failed to stop sensor capture.'
+    } finally {
+      isCaptureBusy.value = false
+    }
   }
 
   const addLiveFrame = (frame) => {
@@ -140,9 +197,16 @@ export function useSensorTraining() {
     }
   }
 
-  const connect = () => {
+  const connect = async () => {
     connectionError.value = ''
     if (ws.value && isConnected.value) return
+
+    const captureOk = await ensureCaptureRunning()
+    if (!captureOk) {
+      connectionError.value = 'Sensor capture is not running.'
+      connectionState.value = 'error'
+      return
+    }
 
     connectionState.value = 'connecting'
     const socket = api.createWebSocket('/ws/stream')
@@ -252,7 +316,8 @@ export function useSensorTraining() {
   }
 
   onMounted(() => {
-    connect()
+    void ensureCaptureRunning()
+    void connect()
   })
 
   onUnmounted(() => {
@@ -260,6 +325,10 @@ export function useSensorTraining() {
   })
 
   return {
+    captureError,
+    captureLogPath,
+    capturePid,
+    captureStatus,
     canExport,
     clearLiveFrames,
     connect,
@@ -269,7 +338,9 @@ export function useSensorTraining() {
     estimatedFps,
     exportRecordedCsv,
     exportRecordedJson,
+    fetchCaptureStatus,
     isConnected,
+    isCaptureBusy,
     isRecording,
     label,
     lastFrameAt,
@@ -280,6 +351,7 @@ export function useSensorTraining() {
     recordedFrames,
     resetRecording,
     sessionId,
+    stopCapture,
     startRecording,
     stopRecording
   }

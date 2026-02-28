@@ -71,13 +71,23 @@ def read_data(ser):
         line = ser.readline().decode('utf-8').strip()
         if line:
             parts = [p.strip() for p in line.split(',') if p.strip() != ""]
-            if len(parts) not in (TOTAL_SENSORS, TOTAL_SENSORS + 1):
-                return None
             try:
                 values = [float(v) for v in parts]
-                # Some firmware sends timestamp_ms + 11 sensor values.
-                if len(values) == TOTAL_SENSORS + 1:
+
+                # Format A: 11 direct channels (flex5 + accel3 + gyro3)
+                if len(values) == TOTAL_SENSORS:
+                    pass
+                # Format B: timestamp + 11 channels
+                elif len(values) == TOTAL_SENSORS + 1:
                     values = values[1:]
+                # Format C: timestamp + accel3 + gyro3 (no flex in firmware output)
+                # Example: millis, ax, ay, az, gx, gy, gz
+                elif len(values) == 7:
+                    imu = values[1:]
+                    values = [0.0, 0.0, 0.0, 0.0, 0.0] + imu
+                else:
+                    return None
+
                 logger.info(f"[SUCCESS] Read values: {values}")
                 return values
             except ValueError:
