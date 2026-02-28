@@ -10,6 +10,7 @@ const DEFAULT_STATUS = {
   left_connected: false,
   right_connected: false
 }
+const POLL_INTERVAL_MS = 2000
 
 export function usePortSession() {
   const serialStatus = ref({ ...DEFAULT_STATUS })
@@ -47,7 +48,7 @@ export function usePortSession() {
     poll = setInterval(() => {
       if (!autoRefresh.value) return
       fetchSerialStatus()
-    }, 5000)
+    }, POLL_INTERVAL_MS)
   }
 
   const stopPolling = () => {

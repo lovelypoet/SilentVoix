@@ -18,6 +18,7 @@ import os
 from utils.cache import cacheable
 from typing import Dict, Any, Optional
 from serial.tools import list_ports
+import serial
 import subprocess
 import sys
 import os
@@ -39,6 +40,32 @@ class SerialConfigRequest(BaseModel):
     left_port: Optional[str] = None
     right_port: Optional[str] = None
     auto_detect: bool = False
+
+
+def _is_port_connected(port: Optional[str], available_ports: list[str]) -> bool:
+    """
+    Fast connectivity probe for a configured serial port.
+    We do not rely only on list_ports() because Docker device mappings can
+    leave stale device nodes visible briefly after unplug events.
+    """
+    if not port:
+        return False
+
+    # If the scanner cannot see it at all, treat as disconnected immediately.
+    if port not in available_ports:
+        return False
+
+    try:
+        # Short open/close probe to confirm the device is actually alive.
+        ser = serial.Serial(port=port, baudrate=115200, timeout=0.1)
+        ser.close()
+        return True
+    except serial.SerialException as exc:
+        msg = str(exc).lower()
+        # If the port is busy/permission-denied, assume physically present.
+        return any(token in msg for token in ("busy", "resource", "permission denied", "access is denied"))
+    except Exception:
+        return False
 
 @router.get(
     "/health",
@@ -159,14 +186,17 @@ async def get_serial_status() -> Dict[str, Any]:
     try:
         ports = list_ports.comports()
         available = [p.device for p in ports]
+        single_connected = _is_port_connected(settings.SERIAL_PORT_SINGLE, available)
+        left_connected = _is_port_connected(settings.SERIAL_PORT_LEFT, available)
+        right_connected = _is_port_connected(settings.SERIAL_PORT_RIGHT, available)
         status = {
             "single_port": settings.SERIAL_PORT_SINGLE,
             "left_port": settings.SERIAL_PORT_LEFT,
             "right_port": settings.SERIAL_PORT_RIGHT,
             "available_ports": available,
-            "single_connected": settings.SERIAL_PORT_SINGLE in available,
-            "left_connected": settings.SERIAL_PORT_LEFT in available,
-            "right_connected": settings.SERIAL_PORT_RIGHT in available
+            "single_connected": single_connected,
+            "left_connected": left_connected,
+            "right_connected": right_connected
         }
         return {"status": "success", "data": status}
     except Exception as e:
@@ -211,14 +241,17 @@ async def update_serial_config(req: SerialConfigRequest) -> Dict[str, Any]:
 
         ports = list_ports.comports()
         available = [p.device for p in ports]
+        single_connected = _is_port_connected(settings.SERIAL_PORT_SINGLE, available)
+        left_connected = _is_port_connected(settings.SERIAL_PORT_LEFT, available)
+        right_connected = _is_port_connected(settings.SERIAL_PORT_RIGHT, available)
         status = {
             "single_port": settings.SERIAL_PORT_SINGLE,
             "left_port": settings.SERIAL_PORT_LEFT,
             "right_port": settings.SERIAL_PORT_RIGHT,
             "available_ports": available,
-            "single_connected": settings.SERIAL_PORT_SINGLE in available,
-            "left_connected": settings.SERIAL_PORT_LEFT in available,
-            "right_connected": settings.SERIAL_PORT_RIGHT in available
+            "single_connected": single_connected,
+            "left_connected": left_connected,
+            "right_connected": right_connected
         }
         return {"status": "success", "updated": updates, "data": status}
     except HTTPException:

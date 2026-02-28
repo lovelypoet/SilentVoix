@@ -18,3 +18,6 @@ services:
     - MONGO_URI=mongodb+srv://namanh14122005:test123@signglove-cluster.2fgsv8h.mongodb.net/sign_glove?retryWrites=true&w=majority
     - DB_NAME=sign_glove
     - TTS_PROVIDER=gtts
+    - SERIAL_PORT_SINGLE=/dev/ttyACM0
+    volumes:
+      - /dev:/dev
