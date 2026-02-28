@@ -357,12 +357,10 @@ async def test_tts(
         response_data = {"result": result}
         
         if result.get("status") == "success" and "audio_path" in result:
-            # Construct URL
-            # audio_path is like 'tts_cache/xyz.mp3' or absolute path
-            # We need filename
+            # Return a relative URL so frontend origin/proxy can resolve correctly
+            # in both docker-compose nginx and Vite dev proxy environments.
             filename = os.path.basename(result["audio_path"])
-            base_url = str(request.base_url).rstrip("/")
-            response_data["audio_url"] = f"{base_url}/static/tts/{filename}"
+            response_data["audio_url"] = f"/static/tts/{filename}"
             
             # Play on laptop if requested (optional/debug)
             if play_on_laptop:

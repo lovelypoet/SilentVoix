@@ -657,8 +657,10 @@ watch(
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
     <div
-      class="mb-8"
-      :class="isTraining && hasPermissions ? 'grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3' : 'text-center'"
+      :class="[
+        isTraining && hasPermissions ? 'grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3' : 'text-center',
+        isTraining && hasPermissions && trainingMode === 'advanced' ? 'mb-3' : 'mb-8'
+      ]"
     >
       <div v-if="isTraining && hasPermissions" class="flex justify-start">
         <BaseBtn
@@ -745,14 +747,14 @@ watch(
         </div>
       </div>
 
-      <div v-else-if="trainingMode === 'advanced'" class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 md:aspect-video">
+      <div v-else-if="trainingMode === 'advanced'" class="training-advanced-layout w-full md:w-[min(92vw,72rem)] mx-auto grid grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,5fr)] gap-4 md:gap-5">
         <!-- Left Placeholder: 3D Model -->
-        <div class="bg-slate-900 rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl flex items-center justify-center">
+        <div class="training-advanced-panel training-advanced-model-panel order-2 md:order-1 bg-slate-900 rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl flex items-center justify-center">
           <span class="text-slate-500 text-2xl font-bold">3D Model</span>
         </div>
 
         <!-- Right Placeholder: Camera Feed -->
-        <div class="bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
+        <div class="training-advanced-panel training-advanced-camera-panel order-1 md:order-2 bg-black rounded-2xl border border-slate-700 relative overflow-hidden shadow-2xl">
           <div v-if="!enableCamera" class="absolute inset-0 flex items-center justify-center text-slate-500 bg-black">
             Camera is disabled
           </div>
@@ -771,7 +773,7 @@ watch(
             @update:avg-brightness="currentAvgBrightness = $event"
             @update:lighting-status="currentLightingStatus = $event"
           />
-          <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
+          <div class="absolute top-7 left-7 right-7 flex justify-between items-end">
             <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">FPS (Target: 30)</div>
               <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
@@ -783,7 +785,7 @@ watch(
               <div class="text-2xl font-bold" :class="currentLightingStatus.colorClass">{{ currentLightingStatus.status }}</div>
             </div>
           </div>
-          <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+          <div class="absolute bottom-7 left-7 right-7 flex justify-between items-end">
             <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Detected Gesture</div>
               <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
@@ -796,7 +798,7 @@ watch(
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-4 mt-8">
+      <div class="flex flex-wrap gap-4" :class="trainingMode === 'advanced' ? 'mt-5' : 'mt-8'">
         <BaseBtn variant="danger" @click="endTrainingSession">
           End Session
         </BaseBtn>
@@ -945,5 +947,25 @@ watch(
 
 .training-cards-scroll.is-dragging {
   cursor: grabbing;
+}
+
+.training-advanced-layout {
+  align-items: stretch;
+}
+
+.training-advanced-panel {
+  min-height: 22rem;
+}
+
+@media (min-width: 768px) {
+  .training-advanced-camera-panel {
+    min-height: 70vh;
+    max-height: 760px;
+  }
+
+  .training-advanced-model-panel {
+    min-height: 64vh;
+    max-height: 700px;
+  }
 }
 </style>

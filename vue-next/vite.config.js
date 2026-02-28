@@ -22,6 +22,10 @@ export default defineConfig({
         target: 'http://backend:8080',
         changeOrigin: true,
       },
+      '/static/tts': {
+        target: 'http://backend:8080',
+        changeOrigin: true,
+      },
     }
   },
 })
