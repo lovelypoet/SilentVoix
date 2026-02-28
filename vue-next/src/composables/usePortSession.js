@@ -31,13 +31,13 @@ export function usePortSession() {
       error.value = ''
       message.value = ''
       consecutiveFailures.value = 0
+      autoRefresh.value = true
       lastCheckedAt.value = new Date()
     } catch (e) {
       error.value = 'Unable to reach backend serial-status endpoint.'
       consecutiveFailures.value += 1
-      if (consecutiveFailures.value >= 3) {
-        autoRefresh.value = false
-      }
+      // Keep polling instead of permanently pausing after startup hiccups.
+      autoRefresh.value = true
     } finally {
       isLoading.value = false
     }

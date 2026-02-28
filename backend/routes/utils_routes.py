@@ -278,8 +278,8 @@ async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:
     try:
         SENSOR_CAPTURE_PROCESS = subprocess.Popen(
             [sys.executable, script_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             cwd=os.path.dirname(script_path)
         )
         SENSOR_CAPTURE_MODE = mode

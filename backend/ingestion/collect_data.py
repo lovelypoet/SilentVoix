@@ -28,7 +28,8 @@ from core.database import sensor_collection  # MongoDB collection
 from core.settings import settings as app_settings
 
 # ========= CONFIG =========
-SERIAL_PORT = 'COM6'  # 👈 Change to your port (e.g., /dev/ttyUSB0)
+# Read serial port from backend settings/env to avoid hardcoded Windows COM defaults.
+SERIAL_PORT = app_settings.SERIAL_PORT_SINGLE
 BAUD_RATE = 115200
 FLEX_SENSORS = 5
 ACCEL_SENSORS = 3
@@ -69,13 +70,16 @@ def read_data(ser):
     try:
         line = ser.readline().decode('utf-8').strip()
         if line:
-            val = line.split(',')
-            if len(val) != TOTAL_SENSORS:
+            parts = [p.strip() for p in line.split(',') if p.strip() != ""]
+            if len(parts) not in (TOTAL_SENSORS, TOTAL_SENSORS + 1):
                 return None
             try:
-                val = list(map(int, val))
-                logger.info(f"[SUCCESS] Read values: {val}")
-                return val
+                values = [float(v) for v in parts]
+                # Some firmware sends timestamp_ms + 11 sensor values.
+                if len(values) == TOTAL_SENSORS + 1:
+                    values = values[1:]
+                logger.info(f"[SUCCESS] Read values: {values}")
+                return values
             except ValueError:
                 return None
     except Exception as e:
@@ -125,8 +129,8 @@ def main():
         return
 
     data_queue = []
-    loop = asyncio.get_event_loop()
-    threading.Thread(target=loop.run_until_complete, args=(send_to_backend(data_queue),), daemon=True).start()
+    # Run the async websocket forwarder on its own thread/event loop.
+    threading.Thread(target=lambda: asyncio.run(send_to_backend(data_queue)), daemon=True).start()
 
     try:
         with open(RAW_DATA_PATH, 'a', newline='') as csvfile:

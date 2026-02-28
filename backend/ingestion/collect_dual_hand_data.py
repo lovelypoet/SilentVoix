@@ -27,8 +27,9 @@ from core.database import sensor_collection
 from core.settings import settings as app_settings
 
 # ========= DUAL HAND CONFIG =========
-LEFT_HAND_PORT = 'COM5'   # 👈 Change to your left hand port
-RIGHT_HAND_PORT = 'COM6'  # 👈 Change to your right hand port
+# Read serial ports from backend settings/env to avoid hardcoded Windows COM defaults.
+LEFT_HAND_PORT = app_settings.SERIAL_PORT_LEFT
+RIGHT_HAND_PORT = app_settings.SERIAL_PORT_RIGHT
 BAUD_RATE = 115200
 
 # Sensor configuration per hand

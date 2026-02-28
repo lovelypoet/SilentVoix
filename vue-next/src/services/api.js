@@ -152,7 +152,10 @@ export default {
     } else {
       wsOrigin = window.location.origin.replace(/^http/, 'ws');
     }
-    const wsUrl = wsOrigin + path + (token ? `?token=${token}` : '');
+    // /ws/stream is intentionally public; avoid auth query param so expired tokens
+    // never break websocket handshake in the training UI.
+    const includeToken = path !== '/ws/stream';
+    const wsUrl = wsOrigin + path + (includeToken && token ? `?token=${token}` : '');
     return new WebSocket(wsUrl);
   }
 };
