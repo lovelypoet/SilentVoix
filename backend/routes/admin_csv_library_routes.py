@@ -48,6 +48,10 @@ class DatasetSelectionRequest(BaseModel):
     mode: str = "single"
 
 
+class DeleteCsvRequest(BaseModel):
+    confirm_name: str
+
+
 def _safe_csv_name(name: str) -> str:
     value = (name or "").strip().replace("\\", "/")
     if not value:
@@ -813,4 +817,42 @@ async def archive_csv_file(
         "to_path": str(destination),
         "schema_id": meta.get("schema_id", "unknown"),
         "archived_at": archived_at,
+    }
+
+
+@router.delete("/files/{name:path}")
+async def delete_csv_file_permanently(
+    name: str,
+    req: DeleteCsvRequest,
+    _user=Depends(role_or_internal_dep("admin")),
+):
+    scope, path, safe_name = _resolve_csv_path(name, include_archived=True)
+    expected = safe_name
+    if req.confirm_name.strip() != expected:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Confirmation mismatch. Type exact file name: {expected}",
+        )
+
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"CSV file not found: {safe_name}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete file '{safe_name}': {exc}")
+
+    # Clean up selection slots that reference deleted file.
+    store = _load_selection_store()
+    keys_to_remove = [k for k, v in store.items() if isinstance(v, dict) and v.get("name") == safe_name]
+    if keys_to_remove:
+        for key in keys_to_remove:
+            store.pop(key, None)
+        _save_selection_store(store)
+
+    return {
+        "status": "success",
+        "name": safe_name,
+        "scope": scope,
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "selection_slots_cleared": keys_to_remove,
     }

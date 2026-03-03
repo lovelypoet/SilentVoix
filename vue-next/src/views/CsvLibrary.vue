@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useToast } from 'primevue/usetoast'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import api from '../services/api'
+const toast = useToast()
 
 const files = ref([])
 const isLoading = ref(false)
@@ -18,6 +20,7 @@ const selectingByName = ref({})
 const compatibilityByName = ref({})
 const checkingByName = ref({})
 const archivingByName = ref({})
+const deletingByName = ref({})
 
 const previewData = ref(null)
 const previewLoading = ref(false)
@@ -25,6 +28,10 @@ const previewError = ref('')
 const statsData = ref(null)
 const statsLoading = ref(false)
 const statsError = ref('')
+const confirmDialogOpen = ref(false)
+const confirmActionType = ref('')
+const confirmFileName = ref('')
+const confirmTypedName = ref('')
 
 const schemaFilter = ref('all')
 
@@ -170,19 +177,35 @@ const downloadFile = async (name) => {
 }
 
 const archiveFile = async (name) => {
-  const ok = window.confirm(`Archive ${name}? This is a soft move and can be listed with "Include archived".`)
-  if (!ok) return
-
   archivingByName.value = { ...archivingByName.value, [name]: true }
   try {
     await api.admin.csvLibrary.archive(encodePathParam(name))
     if (previewData.value?.name === name) previewData.value = null
     if (statsData.value?.name === name) statsData.value = null
     await loadFiles()
+    toast.add({ severity: 'success', summary: 'Archived', detail: `${name} moved to archive.`, life: 3000 })
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Archive failed.'
+    toast.add({ severity: 'error', summary: 'Archive Failed', detail: error.value, life: 3500 })
   } finally {
     archivingByName.value = { ...archivingByName.value, [name]: false }
+  }
+}
+
+const deleteFilePermanently = async (name) => {
+  deletingByName.value = { ...deletingByName.value, [name]: true }
+  error.value = ''
+  try {
+    await api.admin.csvLibrary.deletePermanent(encodePathParam(name), name)
+    if (previewData.value?.name === name) previewData.value = null
+    if (statsData.value?.name === name) statsData.value = null
+    await loadFiles()
+    toast.add({ severity: 'success', summary: 'Deleted', detail: `${name} was permanently deleted.`, life: 3000 })
+  } catch (e) {
+    error.value = e?.response?.data?.detail || 'Permanent delete failed.'
+    toast.add({ severity: 'error', summary: 'Delete Failed', detail: error.value, life: 3500 })
+  } finally {
+    deletingByName.value = { ...deletingByName.value, [name]: false }
   }
 }
 
@@ -192,10 +215,67 @@ const useDataset = async (name) => {
   try {
     await api.admin.csvLibrary.selection.set(name, pipeline.value, mode.value)
     await loadSelections()
+    toast.add({
+      severity: 'success',
+      summary: 'Dataset Selected',
+      detail: `${name} selected for ${pipeline.value}/${mode.value}.`,
+      life: 2800
+    })
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Failed to set selected dataset.'
+    toast.add({ severity: 'error', summary: 'Selection Failed', detail: error.value, life: 3500 })
   } finally {
     selectingByName.value = { ...selectingByName.value, [name]: false }
+  }
+}
+
+const openArchiveConfirm = (name) => {
+  confirmActionType.value = 'archive'
+  confirmFileName.value = name
+  confirmTypedName.value = ''
+  confirmDialogOpen.value = true
+}
+
+const openDeleteConfirm = (name) => {
+  confirmActionType.value = 'delete'
+  confirmFileName.value = name
+  confirmTypedName.value = ''
+  confirmDialogOpen.value = true
+}
+
+const closeConfirmDialog = () => {
+  confirmDialogOpen.value = false
+  confirmActionType.value = ''
+  confirmFileName.value = ''
+  confirmTypedName.value = ''
+}
+
+const confirmDialogSubmit = async () => {
+  const action = confirmActionType.value
+  const name = confirmFileName.value
+  if (!name) {
+    closeConfirmDialog()
+    return
+  }
+
+  if (action === 'delete') {
+    if (confirmTypedName.value !== name) {
+      toast.add({
+        severity: 'warn',
+        summary: 'Name Mismatch',
+        detail: 'Type the exact file name to confirm delete.',
+        life: 3200
+      })
+      return
+    }
+    closeConfirmDialog()
+    await deleteFilePermanently(name)
+    return
+  }
+
+  if (action === 'archive') {
+    closeConfirmDialog()
+    await archiveFile(name)
   }
 }
 
@@ -336,9 +416,17 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
                     variant="danger"
                     class="px-3 py-1 text-xs"
                     :disabled="file.scope === 'archive' || archivingByName[file.name]"
-                    @click="archiveFile(file.name)"
+                    @click="openArchiveConfirm(file.name)"
                   >
                     {{ file.scope === 'archive' ? 'Archived' : (archivingByName[file.name] ? 'Archiving...' : 'Archive') }}
+                  </BaseBtn>
+                  <BaseBtn
+                    variant="danger"
+                    class="px-3 py-1 text-xs"
+                    :disabled="deletingByName[file.name]"
+                    @click="openDeleteConfirm(file.name)"
+                  >
+                    {{ deletingByName[file.name] ? 'Deleting...' : 'Delete' }}
                   </BaseBtn>
                 </div>
               </td>
@@ -431,5 +519,36 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
         </div>
       </div>
     </BaseCard>
+
+    <div v-if="confirmDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+        <h3 class="text-lg font-semibold text-white">
+          {{ confirmActionType === 'delete' ? 'Confirm Permanent Delete' : 'Confirm Archive' }}
+        </h3>
+        <p class="mt-2 text-sm text-slate-300">
+          <span v-if="confirmActionType === 'archive'">
+            Archive <span class="font-semibold text-white">{{ confirmFileName }}</span>?
+          </span>
+          <span v-else>
+            Delete <span class="font-semibold text-white">{{ confirmFileName }}</span> permanently. This cannot be undone.
+          </span>
+        </p>
+        <div v-if="confirmActionType === 'delete'" class="mt-3">
+          <label class="block text-xs text-slate-400 mb-1">Type exact file name to confirm</label>
+          <input
+            v-model="confirmTypedName"
+            type="text"
+            class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+            :placeholder="confirmFileName"
+          />
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+          <BaseBtn variant="secondary" @click="closeConfirmDialog">Cancel</BaseBtn>
+          <BaseBtn variant="danger" @click="confirmDialogSubmit">
+            {{ confirmActionType === 'delete' ? 'Delete Permanently' : 'Archive' }}
+          </BaseBtn>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

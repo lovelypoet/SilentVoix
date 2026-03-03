@@ -174,6 +174,8 @@ export default {
         api.get(`/admin/csv-library/files/${name}/compatibility?pipeline=${pipeline}&mode=${mode}`),
       archive: (name) =>
         api.post(`/admin/csv-library/files/${name}/archive`),
+      deletePermanent: (name, confirmName) =>
+        api.delete(`/admin/csv-library/files/${name}`, { data: { confirm_name: confirmName } }),
       download: (name) =>
         api.get(`/admin/csv-library/files/${name}/download`, { responseType: 'blob' })
     }
