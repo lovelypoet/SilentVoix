@@ -14,6 +14,7 @@ Allow admin/editor users to upload an **already exported model** (within support
 ## Supported Model Families (initial range)
 - LSTM-based sequence models (exported for inference)
 - CNN-based image/frame models (exported for inference)
+- Other deep learning models can be plugged but within the acceptance output range(.pth, .pt, .tflite, .h5, .onxx)
 - Optional extension: hybrid CNN+LSTM exported variants
 
 Note: training framework is not required at runtime; only exported inference artifact is loaded.
@@ -26,6 +27,7 @@ Package must include:
   - `model_family` (`lstm`, `cnn`, `cnn_lstm`, etc.)
   - `input_spec` (shape, expected preprocessing)
   - `labels` (ordered class list)
+  - evaluation metrics summary: `precision`, `recall`, `f1` (macro or weighted, with metric type specified)
   - `export_format` and `version`
 
 If metadata is missing or invalid, upload is rejected.
@@ -47,6 +49,7 @@ If metadata is missing or invalid, upload is rejected.
   - hand bounding boxes
   - predicted label + confidence
   - top-k probabilities
+  - model quality summary panel: precision / recall / F1 (from uploaded metadata)
   - FPS and inference latency
 
 ## Backend/Service Responsibilities
@@ -59,6 +62,7 @@ If metadata is missing or invalid, upload is rejected.
   - confidence
   - class probabilities
   - model metadata used
+  - model evaluation summary (`precision`, `recall`, `f1`) for UI display/audit context
 
 ## Security and Role Scope
 - Upload/replace model: admin/editor only.
@@ -68,6 +72,7 @@ If metadata is missing or invalid, upload is rejected.
 ## Acceptance Criteria
 - User can upload supported exported model package successfully.
 - Playground displays parsed model name/family.
+- Playground displays uploaded model quality metrics (precision, recall, F1).
 - Live camera inference runs using uploaded model.
 - Bounding boxes and prediction labels are visible in real time.
 - Invalid format/metadata fails with clear error message.

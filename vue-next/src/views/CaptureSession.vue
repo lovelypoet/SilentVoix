@@ -113,6 +113,7 @@ const pageSubtitle = computed(() => (
     : 'Guided flow: Camera Session -> Sensor Source -> Recording -> Export.'
 ))
 const permissionTrainingLabel = computed(() => (isEarlyFusionRoute.value ? 'early fusion training' : 'fusion training'))
+const returnFusionTab = computed(() => (isEarlyFusionRoute.value ? 'early' : 'late'))
 
 const expectedSyncLabel = computed(() => {
   if (!expectedSyncTimestampMs.value) return ''
@@ -210,6 +211,10 @@ const resetRecording = () => {
 const stopTake = () => {
   cancelPendingRecording()
   stopCollecting()
+}
+
+const returnToFusionWorkspace = () => {
+  router.push({ path: '/fusion', query: { tab: returnFusionTab.value } })
 }
 
 const stopAndAutoSave = async () => {
@@ -517,9 +522,9 @@ watch(terminalLines, () => {
       <div class="flex justify-start">
         <BaseBtn
           variant="secondary"
-          title="Return to training page"
+          title="Return to fusion workspace"
           class="px-3"
-          @click="router.push('/training')"
+          @click="returnToFusionWorkspace"
         >
           &larr;
         </BaseBtn>
@@ -785,7 +790,7 @@ watch(terminalLines, () => {
           </div>
 
           <div class="mt-6">
-            <BaseBtn variant="danger" class="w-full" @click="router.push('/training')">
+            <BaseBtn variant="danger" class="w-full" @click="returnToFusionWorkspace">
               End Session
             </BaseBtn>
           </div>

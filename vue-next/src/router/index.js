@@ -35,24 +35,46 @@ const router = createRouter({
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
-            path: '/early-fusion-training',
-            name: 'early-fusion-training',
+            path: '/fusion',
+            name: 'fusion',
+            component: () => import('../views/FusionWorkspace.vue'),
+            meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
+        },
+        {
+            path: '/realtime-ai-playground',
+            name: 'realtime-ai-playground',
+            component: () => import('../views/RealtimeAIPlayground.vue'),
+            meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
+        },
+        {
+            path: '/fusion/early-module',
+            name: 'fusion-early-module',
             component: () => import('../views/CaptureSession.vue'),
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
-            path: '/late-fusion-training',
-            name: 'late-fusion-training',
+            path: '/fusion/late-module',
+            name: 'fusion-late-module',
             component: () => import('../views/LateFusionTraining.vue'),
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
+            path: '/early-fusion-training',
+            name: 'early-fusion-training',
+            redirect: '/fusion/early-module'
+        },
+        {
+            path: '/late-fusion-training',
+            name: 'late-fusion-training',
+            redirect: '/fusion/late-module'
+        },
+        {
             path: '/fusion-training',
-            redirect: '/early-fusion-training'
+            redirect: '/fusion/early-module'
         },
         {
             path: '/capture',
-            redirect: '/early-fusion-training'
+            redirect: '/fusion/early-module'
         },
         {
             path: '/voice',

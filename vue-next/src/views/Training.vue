@@ -16,7 +16,7 @@ import VideoAnalyzer from '../components/VideoAnalyzer.vue'
 const route = useRoute() // Initialize useRoute
 const router = useRouter()
 const authStore = useAuthStore()
-const canAccessCaptureSession = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
+const canAccessFusionWorkspace = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
 
 const isTraining = ref(false)
 const showSettings = ref(false)
@@ -164,14 +164,15 @@ const trainingCards = computed(() => {
       onClick: startTraining
     },
     {
-      id: 'guided-lessons',
-      icon: '★',
-      title: 'Guided Lessons',
-      description: 'Step-by-step curriculum to learn from basics to advanced signs.',
-      buttonLabel: 'Start Lesson 1',
-      buttonVariant: 'secondary',
-      disabled: true,
-      locked: true
+      id: 'realtime-ai-playground',
+      icon: '◉',
+      title: 'Realtime AI Playground',
+      description: 'Plug in exported models and test live CV inference with overlays.',
+      buttonLabel: 'Open Playground',
+      buttonVariant: 'primary',
+      disabled: false,
+      locked: false,
+      onClick: startRealtimePlayground
     },
     {
       id: 'advanced-practice',
@@ -186,28 +187,17 @@ const trainingCards = computed(() => {
     }
   ]
 
-  if (canAccessCaptureSession.value) {
+  if (canAccessFusionWorkspace.value) {
     cards.splice(1, 0, {
-      id: 'capture-session',
-      icon: '●',
-      title: 'Early Fusion Training',
-      description: 'Record synchronized CV and sensor data for early-fusion datasets.',
-      buttonLabel: 'Start Early Fusion',
-      buttonVariant: 'primary',
-      disabled: false,
-      locked: false,
-      onClick: startCaptureSession
-    })
-    cards.splice(2, 0, {
-      id: 'late-fusion-training',
+      id: 'fusion-workspace',
       icon: '◆',
-      title: 'Late Fusion Training',
-      description: 'Pick paired CV + sensor datasets and run the late-fusion pipeline.',
-      buttonLabel: 'Open Late Fusion',
+      title: 'Fusion Workspace',
+      description: 'Open dedicated Early/Late Fusion modules from one page.',
+      buttonLabel: 'Open Fusion',
       buttonVariant: 'primary',
       disabled: false,
       locked: false,
-      onClick: startLateFusionTraining
+      onClick: startFusionWorkspace
     })
   }
 
@@ -229,12 +219,12 @@ const startTraining = async () => {
   }
 }
 
-const startCaptureSession = () => {
-  router.push('/early-fusion-training')
+const startFusionWorkspace = () => {
+  router.push('/fusion')
 }
 
-const startLateFusionTraining = () => {
-  router.push('/late-fusion-training')
+const startRealtimePlayground = () => {
+  router.push('/realtime-ai-playground')
 }
 
 const startAdvancedTraining = async () => {

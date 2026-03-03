@@ -304,6 +304,10 @@ const openCsvLibrary = () => {
   })
 }
 
+const goFusionWorkspace = () => {
+  router.push({ path: '/fusion', query: { tab: 'late' } })
+}
+
 onMounted(() => {
   void loadSelectionStatus()
   void loadLatestResult()
@@ -334,9 +338,9 @@ onUnmounted(() => {
       <div class="flex justify-start">
         <BaseBtn
           variant="secondary"
-          title="Return to training page"
+          title="Return to fusion workspace"
           class="px-3"
-          @click="router.push('/training')"
+          @click="goFusionWorkspace"
         >
           &larr;
         </BaseBtn>
