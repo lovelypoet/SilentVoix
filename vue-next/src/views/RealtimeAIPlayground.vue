@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import { useHandTracking } from '../composables/useHandTracking.js'
+import api from '../services/api'
 
 const router = useRouter()
 
@@ -12,6 +13,9 @@ const metadataFile = ref(null)
 const metadata = ref(null)
 const validationErrors = ref([])
 const uploadMessage = ref('')
+const uploadError = ref('')
+const isUploading = ref(false)
+const activeModel = ref(null)
 
 const mirrorCamera = ref(false)
 const showLandmarks = ref(true)
@@ -22,12 +26,15 @@ const mediaStream = ref(null)
 const isLive = ref(false)
 const liveStatus = ref('Camera idle.')
 const prediction = ref(null)
+let lastPredictTs = 0
+let isPredictingFrame = false
 
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
 const modelSummary = computed(() => {
-  if (!metadata.value) return null
-  const m = metadata.value
+  const source = activeModel.value?.metadata || metadata.value
+  if (!source) return null
+  const m = source
   return {
     name: m.model_name,
     family: m.model_family,
@@ -40,6 +47,8 @@ const modelSummary = computed(() => {
     f1: m.f1
   }
 })
+
+const modelInputDim = computed(() => Number(activeModel.value?.input_dim || 63))
 
 const parseJsonFile = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
@@ -96,6 +105,84 @@ const onPickMetadataFile = async (event) => {
   }
 }
 
+const loadActiveModel = async () => {
+  try {
+    const res = await api.playground.getActiveModel()
+    activeModel.value = res?.model || null
+  } catch {
+    activeModel.value = null
+  }
+}
+
+const uploadAndActivateModel = async () => {
+  uploadError.value = ''
+  uploadMessage.value = ''
+  if (!modelFile.value) {
+    uploadError.value = 'Select an exported model file first.'
+    return
+  }
+  if (!metadataFile.value) {
+    uploadError.value = 'Select a metadata JSON file first.'
+    return
+  }
+  if (validationErrors.value.length) {
+    uploadError.value = 'Fix metadata validation errors before upload.'
+    return
+  }
+  isUploading.value = true
+  try {
+    const res = await api.playground.uploadModel(modelFile.value, metadataFile.value)
+    activeModel.value = res?.model || null
+    uploadMessage.value = res?.message || 'Model uploaded.'
+  } catch (e) {
+    uploadError.value = e?.response?.data?.detail || 'Failed to upload model package.'
+  } finally {
+    isUploading.value = false
+  }
+}
+
+const pickHands = (results) => {
+  const hands = results?.landmarks || []
+  const handedness = results?.handedness || []
+  let left = null
+  let right = null
+  let first = null
+  hands.forEach((hand, i) => {
+    if (!first) first = hand
+    const label = handedness?.[i]?.[0]?.categoryName
+    if (label === 'Left' && !left) left = hand
+    if (label === 'Right' && !right) right = hand
+  })
+  if (!left && first) left = first
+  if (!right && hands.length > 1) right = hands[hands.length - 1]
+  return { left, right, first }
+}
+
+const flattenHand63 = (hand) => {
+  if (!Array.isArray(hand) || hand.length !== 21) {
+    return Array.from({ length: 63 }, () => 0)
+  }
+  const values = []
+  for (let i = 0; i < 21; i++) {
+    values.push(Number(hand[i]?.x ?? 0), Number(hand[i]?.y ?? 0), Number(hand[i]?.z ?? 0))
+  }
+  return values
+}
+
+const buildCvVectorForModel = (results) => {
+  const dim = modelInputDim.value
+  const { left, right, first } = pickHands(results)
+  if (dim === 63) {
+    return flattenHand63(first || left || right)
+  }
+  if (dim === 126) {
+    return [...flattenHand63(left), ...flattenHand63(right)]
+  }
+  const base = flattenHand63(first || left || right)
+  if (dim < 63) return base.slice(0, dim)
+  return [...base, ...Array.from({ length: dim - 63 }, () => 0)]
+}
+
 const drawBoundingBoxes = (results) => {
   const canvas = bboxCanvasEl.value
   const video = videoEl.value
@@ -106,40 +193,61 @@ const drawBoundingBoxes = (results) => {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   const hands = results?.landmarks || []
-  const handedness = results?.handedness || []
   if (!hands.length) {
     prediction.value = null
     return
   }
 
-  hands.forEach((hand, idx) => {
+  hands.forEach((hand) => {
     const xs = hand.map((p) => Number(p.x) * canvas.width)
     const ys = hand.map((p) => Number(p.y) * canvas.height)
     const minX = Math.max(0, Math.min(...xs))
     const minY = Math.max(0, Math.min(...ys))
     const maxX = Math.min(canvas.width, Math.max(...xs))
     const maxY = Math.min(canvas.height, Math.max(...ys))
-    const score = Number(handedness?.[idx]?.[0]?.score || 0.5)
-
-    const labels = modelSummary.value?.labels || ['unknown']
-    const predictedLabel = hands.length >= 2 ? labels[Math.min(1, labels.length - 1)] : labels[0]
-    const confidence = Math.max(0.5, Math.min(0.99, score))
-
-    prediction.value = {
-      label: predictedLabel,
-      confidence,
-      note: 'Preview inference from uploaded metadata labels.'
-    }
 
     ctx.strokeStyle = '#22d3ee'
     ctx.lineWidth = 2
     ctx.strokeRect(minX, minY, Math.max(1, maxX - minX), Math.max(1, maxY - minY))
+    const overlayText = prediction.value?.label
+      ? `${prediction.value.label} ${(Number(prediction.value.confidence || 0) * 100).toFixed(1)}%`
+      : 'Detecting...'
     ctx.fillStyle = 'rgba(2,6,23,0.8)'
     ctx.fillRect(minX, Math.max(0, minY - 24), 220, 20)
     ctx.fillStyle = '#67e8f9'
     ctx.font = '12px monospace'
-    ctx.fillText(`${predictedLabel} ${(confidence * 100).toFixed(1)}%`, minX + 6, Math.max(12, minY - 10))
+    ctx.fillText(overlayText, minX + 6, Math.max(12, minY - 10))
   })
+}
+
+const predictFromResults = async (results) => {
+  if (!activeModel.value) return
+  if (isPredictingFrame) return
+  const now = Date.now()
+  if (now - lastPredictTs < 250) return
+  lastPredictTs = now
+  isPredictingFrame = true
+  try {
+    const cvValues = buildCvVectorForModel(results)
+    const res = await api.playground.predictCv(cvValues, activeModel.value.id)
+    const pred = res?.prediction
+    if (pred) {
+      prediction.value = {
+        label: pred.label,
+        confidence: pred.confidence,
+        top3: pred.top3 || [],
+        note: `Real model inference (${res?.model_name || activeModel.value.display_name}).`
+      }
+    }
+  } catch (e) {
+    prediction.value = {
+      label: 'error',
+      confidence: 0,
+      note: e?.response?.data?.detail || 'Inference failed.'
+    }
+  } finally {
+    isPredictingFrame = false
+  }
 }
 
 const stopLive = () => {
@@ -166,6 +274,9 @@ const startLive = async () => {
     await startHandTracking(videoEl.value, landmarkCanvasEl.value, stream)
     onFrame((results) => {
       drawBoundingBoxes(results)
+      if (results?.landmarks?.length) {
+        void predictFromResults(results)
+      }
     })
     isLive.value = true
     liveStatus.value = 'Live camera running.'
@@ -177,6 +288,10 @@ const startLive = async () => {
 
 onUnmounted(() => {
   stopLive()
+})
+
+onMounted(() => {
+  void loadActiveModel()
 })
 </script>
 
@@ -200,7 +315,7 @@ onUnmounted(() => {
       <p class="text-xs text-slate-400 mt-1">Accepted metadata fields: model_name, model_family, input_spec, labels, export_format, version, precision, recall, f1.</p>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
         <label class="text-sm text-slate-300">
-          Exported Model File (optional in this phase)
+          Exported Model File (required)
           <input type="file" class="mt-1 block w-full text-sm text-slate-300" @change="onPickModelFile" />
         </label>
         <label class="text-sm text-slate-300">
@@ -210,9 +325,17 @@ onUnmounted(() => {
       </div>
 
       <p v-if="uploadMessage" class="mt-3 text-sm" :class="validationErrors.length ? 'text-amber-300' : 'text-emerald-300'">{{ uploadMessage }}</p>
+      <p v-if="uploadError" class="mt-2 text-sm text-rose-300">{{ uploadError }}</p>
       <ul v-if="validationErrors.length" class="mt-2 text-sm text-rose-300 list-disc list-inside">
         <li v-for="err in validationErrors" :key="err">{{ err }}</li>
       </ul>
+
+      <div class="mt-3 flex gap-2">
+        <BaseBtn variant="primary" :disabled="isUploading" @click="uploadAndActivateModel">
+          {{ isUploading ? 'Uploading...' : 'Upload & Activate' }}
+        </BaseBtn>
+        <BaseBtn variant="secondary" @click="loadActiveModel">Refresh Active Model</BaseBtn>
+      </div>
 
       <div v-if="modelSummary" class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm">
         <p class="text-slate-100 font-medium">{{ modelSummary.name }} ({{ modelSummary.family }})</p>
@@ -245,12 +368,15 @@ onUnmounted(() => {
         </p>
         <p v-else class="text-slate-500 mt-1">No hand detected.</p>
         <p class="text-xs text-slate-500 mt-2">
-          {{ prediction?.note || 'Load metadata and start camera for preview inference.' }}
+          {{ prediction?.note || (activeModel ? 'Start camera for real inference.' : 'Upload & activate a model first.') }}
+        </p>
+        <p v-if="prediction?.top3?.length" class="text-xs text-slate-400 mt-2">
+          Top-3: {{ prediction.top3.map((x) => `${x.label} ${(x.confidence * 100).toFixed(1)}%`).join(' | ') }}
         </p>
       </div>
 
       <p class="mt-3 text-xs text-amber-300">
-        Note: this phase validates model metadata and CV overlay flow; runtime adapter-specific inference will be integrated in next phase.
+        Supported inference adapters in this phase: exported `.tflite`, `.keras`, `.h5` with valid metadata contract.
       </p>
     </BaseCard>
   </div>

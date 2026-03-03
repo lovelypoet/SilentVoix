@@ -210,5 +210,22 @@ export default {
     const includeToken = path !== '/ws/stream';
     const wsUrl = wsOrigin + path + (includeToken && token ? `?token=${token}` : '');
     return new WebSocket(wsUrl);
+  },
+
+  // ===================== Realtime AI Playground API =====================
+  playground: {
+    uploadModel: (modelFile, metadataFile) => {
+      const formData = new FormData();
+      formData.append('model_file', modelFile);
+      formData.append('metadata_file', metadataFile);
+      return api.post('/playground/models/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    },
+    listModels: () => api.get('/playground/models'),
+    getActiveModel: () => api.get('/playground/models/active'),
+    activateModel: (modelId) => api.post(`/playground/models/${modelId}/activate`),
+    predictCv: (cvValues, modelId = null) =>
+      api.post('/playground/predict/cv', modelId ? { cv_values: cvValues, model_id: modelId } : { cv_values: cvValues })
   }
 };
