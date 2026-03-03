@@ -74,3 +74,65 @@ Early and Late are intentionally asymmetric:
 - Late: two expert slots per mode (`cv` + `sensor`)
 
 This asymmetry is expected and required by the model design.
+
+## 8. Current Build Status (Updated: March 3, 2026)
+Implemented and working in current codebase:
+
+- Dedicated Late Fusion page: `/late-fusion-training`
+- Dataset pair readiness checks (single/dual)
+- Training trigger for late fusion
+- Async job status polling
+- Latest run metrics display
+- Artifact download buttons (report, aligned CSV, CV model, sensor model)
+- Late-fusion prediction endpoint using latest trained experts
+- UI test-predict panel with:
+  - manual JSON vectors
+  - CV live capture (MediaPipe on page)
+  - live sensor snapshot pull (`/gesture/latest`)
+
+## 9. Backend API (Implemented)
+Under `training_routes.py`:
+
+- `POST /training/late-fusion/run?mode=single|dual&glove_weight=0..1`
+- `GET /training/late-fusion/jobs/{job_id}`
+- `GET /training/late-fusion/latest?mode=single|dual`
+- `GET /training/late-fusion/latest/artifact?mode=...&artifact=report|aligned_preview|cv_model|sensor_model`
+- `POST /training/late-fusion/predict`
+
+Training output persists to:
+- `backend/AI/results/late_fusion/{mode}/...`
+
+## 10. Training/Predict Contract (Current)
+Training:
+- Validates CSV library slot selections for `late:{mode}:cv` and `late:{mode}:sensor`
+- Loads selected CSVs
+- Aligns by nearest `timestamp_ms` (`merge_asof`, tolerance 120ms)
+- Trains independent RF experts (CV and sensor)
+- Applies weighted soft voting
+
+Predict:
+- Uses latest trained artifacts for selected mode
+- Accepts either:
+  - ordered vectors (`cv_values`, `sensor_values`), or
+  - keyed maps (`cv_map`, `sensor_map`) if feature names are available
+- Returns label, confidence, and class probability map
+
+## 11. Validation Done
+Completed checks in this phase:
+
+- Frontend `lint` passed
+- Frontend `build` passed
+- Backend syntax compile passed
+- Runtime smoke tests passed:
+  - late-fusion train job success
+  - artifact files generated
+  - predict endpoint returns valid result
+
+## 12. Next Priorities
+Recommended next steps:
+
+1. Add inference-time model registry/version switch (not latest-only).
+2. Add streaming inference API (continuous late-fusion prediction).
+3. Add explicit alignment diagnostics in UI (kept rows, dropped rows, delta stats).
+4. Add cancel job endpoint and richer job logs.
+5. Tighten role policy if training/download should be admin-only.

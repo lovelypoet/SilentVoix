@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Query
 from models.model_result import ModelResult
 from core.database import model_collection, sensor_collection
 from fastapi.responses import JSONResponse, FileResponse
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from uuid import uuid4
 from core.settings import settings
@@ -24,11 +25,11 @@ import sys
 import threading
 from pathlib import Path
 from utils.cache import cacheable
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 import csv
 import numpy as np
 import pandas as pd
-from joblib import dump as joblib_dump
+from joblib import dump as joblib_dump, load as joblib_load
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
@@ -41,6 +42,22 @@ LATE_FUSION_JOB_LOCK = threading.Lock()
 LATE_FUSION_JOBS: Dict[str, Dict[str, Any]] = {}
 LATE_FUSION_LAST_BY_MODE: Dict[str, Dict[str, Any]] = {}
 LATE_FUSION_DEFAULT_GLOVE_WEIGHT = 0.8
+LATE_FUSION_ARTIFACT_MAP = {
+    "report": "report_path",
+    "aligned_preview": "aligned_preview_path",
+    "cv_model": "cv_model_path",
+    "sensor_model": "sensor_model_path",
+}
+LATE_FUSION_MODEL_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+class LateFusionPredictRequest(BaseModel):
+    mode: str = Field("single", pattern="^(single|dual)$")
+    cv_values: Optional[List[float]] = None
+    sensor_values: Optional[List[float]] = None
+    cv_map: Optional[Dict[str, float]] = None
+    sensor_map: Optional[Dict[str, float]] = None
+    glove_weight: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 def _late_fusion_results_dir() -> Path:
@@ -220,6 +237,78 @@ def _fit_rf_model(X_train: np.ndarray, y_train: np.ndarray, random_state: int = 
     return model
 
 
+def _late_fusion_default_dims(mode: str) -> Tuple[int, int]:
+    if mode == "dual":
+        return 126, 22
+    return 63, 11
+
+
+def _late_fusion_vector_from_payload(
+    payload_values: Optional[List[float]],
+    payload_map: Optional[Dict[str, float]],
+    feature_columns: List[str],
+    expected_dim: int,
+    field_name: str,
+) -> np.ndarray:
+    if payload_values is not None:
+        if len(payload_values) != expected_dim:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{field_name} length mismatch: expected {expected_dim}, got {len(payload_values)}",
+            )
+        return np.asarray(payload_values, dtype=np.float32)
+
+    if payload_map is not None:
+        if not feature_columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{field_name}_map requires feature columns from latest report; provide {field_name}_values instead",
+            )
+        missing = [col for col in feature_columns if col not in payload_map]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{field_name}_map missing keys: {', '.join(missing[:8])}",
+            )
+        values = [payload_map[col] for col in feature_columns]
+        return np.asarray(values, dtype=np.float32)
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Provide either {field_name}_values or {field_name}_map",
+    )
+
+
+def _late_fusion_load_models_from_report(report: Dict[str, Any]) -> Tuple[Any, Any]:
+    artifacts = report.get("artifacts") or {}
+    cv_path = artifacts.get("cv_model_path")
+    sensor_path = artifacts.get("sensor_model_path")
+    if not cv_path or not sensor_path:
+        raise HTTPException(status_code=500, detail="Latest report missing model artifact paths")
+
+    cv_model_path = Path(str(cv_path)).resolve()
+    sensor_model_path = Path(str(sensor_path)).resolve()
+    cache_key = f"{cv_model_path}|{sensor_model_path}"
+    cv_mtime = cv_model_path.stat().st_mtime if cv_model_path.exists() else -1
+    sensor_mtime = sensor_model_path.stat().st_mtime if sensor_model_path.exists() else -1
+    cache_entry = LATE_FUSION_MODEL_CACHE.get(cache_key)
+    if cache_entry and cache_entry.get("cv_mtime") == cv_mtime and cache_entry.get("sensor_mtime") == sensor_mtime:
+        return cache_entry["cv_model"], cache_entry["sensor_model"]
+
+    if not cv_model_path.exists() or not sensor_model_path.exists():
+        raise HTTPException(status_code=404, detail="Model artifact files not found for latest late-fusion run")
+
+    cv_model = joblib_load(cv_model_path)
+    sensor_model = joblib_load(sensor_model_path)
+    LATE_FUSION_MODEL_CACHE[cache_key] = {
+        "cv_model": cv_model,
+        "sensor_model": sensor_model,
+        "cv_mtime": cv_mtime,
+        "sensor_mtime": sensor_mtime,
+    }
+    return cv_model, sensor_model
+
+
 def _run_late_fusion_training_job(job_id: str, mode: str, glove_weight: float) -> None:
     with LATE_FUSION_JOB_LOCK:
         job = LATE_FUSION_JOBS[job_id]
@@ -328,6 +417,12 @@ def _run_late_fusion_training_job(job_id: str, mode: str, glove_weight: float) -
                 "report_path": str(report_path),
             },
             "metrics": metrics,
+            "feature_spec": {
+                "cv_columns": cv_features,
+                "sensor_columns": sensor_features,
+                "cv_dim": len(cv_features),
+                "sensor_dim": len(sensor_features),
+            },
             "finished_at": datetime.now(timezone.utc).isoformat(),
         }
         with report_path.open("w", encoding="utf-8") as f:
@@ -354,6 +449,22 @@ def _run_late_fusion_training_job(job_id: str, mode: str, glove_weight: float) -
             LATE_FUSION_JOBS[job_id]["status"] = "failed"
             LATE_FUSION_JOBS[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
             LATE_FUSION_JOBS[job_id]["error"] = str(exc)
+
+
+def _load_latest_late_fusion_result(mode: str) -> Dict[str, Any] | None:
+    with LATE_FUSION_JOB_LOCK:
+        in_memory = LATE_FUSION_LAST_BY_MODE.get(mode)
+    if in_memory:
+        return in_memory
+
+    latest_path = _late_fusion_results_dir() / mode / "latest.json"
+    if not latest_path.exists():
+        return None
+    try:
+        with latest_path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read latest late fusion result: {exc}")
 
 @router.post("/")
 async def save_model_result(result: ModelResult, _user=Depends(role_or_internal_dep("editor"))):
@@ -719,21 +830,107 @@ async def get_latest_late_fusion_result(
     mode: str = Query("single", pattern="^(single|dual)$"),
     _user=Depends(role_or_internal_dep("editor")),
 ):
-    with LATE_FUSION_JOB_LOCK:
-        in_memory = LATE_FUSION_LAST_BY_MODE.get(mode)
-    if in_memory:
-        return {"status": "success", "mode": mode, "data": in_memory}
+    data = _load_latest_late_fusion_result(mode)
+    return {"status": "success", "mode": mode, "data": data}
 
-    latest_path = _late_fusion_results_dir() / mode / "latest.json"
-    if latest_path.exists():
-        try:
-            with latest_path.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-            return {"status": "success", "mode": mode, "data": data}
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Failed to read latest late fusion result: {exc}")
 
-    return {"status": "success", "mode": mode, "data": None}
+@router.get("/late-fusion/latest/artifact")
+async def download_latest_late_fusion_artifact(
+    mode: str = Query("single", pattern="^(single|dual)$"),
+    artifact: str = Query(..., pattern="^(report|aligned_preview|cv_model|sensor_model)$"),
+    _user=Depends(role_or_internal_dep("editor")),
+):
+    data = _load_latest_late_fusion_result(mode)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"No latest late-fusion result found for mode={mode}")
+
+    artifact_key = LATE_FUSION_ARTIFACT_MAP[artifact]
+    artifact_path_raw = (data.get("artifacts") or {}).get(artifact_key)
+    if not artifact_path_raw:
+        raise HTTPException(status_code=404, detail=f"Artifact path missing for '{artifact}'")
+
+    artifact_path = Path(str(artifact_path_raw)).resolve()
+    allowed_root = (_late_fusion_results_dir() / mode).resolve()
+    try:
+        artifact_path.relative_to(allowed_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Artifact path is outside allowed results directory")
+    if not artifact_path.exists() or not artifact_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Artifact file not found: {artifact_path.name}")
+
+    media_type = "application/octet-stream"
+    if artifact == "report":
+        media_type = "application/json"
+    elif artifact == "aligned_preview":
+        media_type = "text/csv"
+    return FileResponse(path=str(artifact_path), media_type=media_type, filename=artifact_path.name)
+
+
+@router.post("/late-fusion/predict")
+async def predict_late_fusion(
+    req: LateFusionPredictRequest,
+    _user=Depends(role_or_internal_dep("editor")),
+):
+    report = _load_latest_late_fusion_result(req.mode)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"No trained late-fusion model found for mode={req.mode}")
+
+    cv_model, sensor_model = _late_fusion_load_models_from_report(report)
+    feature_spec = report.get("feature_spec") or {}
+    cv_columns = feature_spec.get("cv_columns") or []
+    sensor_columns = feature_spec.get("sensor_columns") or []
+    default_cv_dim, default_sensor_dim = _late_fusion_default_dims(req.mode)
+    cv_dim = int(feature_spec.get("cv_dim") or default_cv_dim)
+    sensor_dim = int(feature_spec.get("sensor_dim") or default_sensor_dim)
+
+    cv_vector = _late_fusion_vector_from_payload(
+        req.cv_values,
+        req.cv_map,
+        cv_columns,
+        cv_dim,
+        "cv",
+    )
+    sensor_vector = _late_fusion_vector_from_payload(
+        req.sensor_values,
+        req.sensor_map,
+        sensor_columns,
+        sensor_dim,
+        "sensor",
+    )
+
+    cv_proba = cv_model.predict_proba(cv_vector.reshape(1, -1))[0]
+    sensor_proba = sensor_model.predict_proba(sensor_vector.reshape(1, -1))[0]
+    classes_cv = list(cv_model.classes_)
+    classes_sensor = list(sensor_model.classes_)
+    if classes_cv != classes_sensor:
+        raise HTTPException(status_code=500, detail="Late-fusion experts classes mismatch")
+
+    report_weights = report.get("weights") or {}
+    glove_weight = float(req.glove_weight if req.glove_weight is not None else report_weights.get("glove", LATE_FUSION_DEFAULT_GLOVE_WEIGHT))
+    glove_weight = max(0.0, min(1.0, glove_weight))
+    vision_weight = 1.0 - glove_weight
+    fused = (glove_weight * sensor_proba) + (vision_weight * cv_proba)
+
+    best_idx = int(np.argmax(fused))
+    best_label = str(classes_cv[best_idx])
+    best_conf = float(fused[best_idx])
+    probabilities = {
+        str(cls): float(fused[idx])
+        for idx, cls in enumerate(classes_cv)
+    }
+    return {
+        "status": "success",
+        "mode": req.mode,
+        "weights": {
+            "glove": glove_weight,
+            "vision": vision_weight,
+        },
+        "prediction": {
+            "label": best_label,
+            "confidence": best_conf,
+            "probabilities": probabilities,
+        },
+    }
 
 @router.post("/dual-hand/run")
 async def run_dual_hand_training(file: UploadFile = File(...), _user=Depends(role_or_internal_dep("editor"))):

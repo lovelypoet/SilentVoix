@@ -85,7 +85,11 @@ export default {
       getJob: (jobId) =>
         api.get(`/training/late-fusion/jobs/${jobId}`),
       getLatest: (mode = 'single') =>
-        api.get(`/training/late-fusion/latest?mode=${mode}`)
+        api.get(`/training/late-fusion/latest?mode=${mode}`),
+      predict: (payload) =>
+        api.post('/training/late-fusion/predict', payload),
+      downloadLatestArtifact: (mode = 'single', artifact = 'report') =>
+        api.get(`/training/late-fusion/latest/artifact?mode=${mode}&artifact=${artifact}`, { responseType: 'blob' })
     },
     // Conversion
     convertToDual: (sessionId) => api.post(`/training/convert-to-dual-hand/${sessionId}`),
@@ -112,6 +116,7 @@ export default {
   utils: {
     // Health
     health: () => api.get('/utils/health'),
+    latestSensorFrame: () => api.get('/gesture/latest'),
     serialStatus: () => api.get('/utils/serial-status'),
     serialConfig: {
       update: (payload) => api.post('/utils/serial-config', payload),
