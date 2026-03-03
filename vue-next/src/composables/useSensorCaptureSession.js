@@ -13,7 +13,7 @@ export function useSensorCaptureSession() {
         sensorCaptureStatus.value = res
       }
       captureError.value = ''
-    } catch (_) {
+    } catch {
       captureError.value = 'Unable to reach sensor capture status endpoint.'
     }
   }

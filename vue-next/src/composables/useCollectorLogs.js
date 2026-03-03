@@ -19,7 +19,7 @@ export const useCollectorLogs = (captureMode, sensorCaptureStatus) => {
       if (res?.lines) {
         terminalLines.value = res.lines.map(line => line.replace(/\r?\n$/, ''))
       }
-    } catch (e) {
+    } catch {
       terminalError.value = 'No collector logs found yet. Start a capture to generate logs.'
     }
   }

@@ -33,7 +33,7 @@ export function usePortSession() {
       consecutiveFailures.value = 0
       autoRefresh.value = true
       lastCheckedAt.value = new Date()
-    } catch (e) {
+    } catch {
       error.value = 'Unable to reach backend serial-status endpoint.'
       consecutiveFailures.value += 1
       // Keep polling instead of permanently pausing after startup hiccups.
@@ -69,7 +69,7 @@ export function usePortSession() {
       autoRefresh.value = true
       consecutiveFailures.value = 0
       lastCheckedAt.value = new Date()
-    } catch (_) {
+    } catch {
       error.value = 'Auto-detect failed. No ports detected or backend unavailable.'
       message.value = ''
     } finally {
@@ -98,7 +98,7 @@ export function usePortSession() {
       autoRefresh.value = true
       consecutiveFailures.value = 0
       lastCheckedAt.value = new Date()
-    } catch (_) {
+    } catch {
       error.value = 'Failed to update serial port config.'
       message.value = ''
     } finally {

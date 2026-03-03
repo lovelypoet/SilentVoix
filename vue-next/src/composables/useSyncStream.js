@@ -155,7 +155,7 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
           cvSpikeTimestampMs.value = data.cv.spike_timestamp_ms ?? null
         }
         syncOffsetMs.value = data.offset_ms ?? null
-      } catch (e) {
+      } catch {
         // Ignore malformed payloads
       }
     }
@@ -166,10 +166,6 @@ export const useSyncStream = (captureMode, simulateSensor = ref(false)) => {
       if (syncTick) clearInterval(syncTick)
       syncTick = null
     }
-  }
-
-  const closeSyncStream = () => {
-    if (syncWs.value) syncWs.value.close()
   }
 
   const prevCvPoint = ref(null)

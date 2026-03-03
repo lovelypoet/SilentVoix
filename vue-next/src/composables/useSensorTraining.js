@@ -96,7 +96,7 @@ export function useSensorTraining() {
     if (!ws.value) return
     try {
       ws.value.close()
-    } catch (_) {
+    } catch {
       // Ignore socket close errors.
     }
     ws.value = null
@@ -114,7 +114,7 @@ export function useSensorTraining() {
       applyCaptureStatus(res || {})
       captureError.value = ''
       return res
-    } catch (_) {
+    } catch {
       captureError.value = 'Unable to fetch sensor capture status.'
       captureStatus.value = 'unknown'
       capturePid.value = null
@@ -132,7 +132,7 @@ export function useSensorTraining() {
       applyCaptureStatus(started || {})
       captureError.value = ''
       return true
-    } catch (_) {
+    } catch {
       captureError.value = 'Failed to auto-start sensor capture.'
       return false
     } finally {
@@ -147,7 +147,7 @@ export function useSensorTraining() {
       const res = await api.captureControls.sensorCapture.stop()
       applyCaptureStatus(res || { status: 'stopped' })
       captureError.value = ''
-    } catch (_) {
+    } catch {
       captureError.value = 'Failed to stop sensor capture.'
     } finally {
       isCaptureBusy.value = false
@@ -174,7 +174,7 @@ export function useSensorTraining() {
     let data = null
     try {
       data = JSON.parse(event.data)
-    } catch (_) {
+    } catch {
       return
     }
 
@@ -199,12 +199,18 @@ export function useSensorTraining() {
 
   const connect = async () => {
     connectionError.value = ''
-    if (ws.value && isConnected.value) return
 
     const captureOk = await ensureCaptureRunning()
     if (!captureOk) {
       connectionError.value = 'Sensor capture is not running.'
       connectionState.value = 'error'
+      return
+    }
+
+    // Keep existing stream subscription when already connected, but still
+    // ensure capture service can be restarted after a manual stop.
+    if (ws.value && isConnected.value) {
+      connectionState.value = 'connected'
       return
     }
 

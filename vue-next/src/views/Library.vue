@@ -40,7 +40,7 @@ onMounted(async () => {
     try {
         const res = await api.gestures.getAll()
         gestures.value = Array.isArray(res) ? res : []
-    } catch (e) {
+    } catch {
         gestures.value = []
     }
 })

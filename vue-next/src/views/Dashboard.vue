@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js' // Import useAuthStore
 
 const router = useRouter()

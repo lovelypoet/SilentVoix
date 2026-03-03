@@ -142,7 +142,7 @@ describe('useCollectData (JS)', () => {
     expect(collectedLandmarks.value.length).toBe(0)
   })
 
-  it('downloadCSV triggers anchor click safely', () => {
+  it('downloadCSV triggers anchor click safely', async () => {
     const { startCollecting, addLandmark, downloadCSV } =
       useCollectData()
 
@@ -159,7 +159,7 @@ describe('useCollectData (JS)', () => {
     startCollecting('dl')
     addLandmark([], [])
 
-    expect(() => downloadCSV()).not.toThrow()
+    await expect(downloadCSV()).resolves.not.toThrow()
     expect(click).toHaveBeenCalled()
   })
 })

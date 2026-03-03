@@ -4,7 +4,10 @@ defineProps({
     type: String,
     default: 'primary' // primary, secondary, danger, amber
   },
-  label: String
+  label: {
+    type: String,
+    default: ''
+  }
 })
 </script>
 

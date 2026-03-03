@@ -302,10 +302,10 @@ const uploadFile = async (file) => {
             </div>
             
             <div class="flex items-center gap-2">
-              <button @click="playOnGlove(file.filename)" class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Glove">
+              <button class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Glove" @click="playOnGlove(file.filename)">
                 <i class="ph ph-speaker-high text-xl"></i>
               </button>
-              <button @click="playOnLaptop(file.filename)" class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Laptop">
+              <button class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Laptop" @click="playOnLaptop(file.filename)">
                 <i class="ph ph-laptop text-xl"></i>
               </button>
               <button class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors" title="Delete" @click="deleteFile(file.filename)">

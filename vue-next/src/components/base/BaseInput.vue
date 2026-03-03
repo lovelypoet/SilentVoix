@@ -1,12 +1,21 @@
 <script setup>
 defineProps({
-  modelValue: [String, Number],
-  label: String,
+  modelValue: {
+    type: [String, Number],
+    default: ''
+  },
+  label: {
+    type: String,
+    default: ''
+  },
   type: {
     type: String,
     default: 'text'
   },
-  placeholder: String
+  placeholder: {
+    type: String,
+    default: ''
+  }
 })
 defineEmits(['update:modelValue'])
 </script>

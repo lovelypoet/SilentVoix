@@ -55,8 +55,7 @@ const {
   isRequesting,
   error,
   stream,
-  requestPermissions,
-  stopStream
+  requestPermissions
 } = useMediaPermissions()
 
 const { mirrorCamera, enableCamera, showLandmarks, frameLimit } = useTrainingSettings()
@@ -150,16 +149,6 @@ const startSession = async () => {
   if (hasPermissions.value) {
     isSessionActive.value = true
   }
-}
-
-const stopSession = () => {
-  cancelPendingRecording()
-  stopHandTracking()
-  stopFpsCounter()
-  stopStream()
-  isSessionActive.value = false
-  showSettings.value = false
-  expectedSyncTimestampMs.value = null
 }
 
 const startRecording = () => {
