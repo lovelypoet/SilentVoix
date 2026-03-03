@@ -32,6 +32,7 @@ from core.settings import settings as app_settings
 LEFT_HAND_PORT = app_settings.SERIAL_PORT_LEFT
 RIGHT_HAND_PORT = app_settings.SERIAL_PORT_RIGHT
 BAUD_RATE = 115200
+MAX_SAMPLES = int(os.getenv("SENSOR_CAPTURE_MAX_SAMPLES", "0") or "0")
 
 # Sensor configuration per hand
 FLEX_SENSORS_PER_HAND = 5
@@ -238,6 +239,8 @@ class DualHandDataCollector:
         """Main data collection loop"""
         print("=============== Starting Dual-Hand Data Collection ===============")
         logger.info(f"Writing CSV to: {os.path.abspath(RAW_DATA_PATH)}")
+        if MAX_SAMPLES > 0:
+            logger.info(f"Max samples configured: {MAX_SAMPLES}")
         
         if not self.connect_arduinos():
             return
@@ -272,6 +275,9 @@ class DualHandDataCollector:
                     
                     if row_count == 2000:
                         print("You have reached 2000 samples. Please stop data collection.")
+                        break
+                    if MAX_SAMPLES > 0 and row_count >= MAX_SAMPLES:
+                        logger.info(f"Reached max sample limit ({MAX_SAMPLES}). Stopping capture loop.")
                         break
                 
                 time.sleep(0.1)  # 10 Hz sampling rate

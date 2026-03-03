@@ -34,7 +34,7 @@ const {
   maxLiveFrames,
   recordedFrames,
   resetRecording,
-  sessionId,
+  captureMaxSamples,
   startCapture,
   stopCapture,
   startRecording,
@@ -149,7 +149,17 @@ const channelPercent = (value, index) => {
               <span v-if="capturePid"> (pid {{ capturePid }})</span>
             </p>
             <div class="grid grid-cols-1 gap-2 mt-3">
-              <BaseBtn variant="secondary" :disabled="isCaptureBusy || isCaptureRunning" @click="startCapture">
+              <label class="block text-xs text-slate-400 mt-2">
+                Max Samples (optional)
+                <input
+                  v-model.number="captureMaxSamples"
+                  type="number"
+                  min="0"
+                  class="mt-1 w-full rounded border border-slate-700 bg-slate-950/70 px-2 py-1 text-slate-200"
+                  placeholder="0 = unlimited"
+                />
+              </label>
+              <BaseBtn variant="secondary" :disabled="isCaptureBusy || isCaptureRunning" @click="startCapture(captureMaxSamples)">
                 {{ isCaptureBusy ? 'Starting...' : 'Start Sensor Service' }}
               </BaseBtn>
               <BaseBtn variant="secondary" :disabled="isCaptureBusy || !isCaptureRunning" @click="stopCapture">
@@ -275,15 +285,6 @@ const channelPercent = (value, index) => {
       <BaseCard>
         <h2 class="text-xl font-semibold text-slate-100 mb-4">Session Settings</h2>
         <div class="space-y-3">
-          <label class="block text-sm text-slate-300">
-            Session ID
-            <input
-              v-model="sessionId"
-              type="text"
-              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </label>
-
           <label class="block text-sm text-slate-300">
             Label
             <input

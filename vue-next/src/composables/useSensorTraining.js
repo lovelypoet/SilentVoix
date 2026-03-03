@@ -58,6 +58,7 @@ export function useSensorTraining() {
   const isCaptureBusy = ref(false)
   const capturePid = ref(null)
   const captureLogPath = ref('')
+  const captureMaxSamples = ref(0)
   const liveFrames = ref([])
   const recordedFrames = ref([])
   const isRecording = ref(false)
@@ -122,13 +123,19 @@ export function useSensorTraining() {
     }
   }
 
-  const ensureCaptureRunning = async () => {
+  const normalizeMaxSamples = (value) => {
+    const parsed = Number.parseInt(value, 10)
+    if (Number.isNaN(parsed) || parsed <= 0) return null
+    return parsed
+  }
+
+  const ensureCaptureRunning = async (maxSamples = captureMaxSamples.value) => {
     if (isCaptureBusy.value) return false
     isCaptureBusy.value = true
     try {
       const status = await fetchCaptureStatus()
       if (status?.status === 'running') return true
-      const started = await api.captureControls.sensorCapture.start('single')
+      const started = await api.captureControls.sensorCapture.start('single', normalizeMaxSamples(maxSamples))
       applyCaptureStatus(started || {})
       captureError.value = ''
       return true
@@ -154,8 +161,8 @@ export function useSensorTraining() {
     }
   }
 
-  const startCapture = async () => {
-    const ok = await ensureCaptureRunning()
+  const startCapture = async (maxSamples = captureMaxSamples.value) => {
+    const ok = await ensureCaptureRunning(maxSamples)
     if (ok) {
       await fetchCaptureStatus()
     }
@@ -268,9 +275,17 @@ export function useSensorTraining() {
   }
 
   const clearLiveFrames = () => {
-    liveFrames.value = []
-    frameTimestamps.value = []
-    lastFrameAt.value = null
+    // Keep latest frame visible so the UI does not look disconnected after clear.
+    const latest = liveFrames.value.length ? liveFrames.value[liveFrames.value.length - 1] : null
+    if (latest) {
+      liveFrames.value = [latest]
+      frameTimestamps.value = [latest.timestamp_ms]
+      lastFrameAt.value = new Date(latest.timestamp_ms)
+    } else {
+      liveFrames.value = []
+      frameTimestamps.value = []
+      lastFrameAt.value = null
+    }
   }
 
   const exportRecordedJson = () => {
@@ -340,6 +355,7 @@ export function useSensorTraining() {
   return {
     captureError,
     captureLogPath,
+    captureMaxSamples,
     capturePid,
     captureStatus,
     canExport,

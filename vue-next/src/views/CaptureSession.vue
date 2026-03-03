@@ -38,6 +38,7 @@ const terminalComponent = ref(null)
 const isExportingSensorCsv = ref(false)
 const exportStatusMessage = ref('')
 const showAdvancedControls = ref(false)
+const sensorMaxSamples = ref(0)
 
 const {
   collectedLandmarks,
@@ -681,7 +682,17 @@ watch(terminalLines, () => {
                 </select>
               </div>
               <div class="flex flex-wrap gap-2 mt-3">
-                <BaseBtn variant="secondary" class="flex-1 min-w-[120px]" @click="startSensorCapture(captureMode)">
+                <label class="block text-xs text-slate-400 w-full">
+                  Max Samples (optional)
+                  <input
+                    v-model.number="sensorMaxSamples"
+                    type="number"
+                    min="0"
+                    class="mt-1 w-full rounded border border-slate-700 bg-slate-950/70 px-2 py-1 text-slate-200"
+                    placeholder="0 = unlimited"
+                  />
+                </label>
+                <BaseBtn variant="secondary" class="flex-1 min-w-[120px]" @click="startSensorCapture(captureMode, sensorMaxSamples)">
                   Start Sensor Service
                 </BaseBtn>
                 <BaseBtn variant="secondary" class="flex-1 min-w-[120px]" @click="stopSensorCapture">

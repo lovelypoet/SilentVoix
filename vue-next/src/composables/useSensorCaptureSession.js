@@ -18,8 +18,8 @@ export function useSensorCaptureSession() {
     }
   }
 
-  const startSensorCapture = async (mode) => {
-    await api.captureControls.sensorCapture.start(mode)
+  const startSensorCapture = async (mode, maxSamples = null) => {
+    await api.captureControls.sensorCapture.start(mode, maxSamples)
     await fetchCaptureStatus()
   }
 

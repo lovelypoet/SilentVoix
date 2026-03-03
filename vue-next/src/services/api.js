@@ -133,7 +133,13 @@ export default {
   // ===================== Capture Controls API =====================
   captureControls: {
     sensorCapture: {
-      start: (mode = 'single') => api.post(`/capture-controls/sensor-capture/start?mode=${mode}`),
+      start: (mode = 'single', maxSamples = null) => {
+        const params = new URLSearchParams({ mode })
+        if (Number.isInteger(maxSamples) && maxSamples > 0) {
+          params.set('max_samples', String(maxSamples))
+        }
+        return api.post(`/capture-controls/sensor-capture/start?${params.toString()}`)
+      },
       stop: () => api.post('/capture-controls/sensor-capture/stop'),
       status: () => api.get('/capture-controls/sensor-capture/status'),
     }

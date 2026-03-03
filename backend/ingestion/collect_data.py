@@ -32,6 +32,7 @@ from core.settings import settings as app_settings
 # Read serial port from backend settings/env to avoid hardcoded Windows COM defaults.
 SERIAL_PORT = app_settings.SERIAL_PORT_SINGLE
 BAUD_RATE = 115200
+MAX_SAMPLES = int(os.getenv("SENSOR_CAPTURE_MAX_SAMPLES", "0") or "0")
 FLEX_SENSORS = 5
 ACCEL_SENSORS = 3
 GYRO_SENSORS = 3
@@ -99,12 +100,26 @@ def read_data(ser):
             try:
                 values = [float(v) for v in parts]
 
-                # Format A: 11 direct channels (flex5 + accel3 + gyro3)
+                # Format A: 11 direct channels.
+                # We accept either:
+                # - flex5 + accel3 + gyro3 (legacy)
+                # - accel3 + gyro3 + flex5 (ESP firmware in backend/hardware/esp.c++)
                 if len(values) == TOTAL_SENSORS:
-                    pass
-                # Format B: timestamp + 11 channels
+                    imu_first = values[:6]
+                    flex_last = values[6:]
+                    # Heuristic: IMU usually includes negatives/small magnitudes; flex_norm is often 0..1.
+                    if any(v < -0.2 for v in imu_first) and all(0 <= v <= 1.2 for v in flex_last):
+                        values = flex_last + imu_first[:3] + imu_first[3:6]
+                # Format B: timestamp + 11 channels from ESP firmware.
+                # Expected ESP order: timestamp, ax, ay, az, gx, gy, gz, f1, f2, f3, f4, f5
                 elif len(values) == TOTAL_SENSORS + 1:
-                    values = values[1:]
+                    payload = values[1:]
+                    imu = payload[:6]
+                    flex = payload[6:]
+                    if len(imu) == 6 and len(flex) == 5:
+                        values = flex + imu[:3] + imu[3:6]
+                    else:
+                        return None
                 # Format C: timestamp + accel3 + gyro3 (no flex in firmware output)
                 # Example: millis, ax, ay, az, gx, gy, gz
                 elif len(values) == 7:
@@ -155,6 +170,8 @@ async def send_to_backend(data_queue):
 def main():
     print("=============== Starting Data Collection ===============")
     logger.info(f"Writing CSV to: {os.path.abspath(RAW_DATA_PATH)}")
+    if MAX_SAMPLES > 0:
+        logger.info(f"Max samples configured: {MAX_SAMPLES}")
 
     if not initialize_csv():
         return
@@ -216,6 +233,9 @@ def main():
                     if row_count == 2000:
                         print("You have reached 2000 rows. Please stop data collection and proceed to noise reduction.")
                         milestones.clear()
+                    if MAX_SAMPLES > 0 and row_count >= MAX_SAMPLES:
+                        logger.info(f"Reached max sample limit ({MAX_SAMPLES}). Stopping capture loop.")
+                        break
 
                 time.sleep(0.001)
 

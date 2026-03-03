@@ -4,7 +4,7 @@ import subprocess
 import sys
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(prefix="/capture-controls", tags=["Capture Controls"])
 
@@ -26,7 +26,10 @@ def _tail_file(path: str, lines: int = 40) -> list[str]:
 
 
 @router.post("/sensor-capture/start")
-async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:
+async def start_sensor_capture(
+    mode: str = "single",
+    max_samples: Optional[int] = Query(default=None, ge=1, le=500000),
+) -> Dict[str, Any]:
     """
     Start the local sensor capture script (single or dual).
     """
@@ -58,6 +61,11 @@ async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:
         log_name = "data_collection.log" if mode == "single" else "dual_hand_data_collection.log"
         runtime_log = os.path.abspath(os.path.join(os.path.dirname(script_path), log_name))
         log_handle = open(runtime_log, "a", encoding="utf-8")
+        child_env = os.environ.copy()
+        if max_samples is not None:
+            child_env["SENSOR_CAPTURE_MAX_SAMPLES"] = str(max_samples)
+        else:
+            child_env.pop("SENSOR_CAPTURE_MAX_SAMPLES", None)
         try:
             SENSOR_CAPTURE_PROCESS = subprocess.Popen(
                 [sys.executable, script_path],
@@ -65,6 +73,7 @@ async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:
                 stderr=subprocess.STDOUT,
                 cwd=os.path.dirname(script_path),
                 start_new_session=True,
+                env=child_env,
             )
         finally:
             log_handle.close()
@@ -94,6 +103,7 @@ async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:
             "mode": mode,
             "pid": SENSOR_CAPTURE_PROCESS.pid,
             "log_path": runtime_log,
+            "max_samples": max_samples,
         }
     except HTTPException:
         raise
