@@ -30,7 +30,6 @@ const cvFrameId = ref(0)
 const hasAutoSavedCurrentRun = ref(false)
 const router = useRouter()
 const captureMode = ref('single')
-const simulateSensor = ref(false)
 const syncCountdown = ref(0)
 const expectedSyncTimestampMs = ref(null)
 const isAwaitingSyncCue = ref(false)
@@ -82,8 +81,6 @@ const {
 } = useCollectorLogs(captureMode, sensorCaptureStatus)
 
 const {
-  sensorSeries,
-  sensorTimestampsMs,
   sensorSpikeActive,
   cvSpikeActive,
   syncOffsetMs,
@@ -98,7 +95,7 @@ const {
   cvSpike,
   ingestCvPoint,
   resetCvState
-} = useSyncStream(captureMode, simulateSensor)
+} = useSyncStream(captureMode)
 
 const videoClasses = computed(() => [
   'w-full',
@@ -113,7 +110,7 @@ const expectedSyncLabel = computed(() => {
 })
 
 const isSensorRunning = computed(() => sensorCaptureStatus.value?.status === 'running')
-const sensorReady = computed(() => isSensorRunning.value || simulateSensor.value)
+const sensorReady = computed(() => isSensorRunning.value)
 const canStartTake = computed(
   () => Boolean(currentGestureName.value.trim()) && !isCollecting.value && !isAwaitingSyncCue.value && sensorReady.value
 )
@@ -129,7 +126,7 @@ const workflowStep = computed(() => {
 })
 const flowHint = computed(() => {
   if (!isSessionActive.value) return 'Enable camera session first.'
-  if (!sensorReady.value) return 'Start sensor service or enable mock sensor.'
+  if (!sensorReady.value) return 'Start sensor service first.'
   if (!isCollecting.value && !isAwaitingSyncCue.value) return 'Set gesture name and start recording.'
   if (isAwaitingSyncCue.value) return 'Sync cue active. Recording starts when countdown hits zero.'
   return 'Recording in progress. Stop and export when done.'
@@ -306,46 +303,27 @@ const downloadCvSensorCsv = async () => {
     let sensorHeader = []
     let sensorRows = []
     let usedFallback = false
-    let usedMockStream = false
-
-    if (simulateSensor.value) {
-      sensorHeader = ['timestamp_ms', 'value']
-      sensorRows = sensorSeries.value
-        .map((value, index) => ({
-          timestamp_ms: Number(sensorTimestampsMs.value[index]),
-          value: Number(value)
-        }))
-        .filter((row) => Number.isFinite(row.timestamp_ms) && Number.isFinite(row.value))
-      usedMockStream = sensorRows.length > 0
-      if (!usedMockStream) usedFallback = true
-    } else {
-      try {
-        const response = await api.sync.sensorWindow(activeMode, startMs, endMs, 3000)
-        sensorHeader = response?.header || []
-        sensorRows = response?.rows || []
-      } catch (e) {
-        console.error('Failed to fetch sensor window for export. Falling back to CV-only export.', e)
-        usedFallback = true
-      }
+    try {
+      const response = await api.sync.sensorWindow(activeMode, startMs, endMs, 3000)
+      sensorHeader = response?.header || []
+      sensorRows = response?.rows || []
+    } catch (e) {
+      console.error('Failed to fetch sensor window for export. Falling back to CV-only export.', e)
+      usedFallback = true
     }
 
-    const sensorSource = simulateSensor.value
-      ? 'mock'
-      : (sensorRows.length ? 'real' : 'none')
+    const sensorSource = sensorRows.length ? 'real' : 'none'
     const csv = buildFusionCsv(frames, sensorHeader, sensorRows, sensorSource)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const label = (currentGestureName.value || 'data').replace(/\s+/g, '_')
-    const sourceSuffix = sensorSource === 'mock' ? '_mock' : ''
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `cv_sensor_${label}_${stamp}${sourceSuffix}.csv`
+    a.download = `cv_sensor_${label}_${stamp}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    if (usedMockStream) {
-      exportStatusMessage.value = `Downloaded CSV with ${sensorRows.length} mock sensor rows.`
-    } else if (usedFallback) {
+    if (usedFallback) {
       exportStatusMessage.value = 'Sensor API unavailable. Downloaded CV-only CSV.'
     } else if (!sensorRows.length) {
       exportStatusMessage.value = 'Downloaded CSV. No sensor rows matched this capture window.'
@@ -697,14 +675,6 @@ watch(terminalLines, () => {
                 </BaseBtn>
                 <BaseBtn variant="secondary" class="flex-1 min-w-[120px]" @click="stopSensorCapture">
                   Stop Sensor Service
-                </BaseBtn>
-                <BaseBtn
-                  variant="secondary"
-                  class="w-full"
-                  :class="simulateSensor ? 'border-teal-400 text-teal-300' : ''"
-                  @click="simulateSensor = !simulateSensor"
-                >
-                  {{ simulateSensor ? 'Mock Sensor: On' : 'Enable Mock Sensor' }}
                 </BaseBtn>
               </div>
             </div>

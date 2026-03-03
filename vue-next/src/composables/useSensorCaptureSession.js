@@ -4,6 +4,7 @@ import api from '../services/api'
 export function useSensorCaptureSession() {
   const sensorCaptureStatus = ref({ status: 'stopped', mode: 'single' })
   const captureError = ref('')
+  const POLL_INTERVAL_MS = 5000
   let capturePoll = null
 
   const fetchCaptureStatus = async () => {
@@ -32,7 +33,7 @@ export function useSensorCaptureSession() {
     fetchCaptureStatus()
     capturePoll = setInterval(() => {
       fetchCaptureStatus()
-    }, 3000)
+    }, POLL_INTERVAL_MS)
   })
 
   onUnmounted(() => {

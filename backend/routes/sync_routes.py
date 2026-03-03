@@ -78,7 +78,6 @@ async def websocket_sync_stream(websocket: WebSocket):
     await websocket.accept()
     buffer = SyncStreamBuffer(max_points=60)
     mode = "single"
-    simulate = False
     last_send = 0.0
 
     try:
@@ -90,8 +89,7 @@ async def websocket_sync_stream(websocket: WebSocket):
                 mode = data.get("mode", mode)
                 if mode not in ["single", "dual"]:
                     mode = "single"
-                simulate = bool(data.get("simulate", simulate))
-                await websocket.send_json({"type": "ack", "mode": mode, "simulate": simulate})
+                await websocket.send_json({"type": "ack", "mode": mode})
                 continue
 
             if msg_type == "cv_sample":
@@ -108,7 +106,7 @@ async def websocket_sync_stream(websocket: WebSocket):
 
             now = time.time()
             if msg_type == "tick" or (now - last_send) >= 0.1:
-                sensor_samples = load_sensor_samples(mode=mode, limit=200, max_points=60, simulate=simulate)
+                sensor_samples = load_sensor_samples(mode=mode, limit=200, max_points=60)
                 sensor_stats = buffer.compute_sensor_stats(sensor_samples)
                 sensor_series = [float(item["value"]) for item in sensor_samples]
                 sensor_timestamps = [int(item["timestamp_ms"]) for item in sensor_samples]

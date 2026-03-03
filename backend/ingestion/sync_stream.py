@@ -1,6 +1,5 @@
 import os
 import math
-import random
 import re
 import time
 from datetime import datetime
@@ -92,45 +91,12 @@ def _extract_accel_magnitude_from_line(line: str) -> Optional[Tuple[int, float]]
     return timestamp_ms, line_peak
 
 
-def _simulate_sensor_samples(max_points: int = 60) -> List[Dict[str, float]]:
-    now = time.time()
-    phase = now * 1.7
-    base = 0.35 + 0.05 * math.sin(phase / 2.0)
-    start_ts = int(now * 1000) - (max_points * 100)
-    samples: List[Dict[str, float]] = []
-    for i in range(max_points):
-        wave = 0.12 * math.sin((i + phase) / 6.0)
-        noise = random.uniform(-0.03, 0.03)
-        samples.append(
-            {
-                "timestamp_ms": start_ts + (i * 100),
-                "value": max(0.0, base + wave + noise),
-            }
-        )
-
-    # Inject an occasional spike near the end for sync visualization
-    if int(now * 2) % 8 == 0 and samples:
-        spike_index = max_points - 3
-        samples[spike_index]["value"] = samples[spike_index]["value"] + 0.6
-        samples[spike_index + 1]["value"] = samples[spike_index + 1]["value"] + 0.4
-    return samples
-
-
-def _truthy_env(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def load_sensor_samples(mode: str, limit: int = 200, max_points: int = 60, simulate: bool = False) -> List[Dict[str, float]]:
-    if simulate or _truthy_env(os.getenv("SYNC_SENSOR_SIM")):
-        return _simulate_sensor_samples(max_points=max_points)
-
+def load_sensor_samples(mode: str, limit: int = 200, max_points: int = 60) -> List[Dict[str, float]]:
     log_filename = "data_collection.log" if mode == "single" else "dual_hand_data_collection.log"
     base_dir = os.path.join(os.path.dirname(__file__))
     path = os.path.abspath(os.path.join(base_dir, log_filename))
     if not os.path.exists(path):
-        return _simulate_sensor_samples(max_points=max_points) if _truthy_env(os.getenv("SYNC_SENSOR_SIM")) else []
+        return []
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()[-limit:]

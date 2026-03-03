@@ -10,7 +10,7 @@ const DEFAULT_STATUS = {
   left_connected: false,
   right_connected: false
 }
-const POLL_INTERVAL_MS = 2000
+const POLL_INTERVAL_MS = 4000
 
 export function usePortSession(options = {}) {
   const autoStart = options.autoStart ?? true

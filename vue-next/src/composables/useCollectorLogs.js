@@ -6,6 +6,7 @@ export const useCollectorLogs = (captureMode, sensorCaptureStatus) => {
   const terminalError = ref('')
   const isStreaming = ref(false)
   const autoScroll = ref(true)
+  const POLL_INTERVAL_MS = 4000
   let terminalPoll = null
 
   const fetchLogs = async () => {
@@ -19,8 +20,15 @@ export const useCollectorLogs = (captureMode, sensorCaptureStatus) => {
       if (res?.lines) {
         terminalLines.value = res.lines.map(line => line.replace(/\r?\n$/, ''))
       }
-    } catch {
-      terminalError.value = 'No collector logs found yet. Start a capture to generate logs.'
+    } catch (error) {
+      const status = error?.response?.status
+      if (status === 404) {
+        terminalError.value = 'No collector logs found yet. Start a capture to generate logs.'
+      } else if (status === 429) {
+        terminalError.value = 'Collector logs polling is rate-limited. Waiting before retry.'
+      } else {
+        terminalError.value = 'Unable to fetch collector logs from backend.'
+      }
     }
   }
 
@@ -28,7 +36,7 @@ export const useCollectorLogs = (captureMode, sensorCaptureStatus) => {
     if (terminalPoll) return
     isStreaming.value = true
     await fetchLogs()
-    terminalPoll = setInterval(fetchLogs, 1000)
+    terminalPoll = setInterval(fetchLogs, POLL_INTERVAL_MS)
   }
 
   const stopStream = () => {
