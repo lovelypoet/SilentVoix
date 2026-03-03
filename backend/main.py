@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
-from routes import training_routes, sensor_routes, admin_routes, dashboard_routes, gestures_predict
+from routes import sensor_routes, admin_routes, dashboard_routes, gestures_predict
 from routes import utils_routes, auth_routes, voice_routes, sync_routes, liveWS, capture_controls_routes, admin_csv_library_routes, playground_routes
 from AI.gesture_model_inference import preprocess_frame, predict_gesture
 from routes import model_status
@@ -80,7 +80,6 @@ app.add_middleware(
 # Mount routers
 app.include_router(auth_routes.router)
 app.include_router(gestures_predict.router)
-app.include_router(training_routes.router)
 app.include_router(sensor_routes.router)
 app.include_router(gestures_predict.router)
 app.include_router(admin_routes.router)

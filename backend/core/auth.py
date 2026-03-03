@@ -55,11 +55,7 @@ class UserInDB(User):
 ROUTE_PERMISSIONS = {
     # Admin routes
     "/admin": UserRole.ADMIN,
-    "/training/trigger": UserRole.ADMIN,
-    "/training/": UserRole.ADMIN,
     "/api/admin": UserRole.ADMIN,
-    "/api/training/trigger": UserRole.ADMIN,
-    "/api/training/": UserRole.ADMIN,
 
     # User routes (can read/write data)
     "/gestures": UserRole.USER,
@@ -218,4 +214,3 @@ def require_role(required_role: str):
 require_admin = require_role(UserRole.ADMIN)
 require_user = require_role(UserRole.USER)
 require_viewer = require_role(UserRole.VIEWER)
-

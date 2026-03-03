@@ -121,22 +121,6 @@ async def test_tts_to_esp32(req: TTSRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS or send error: {e}")
 
-@router.get("/training/logs")
-async def get_training_logs(lines: int = Query(200, ge=1, le=2000)):
-    """
-    Return the last N lines of the training log so clients can display epoch/progress.
-    """
-    path = settings.TRAINING_LOG_PATH
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Training log not found")
-    try:
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.readlines()
-        tail = content[-lines:]
-        return {"status": "success", "lines": tail}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read training log: {e}")
-
 @router.get("/collector/logs")
 async def get_collector_logs(
     mode: str = Query("single"),

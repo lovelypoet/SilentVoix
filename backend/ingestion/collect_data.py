@@ -14,7 +14,6 @@ import asyncio
 import threading
 import websockets
 import json
-import requests
 from datetime import datetime
 # Backend imports
 backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -262,19 +261,6 @@ def main():
         logger.error(f"Permission denied for {RAW_DATA_PATH}")
     except KeyboardInterrupt:
         logger.info("Stopped by user.")
-        try:
-            logger.info("Triggering model training...")
-            # Include internal API key to bypass auth
-            response = requests.post(
-                f"{app_settings.BACKEND_BASE_URL}/training/trigger",
-                headers={"X-API-KEY": app_settings.SECRET_KEY}
-            )
-            if response.status_code == 200:
-                logger.info("Training triggered successfully.")
-            else:
-                logger.error(f"Training trigger failed: {response.status_code} - {response.text}")
-        except Exception as e:
-            logger.error(f"Error triggering training: {e}")
     finally:
         if ser and ser.is_open:
             ser.close()

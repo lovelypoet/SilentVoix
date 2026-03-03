@@ -15,7 +15,6 @@ import asyncio
 import threading
 import websockets
 import json
-import requests
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -284,24 +283,8 @@ class DualHandDataCollector:
                 
         except KeyboardInterrupt:
             print("\nStopped by user.")
-            self.trigger_training()
         finally:
             self.cleanup()
-    
-    def trigger_training(self):
-        """Trigger model training after data collection"""
-        try:
-            logger.info("Triggering dual-hand model training...")
-            response = requests.post(
-                f"{app_settings.BACKEND_BASE_URL}/training/trigger",
-                headers={"X-API-KEY": app_settings.SECRET_KEY}
-            )
-            if response.status_code == 200:
-                logger.info("Training triggered successfully.")
-            else:
-                logger.error(f"Training trigger failed: {response.status_code}")
-        except Exception as e:
-            logger.error(f"Error triggering training: {e}")
     
     def cleanup(self):
         """Clean up resources"""

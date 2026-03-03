@@ -3,12 +3,9 @@
 # ===============================
 tensorflow==2.19.0
 keras==3.10.0
-tensorboard==2.19.0
-tensorflowjs==3.15.0
 
 numpy==1.26.4
 scipy==1.15.3
-scikit-learn==1.7.0
 pandas==2.3.0
 
 ml_dtypes==0.5.1
@@ -19,16 +16,9 @@ protobuf==4.25.8
 h5py==3.14.0
 
 # ===============================
-# Visualization
+# Visualization / Image
 # ===============================
-matplotlib==3.10.3
-seaborn==0.13.2
 pillow==11.2.1
-
-# ===============================
-# PyTorch Runtime (for .pth support)
-# ===============================
-torch==2.4.1
 
 # ===============================
 # Packaging (CRITICAL PIN)
@@ -58,9 +48,7 @@ motor==3.7.1
 pymongo==4.13.2
 
 python-jose==3.3.0
-passlib==1.7.4
 bcrypt==4.0.1
-fastapi-jwt-auth==0.5.0
 
 # ===============================
 # Networking / Utils
