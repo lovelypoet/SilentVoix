@@ -4,6 +4,48 @@
 Create an admin-only CSV Library in the web app to inspect, validate, and manage captured CSV datasets without shell/container access.
 This page is the first implementation of the **Data Controller**.
 
+## Delivery Contract (Role, Scope, Constraints, Testing)
+
+### Role
+- Codex acts as implementation engineer for this plan.
+- Primary responsibility: deliver admin-safe CSV Data Controller features incrementally.
+- Secondary responsibility: prevent schema-mixing and training misuse through validation gates.
+
+### Scope (In-Scope)
+- Admin-only CSV Library backend and frontend work described in this document.
+- Dataset classification for all 6 canonical schema types.
+- Validation, preview, download, and archive flows.
+- Training compatibility checks for dataset selection.
+
+### Out of Scope (Until explicitly requested)
+- Model architecture changes.
+- Training algorithm tuning/hyperparameter optimization.
+- Non-admin dataset management UI.
+- Hard-delete data lifecycle policy.
+
+### Constraints
+- Server-side admin authorization is mandatory for all `/admin/csv-library/*` endpoints.
+- No frontend-only security assumptions.
+- Only `.csv` files under approved base directories are accessible.
+- Path traversal and unsafe filename patterns must be rejected.
+- Dataset type compatibility must be enforced before training selection.
+- Never mix incompatible feature dimensions in one training run.
+
+### Testing Rules (Definition of Done)
+- Every backend phase must include authz + validation tests.
+- Minimum backend checks per phase:
+  - admin `200`, non-admin `403`
+  - invalid filename/path traversal rejected
+  - schema detection and `feature_dim` checks correct
+  - compatibility filtering returns only allowed datasets
+- Minimum frontend checks per phase:
+  - non-admin cannot see/access CSV Library route
+  - list/preview/download UX works with API errors surfaced clearly
+  - archive flow confirms and refreshes state
+- Before moving to next phase:
+  - lint/tests pass for touched code
+  - API contract changes are reflected in this document
+
 ## Scope
 - Admin-only backend routes for listing, previewing, downloading, and archiving CSV files.
 - Admin-only frontend page for dataset browsing and quality checks.
