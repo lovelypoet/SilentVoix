@@ -84,9 +84,15 @@ const router = createRouter({
         },
         {
             path: '/library',
-            name: 'library',
+            name: 'gesture-library',
             component: () => import('../views/Library.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/model-library',
+            name: 'model-library',
+            component: () => import('../views/ModelLibrary.vue'),
+            meta: { requiresAuth: true, allowedRoles: ['editor', 'admin'] }
         },
         {
             path: '/profile',

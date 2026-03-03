@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,7 +10,8 @@ from uuid import uuid4
 
 import numpy as np
 import tensorflow as tf
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from core.settings import settings
@@ -63,6 +65,28 @@ def _save_registry(data: Dict[str, Any]) -> None:
     with tmp_path.open("w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=True, indent=2)
     tmp_path.replace(path)
+
+
+def _get_model_entry(registry: Dict[str, Any], model_id: str) -> Dict[str, Any]:
+    entry = next((m for m in registry.get("models", []) if m.get("id") == model_id), None)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Model not found: {model_id}")
+    return entry
+
+
+def _safe_model_artifact_path(entry: Dict[str, Any], field_name: str) -> Path:
+    raw = entry.get(field_name)
+    if not raw:
+        raise HTTPException(status_code=404, detail=f"Artifact missing: {field_name}")
+    path = Path(str(raw)).resolve()
+    root = _models_root().resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Artifact path is outside playground model storage")
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail=f"Artifact file not found: {path.name}")
+    return path
 
 
 def _parse_metadata_bytes(raw: bytes) -> Dict[str, Any]:
@@ -272,15 +296,60 @@ async def get_active_playground_model(_user=Depends(role_or_internal_dep("editor
 @router.post("/models/{model_id}/activate")
 async def activate_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
     registry = _load_registry()
-    target = next((m for m in registry.get("models", []) if m.get("id") == model_id), None)
-    if not target:
-        raise HTTPException(status_code=404, detail=f"Model not found: {model_id}")
+    target = _get_model_entry(registry, model_id)
     registry["active_model_id"] = model_id
     _save_registry(registry)
     return {
         "status": "success",
         "active_model_id": model_id,
         "model": target,
+    }
+
+
+@router.get("/models/{model_id}/download")
+async def download_playground_model_artifact(
+    model_id: str,
+    kind: str = Query("model", pattern="^(model|metadata)$"),
+    _user=Depends(role_or_internal_dep("editor")),
+):
+    registry = _load_registry()
+    entry = _get_model_entry(registry, model_id)
+    field_name = "model_path" if kind == "model" else "metadata_path"
+    file_path = _safe_model_artifact_path(entry, field_name)
+    media_type = "application/octet-stream"
+    if kind == "metadata":
+        media_type = "application/json"
+    return FileResponse(path=str(file_path), media_type=media_type, filename=file_path.name)
+
+
+@router.delete("/models/{model_id}")
+async def delete_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
+    registry = _load_registry()
+    models = registry.get("models", [])
+    entry = _get_model_entry(registry, model_id)
+    remaining = [m for m in models if m.get("id") != model_id]
+    registry["models"] = remaining
+    if registry.get("active_model_id") == model_id:
+        registry["active_model_id"] = remaining[0]["id"] if remaining else None
+    _save_registry(registry)
+
+    model_dir = (_models_root() / model_id).resolve()
+    root = _models_root().resolve()
+    try:
+        model_dir.relative_to(root)
+        if model_dir.exists() and model_dir.is_dir():
+            shutil.rmtree(model_dir, ignore_errors=True)
+    except ValueError:
+        pass
+
+    with MODEL_CACHE_LOCK:
+        MODEL_CACHE.pop(model_id, None)
+
+    return {
+        "status": "success",
+        "deleted_model_id": model_id,
+        "active_model_id": registry.get("active_model_id"),
+        "deleted_name": entry.get("display_name"),
     }
 
 

@@ -225,6 +225,9 @@ export default {
     listModels: () => api.get('/playground/models'),
     getActiveModel: () => api.get('/playground/models/active'),
     activateModel: (modelId) => api.post(`/playground/models/${modelId}/activate`),
+    deleteModel: (modelId) => api.delete(`/playground/models/${modelId}`),
+    downloadModelArtifact: (modelId, kind = 'model') =>
+      api.get(`/playground/models/${modelId}/download?kind=${kind}`, { responseType: 'blob' }),
     predictCv: (cvValues, modelId = null) =>
       api.post('/playground/predict/cv', modelId ? { cv_values: cvValues, model_id: modelId } : { cv_values: cvValues })
   }

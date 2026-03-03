@@ -40,7 +40,10 @@ watch(
           Sensor Training
         </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
-          Library
+          Gesture Library
+        </RouterLink>
+        <RouterLink v-if="canAccessExtendedPages" to="/model-library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+          Model Library
         </RouterLink>
         <RouterLink v-if="canAccessAdminPages" to="/csv-library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           CSV Library
@@ -85,7 +88,10 @@ watch(
           Sensor Training
         </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
-          Library
+          Gesture Library
+        </RouterLink>
+        <RouterLink v-if="canAccessExtendedPages" to="/model-library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+          Model Library
         </RouterLink>
         <RouterLink v-if="canAccessAdminPages" to="/csv-library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           CSV Library
