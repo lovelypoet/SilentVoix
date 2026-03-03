@@ -132,3 +132,93 @@ You can still reuse shared UI components (camera panel, sensor status, log termi
 2. Implement strict fused-row builder (`74`/`148`) and export validator.
 3. Add backend dataset persistence endpoints (admin-only).
 4. Add early-fusion training endpoint with dim checks.
+
+## 7. Data Controller = CSV Library (Recommended)
+
+Yes, the **CSV Library admin page** should be the first version of the **Data Controller page**.
+
+Use the CSV Library as the control surface for:
+
+1. Classifying dataset type.
+2. Validating schema compatibility before training.
+3. Sorting/filtering files by modality and hand mode.
+4. Preventing wrong dataset selection in training pipelines.
+
+Reference implementation note:
+- Existing planning doc: `csv_library_admin_plan.md`
+
+## 8. Canonical Dataset Types (6 Schemas)
+
+We define dataset type as:
+- `modality` in `{cv, sensor, fusion}`
+- `hand_mode` in `{single, dual}`
+
+This yields exactly 6 canonical types:
+
+1. `cv_single`
+2. `cv_dual`
+3. `sensor_single`
+4. `sensor_dual`
+5. `fusion_single`
+6. `fusion_dual`
+
+## 9. Schema Registry (Type-First Storage)
+
+Every CSV tracked by Data Controller must carry these metadata fields:
+
+- `schema_id` (one of the 6 canonical types)
+- `schema_version` (example: `v1`)
+- `modality` (`cv` | `sensor` | `fusion`)
+- `hand_mode` (`single` | `dual`)
+- `feature_dim` (expected model input feature count)
+- `label_column` (default: `label`)
+- `timestamp_column` (default: `timestamp_ms`)
+
+### Expected feature dims by type
+
+- `cv_single`: `63`
+- `cv_dual`: `126`
+- `sensor_single`: `11`
+- `sensor_dual`: `22`
+- `fusion_single`: `74` (`11 + 63`)
+- `fusion_dual`: `148` (`22 + 126`)
+
+## 10. Sorting and Filtering Strategy
+
+In CSV Library/Data Controller UI, add top-level filters:
+
+1. `schema_id` (primary filter)
+2. `modality`
+3. `hand_mode`
+4. `schema_version`
+5. `label contains`
+6. `date range`
+7. `health_flags`
+
+Default table sort:
+
+1. `schema_id`
+2. `modified_at desc`
+
+Training picker rule:
+
+- Early-fusion training page may only list:
+  - `fusion_single` for single mode
+  - `fusion_dual` for dual mode
+- Late-fusion flows may list compatible modality-separated datasets by design.
+
+## 11. Storage Convention (Simple + Scalable)
+
+Use filename and metadata together (metadata is source of truth):
+
+- Filename pattern:
+  - `{schema_id}__{label_group}__{yyyymmdd_hhmmss}__{schema_version}.csv`
+- Example:
+  - `fusion_single__greetings__20260303_143020__v1.csv`
+
+Suggested directory shape:
+
+- `backend/data/csv_library/active/{schema_id}/...`
+- `backend/data/csv_library/archive/{schema_id}/...`
+
+This keeps the 6 types physically separated while preserving searchability.

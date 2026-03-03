@@ -2,6 +2,7 @@
 
 ## Goal
 Create an admin-only CSV Library in the web app to inspect, validate, and manage captured CSV datasets without shell/container access.
+This page is the first implementation of the **Data Controller**.
 
 ## Scope
 - Admin-only backend routes for listing, previewing, downloading, and archiving CSV files.
@@ -16,9 +17,40 @@ Create an admin-only CSV Library in the web app to inspect, validate, and manage
 - Do not rely on frontend-only role checks.
 
 ## Data Sources
-- Primary file directory: `backend/data/`.
-- Optional archive directory: `backend/data/archive/`.
+- Primary file directory: `backend/data/csv_library/active/{schema_id}/`.
+- Optional archive directory: `backend/data/csv_library/archive/{schema_id}/`.
 - File type: `.csv` only.
+
+## Canonical Schema Registry (6 Types)
+
+Dataset identity is type-first:
+- `modality` in `{cv, sensor, fusion}`
+- `hand_mode` in `{single, dual}`
+
+Canonical `schema_id` values:
+1. `cv_single`
+2. `cv_dual`
+3. `sensor_single`
+4. `sensor_dual`
+5. `fusion_single`
+6. `fusion_dual`
+
+Expected feature dimensions:
+- `cv_single`: `63`
+- `cv_dual`: `126`
+- `sensor_single`: `11`
+- `sensor_dual`: `22`
+- `fusion_single`: `74`
+- `fusion_dual`: `148`
+
+Required metadata (per file record):
+- `schema_id`
+- `schema_version`
+- `modality`
+- `hand_mode`
+- `feature_dim`
+- `label_column` (default: `label`)
+- `timestamp_column` (default: `timestamp_ms`)
 
 ## API Design (Admin Only)
 
@@ -29,7 +61,11 @@ Response fields (per file):
 - `name`
 - `size_bytes`
 - `modified_at`
-- `mode` (`single` | `dual` | `unknown`)
+- `schema_id`
+- `schema_version`
+- `modality`
+- `hand_mode`
+- `feature_dim`
 - `row_count`
 - `columns`
 - `label_summary` (top labels + counts)
@@ -49,6 +85,8 @@ Response:
 - `total_rows`
 - `limit`
 - `offset`
+- `schema_id`
+- `schema_version`
 - `schema_check`
 - `health_flags`
 
@@ -62,6 +100,10 @@ Rules:
 Response:
 - `row_count`
 - `column_count`
+- `schema_id`
+- `schema_version`
+- `expected_feature_dim`
+- `actual_feature_dim`
 - `missing_values_count`
 - `duplicate_timestamp_count`
 - `label_distribution`
@@ -80,7 +122,7 @@ Behavior:
 `POST /admin/csv-library/files/{name}/archive`
 
 Behavior:
-- Move file from `data/` to `data/archive/`.
+- Move file from `csv_library/active/{schema_id}/` to `csv_library/archive/{schema_id}/`.
 - Do not hard delete in MVP.
 
 Response:
@@ -97,6 +139,8 @@ Use these flags in list/stats endpoints:
 - `duplicate_timestamps`
 - `timestamp_not_monotonic`
 - `possible_channel_order_issue`
+- `feature_dim_mismatch`
+- `unknown_schema`
 
 ## Security + Safety
 - Strict filename sanitization:
@@ -108,14 +152,15 @@ Use these flags in list/stats endpoints:
   - Timeout/streaming parse for very large files.
 - Archive operation should be atomic where possible.
 - Add request logging for all admin file operations.
+- Reject training picker usage when `schema_id` is not compatible with selected pipeline/mode.
 
 ## Frontend (Admin)
 
 ### Page: `CSV Library`
 - Table view with:
-  - filename, size, updated time, mode, rows, quick health badge.
+  - filename, size, updated time, `schema_id`, rows, quick health badge.
 - Filters:
-  - mode, date range, filename contains, label contains.
+  - `schema_id`, modality, hand_mode, schema_version, date range, filename contains, label contains.
 - Row actions:
   - Preview, Download, Archive.
 
@@ -134,16 +179,21 @@ Use these flags in list/stats endpoints:
 
 ### Phase 1 (MVP)
 - Backend: `files`, `preview`, `download` endpoints.
-- Frontend: list + preview + download.
+- Frontend: list + preview + download + `schema_id` filter.
 - Admin-only access enforcement.
 
 ### Phase 2
-- Backend: `stats` endpoint and health flags.
-- Frontend: health badges + filters.
+- Backend: `stats` endpoint + full schema registry checks.
+- Frontend: health badges + modality/mode/schema filters.
 
 ### Phase 3
 - Backend: `archive` endpoint + audit log.
 - Frontend: archive flow + archived files toggle.
+
+### Phase 4
+- Backend: training-picker compatibility endpoint:
+  - e.g. `GET /admin/csv-library/compatible?pipeline=early&mode=single`
+- Frontend: expose only compatible datasets in training pages.
 
 ## Test Plan
 
@@ -153,6 +203,9 @@ Use these flags in list/stats endpoints:
 - Invalid filename/extension rejected.
 - Large file preview limit enforced.
 - Archive move success/failure behavior.
+- Schema registry detection tests for all 6 `schema_id` types.
+- `feature_dim` validation tests (`63/126/11/22/74/148`).
+- Compatibility filter tests (early single -> only `fusion_single`, early dual -> only `fusion_dual`).
 
 ### Frontend
 - Admin route hidden for non-admin.
@@ -170,3 +223,5 @@ Use these flags in list/stats endpoints:
 - Admin can list/preview/download CSVs without shell access.
 - Admin can archive CSVs safely.
 - Health flags help detect bad captures before training.
+- CSV Library can classify and filter all 6 schema types.
+- Dataset compatibility checks prevent wrong-schema training selection.
