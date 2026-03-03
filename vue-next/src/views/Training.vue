@@ -190,13 +190,24 @@ const trainingCards = computed(() => {
     cards.splice(1, 0, {
       id: 'capture-session',
       icon: '●',
-      title: 'Fusion Training',
-      description: 'Record a labeled gesture with sensor and CV data.',
-      buttonLabel: 'Start Fusion',
+      title: 'Early Fusion Training',
+      description: 'Record synchronized CV and sensor data for early-fusion datasets.',
+      buttonLabel: 'Start Early Fusion',
       buttonVariant: 'primary',
       disabled: false,
       locked: false,
       onClick: startCaptureSession
+    })
+    cards.splice(2, 0, {
+      id: 'late-fusion-training',
+      icon: '◆',
+      title: 'Late Fusion Training',
+      description: 'Pick paired CV + sensor datasets and run the late-fusion pipeline.',
+      buttonLabel: 'Open Late Fusion',
+      buttonVariant: 'primary',
+      disabled: false,
+      locked: false,
+      onClick: startLateFusionTraining
     })
   }
 
@@ -219,7 +230,11 @@ const startTraining = async () => {
 }
 
 const startCaptureSession = () => {
-  router.push('/fusion-training')
+  router.push('/early-fusion-training')
+}
+
+const startLateFusionTraining = () => {
+  router.push('/late-fusion-training')
 }
 
 const startAdvancedTraining = async () => {

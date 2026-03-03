@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
@@ -28,6 +28,7 @@ const prevHandedness = ref(null)
 const recordingStartCount = ref(0)
 const cvFrameId = ref(0)
 const hasAutoSavedCurrentRun = ref(false)
+const route = useRoute()
 const router = useRouter()
 const captureMode = ref('single')
 const syncCountdown = ref(0)
@@ -103,6 +104,15 @@ const videoClasses = computed(() => [
   'object-cover',
   { '-scale-x-100': mirrorCamera.value }
 ])
+
+const isEarlyFusionRoute = computed(() => route.path === '/early-fusion-training')
+const pageTitle = computed(() => (isEarlyFusionRoute.value ? 'Early Fusion Training' : 'Fusion Training'))
+const pageSubtitle = computed(() => (
+  isEarlyFusionRoute.value
+    ? 'Guided flow: Camera Session -> Sensor Source -> Recording -> Export (Early Fusion).'
+    : 'Guided flow: Camera Session -> Sensor Source -> Recording -> Export.'
+))
+const permissionTrainingLabel = computed(() => (isEarlyFusionRoute.value ? 'early fusion training' : 'fusion training'))
 
 const expectedSyncLabel = computed(() => {
   if (!expectedSyncTimestampMs.value) return ''
@@ -515,9 +525,9 @@ watch(terminalLines, () => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Fusion Training</h1>
+        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">{{ pageTitle }}</h1>
         <p class="text-slate-400">
-          Guided flow: Camera Session -> Sensor Source -> Recording -> Export.
+          {{ pageSubtitle }}
         </p>
       </div>
       <div class="hidden md:block"></div>
@@ -527,7 +537,7 @@ watch(terminalLines, () => {
       <BaseCard class="max-w-md mx-auto">
         <h3 class="text-xl font-bold text-red-400 mb-2">Permissions Required</h3>
         <p class="text-slate-400 mb-4">
-          Camera access is required for fusion training. Please grant permissions in your browser settings.
+          Camera access is required for {{ permissionTrainingLabel }}. Please grant permissions in your browser settings.
         </p>
         <p class="text-xs text-slate-500">Error: {{ error.name }} - {{ error.message }}</p>
         <BaseBtn class="mt-4" :disabled="isRequesting" @click="startSession">

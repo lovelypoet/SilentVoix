@@ -79,6 +79,14 @@ export default {
     },
     getDualData: () => api.get('/training/dual-hand/data'),
     getDataInfo: () => api.get('/training/data/info'),
+    lateFusion: {
+      run: (mode = 'single', gloveWeight = 0.8) =>
+        api.post(`/training/late-fusion/run?mode=${mode}&glove_weight=${gloveWeight}`),
+      getJob: (jobId) =>
+        api.get(`/training/late-fusion/jobs/${jobId}`),
+      getLatest: (mode = 'single') =>
+        api.get(`/training/late-fusion/latest?mode=${mode}`)
+    },
     // Conversion
     convertToDual: (sessionId) => api.post(`/training/convert-to-dual-hand/${sessionId}`),
     checkConversion: (sessionId) => api.get(`/training/conversion-status/${sessionId}`),

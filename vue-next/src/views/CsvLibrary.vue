@@ -1,11 +1,13 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import OverlayPanel from 'primevue/overlaypanel'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import api from '../services/api'
 const toast = useToast()
+const route = useRoute()
 
 const files = ref([])
 const isLoading = ref(false)
@@ -331,6 +333,14 @@ const openActionMenu = (event, file) => {
 }
 
 onMounted(() => {
+  const queryPipeline = String(route.query?.pipeline || '').toLowerCase()
+  const queryMode = String(route.query?.mode || '').toLowerCase()
+  if (queryPipeline === 'early' || queryPipeline === 'late') {
+    pipeline.value = queryPipeline
+  }
+  if (queryMode === 'single' || queryMode === 'dual') {
+    mode.value = queryMode
+  }
   void loadFiles()
 })
 

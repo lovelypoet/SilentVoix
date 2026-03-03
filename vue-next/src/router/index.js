@@ -35,14 +35,24 @@ const router = createRouter({
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
-            path: '/fusion-training',
-            name: 'fusion-training',
+            path: '/early-fusion-training',
+            name: 'early-fusion-training',
             component: () => import('../views/CaptureSession.vue'),
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
+            path: '/late-fusion-training',
+            name: 'late-fusion-training',
+            component: () => import('../views/LateFusionTraining.vue'),
+            meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
+        },
+        {
+            path: '/fusion-training',
+            redirect: '/early-fusion-training'
+        },
+        {
             path: '/capture',
-            redirect: '/fusion-training'
+            redirect: '/early-fusion-training'
         },
         {
             path: '/voice',
