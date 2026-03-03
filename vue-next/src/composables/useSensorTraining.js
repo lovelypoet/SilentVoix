@@ -24,7 +24,6 @@ function normalizeIncomingFrame(payload) {
   return {
     session_id: payload.session_id || null,
     source: payload.source || 'livews',
-    sequence: payload.sequence ?? null,
     timestamp_ms: Number(payload.timestamp_ms) || Date.now(),
     received_at_ms: Number(payload.received_at_ms) || Date.now(),
     schema: payload.schema || 'silentvoix.sensor_frame.v1',
@@ -306,38 +305,42 @@ export function useSensorTraining() {
     if (!canExport.value) return
 
     const header = [
-      'recording_session_id',
-      'recording_label',
-      'source',
-      'sequence',
       'timestamp_ms',
-      'received_at_ms',
-      'schema',
-      'schema_version',
-      'flex1',
-      'flex2',
-      'flex3',
-      'flex4',
-      'flex5',
-      'accel_x',
-      'accel_y',
-      'accel_z',
-      'gyro_x',
-      'gyro_y',
-      'gyro_z'
+      'ax',
+      'ay',
+      'az',
+      'gx',
+      'gy',
+      'gz',
+      'f1',
+      'f2',
+      'f3',
+      'f4',
+      'f5',
+      'label'
     ]
 
-    const rows = recordedFrames.value.map((frame) => [
-      frame.recording_session_id || '',
-      frame.recording_label || '',
-      frame.source || '',
-      frame.sequence ?? '',
-      frame.timestamp_ms ?? '',
-      frame.received_at_ms ?? '',
-      frame.schema || '',
-      frame.schema_version || '',
-      ...frame.values.map((v) => `${v}`)
-    ])
+    const rows = recordedFrames.value.map((frame) => {
+      const values = Array.isArray(frame.values) ? frame.values : []
+      const flex = values.slice(0, 5)
+      const accel = values.slice(5, 8)
+      const gyro = values.slice(8, 11)
+      return [
+        frame.timestamp_ms ?? '',
+        accel[0] ?? '',
+        accel[1] ?? '',
+        accel[2] ?? '',
+        gyro[0] ?? '',
+        gyro[1] ?? '',
+        gyro[2] ?? '',
+        flex[0] ?? '',
+        flex[1] ?? '',
+        flex[2] ?? '',
+        flex[3] ?? '',
+        flex[4] ?? '',
+        frame.recording_label || ''
+      ]
+    })
 
     const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n')
     const fileName = `${sessionId.value || 'sensor_session'}_${Date.now()}.csv`

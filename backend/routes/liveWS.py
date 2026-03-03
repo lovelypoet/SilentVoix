@@ -60,7 +60,6 @@ def _normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     payload_type = payload.get("type")
     session_id = payload.get("session_id")
     source = str(payload.get("source", "livews"))
-    sequence = payload.get("sequence")
     timestamp_ms_raw = payload.get("timestamp_ms")
     timestamp_ms = int(timestamp_ms_raw) if timestamp_ms_raw is not None else int(time.time() * 1000)
 
@@ -97,7 +96,6 @@ def _normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "session_id": session_id,
         "source": source,
-        "sequence": sequence,
         "timestamp_ms": timestamp_ms,
         "received_at_ms": int(time.time() * 1000),
         "channels": channels,

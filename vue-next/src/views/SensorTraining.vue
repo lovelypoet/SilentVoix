@@ -66,6 +66,12 @@ watch(showAdvanced, (open) => {
 const isCaptureRunning = computed(() => captureStatus.value === 'running')
 const canConnectStream = computed(() => isCaptureRunning.value && !isConnected.value)
 const canStartRecordingNow = computed(() => isCaptureRunning.value && isConnected.value && !isRecording.value)
+const flexScaleLabel = computed(() => {
+  const flexValues = latestChannels.value?.flex || []
+  if (!flexValues.length) return 'Flex (0-1023)'
+  const maxFlex = Math.max(...flexValues.map((v) => Number(v) || 0))
+  return maxFlex <= 1.2 ? 'Flex (0-1 normalized)' : 'Flex (0-1023)'
+})
 
 const workflowStep = computed(() => {
   if (!isCaptureRunning.value) return 1
@@ -96,6 +102,13 @@ const channelPercent = (value, index) => {
   if (Number.isNaN(numeric)) return 0
 
   if (index < 5) {
+    const flexValues = latestChannels.value?.flex || []
+    const maxFlex = flexValues.length ? Math.max(...flexValues.map((v) => Number(v) || 0)) : 0
+    // Support both normalized flex (0..1) and raw ADC flex (0..1023).
+    if (maxFlex <= 1.2) {
+      const clamped = Math.min(Math.max(numeric, 0), 1)
+      return Math.round(clamped * 100)
+    }
     const clamped = Math.min(Math.max(numeric, 0), 1023)
     return Math.round((clamped / 1023) * 100)
   }
@@ -241,7 +254,7 @@ const channelPercent = (value, index) => {
 
         <div v-if="latestFrame" class="space-y-4">
           <div>
-            <p class="text-sm font-medium text-slate-300 mb-2">Flex (0-1023)</p>
+            <p class="text-sm font-medium text-slate-300 mb-2">{{ flexScaleLabel }}</p>
             <div class="space-y-2">
               <div
                 v-for="(value, idx) in latestChannels.flex"
@@ -393,7 +406,6 @@ const channelPercent = (value, index) => {
             <thead class="text-slate-400 border-b border-slate-800">
               <tr>
                 <th class="text-left py-2 pr-3">Time</th>
-                <th class="text-left py-2 pr-3">Sequence</th>
                 <th class="text-left py-2 pr-3">Label</th>
                 <th class="text-left py-2 pr-3">Source</th>
                 <th class="text-left py-2 pr-3">Values</th>
@@ -406,7 +418,6 @@ const channelPercent = (value, index) => {
                 class="border-b border-slate-900/70 text-slate-200"
               >
                 <td class="py-2 pr-3 whitespace-nowrap">{{ formatTime(frame.timestamp_ms) }}</td>
-                <td class="py-2 pr-3">{{ frame.sequence ?? '--' }}</td>
                 <td class="py-2 pr-3">{{ label || 'unlabeled' }}</td>
                 <td class="py-2 pr-3">{{ frame.source || '--' }}</td>
                 <td class="py-2 pr-3 text-xs text-slate-300">
@@ -414,7 +425,7 @@ const channelPercent = (value, index) => {
                 </td>
               </tr>
               <tr v-if="!lastFrames.length">
-                <td colspan="5" class="py-4 text-slate-500">No frames yet.</td>
+                <td colspan="4" class="py-4 text-slate-500">No frames yet.</td>
               </tr>
             </tbody>
           </table>

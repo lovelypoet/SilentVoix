@@ -38,10 +38,8 @@ ACCEL_SENSORS = 3
 GYRO_SENSORS = 3
 TOTAL_SENSORS = FLEX_SENSORS + ACCEL_SENSORS + GYRO_SENSORS
 LABEL = 'Students'  # 👈 Set this before collecting (rest gesture)
-SESSION_ID = 'noun1'  # Use a simple, human-readable session id for this data collection
 CSV_DIR = app_settings.DATA_DIR
 RAW_DATA_PATH = os.path.join(CSV_DIR, 'Students.csv')
-FILE_PATH = os.path.join(CSV_DIR, f"{LABEL}_{SESSION_ID}.csv")
 LOG_FILE = 'data_collection.log'
 
 # ========= Logging setup =========
@@ -138,13 +136,32 @@ def read_data(ser):
 
 
 def initialize_csv():
+    expected_header = [
+        'timestamp_ms',
+        'ax', 'ay', 'az',
+        'gx', 'gy', 'gz',
+        'f1', 'f2', 'f3', 'f4', 'f5',
+        'label',
+    ]
     try:
         os.makedirs(CSV_DIR, exist_ok=True)
+        if os.path.exists(RAW_DATA_PATH):
+            with open(RAW_DATA_PATH, 'r', encoding='utf-8', errors='ignore', newline='') as csvfile:
+                reader = csv.reader(csvfile)
+                first_row = next(reader, [])
+            if first_row and first_row != expected_header:
+                stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                archived_path = os.path.join(CSV_DIR, f"Students_legacy_schema_{stamp}.csv")
+                os.rename(RAW_DATA_PATH, archived_path)
+                logger.warning(
+                    "Detected legacy Students.csv schema. "
+                    f"Archived old file to {archived_path} and creating a new aligned file."
+                )
+
         if not os.path.exists(RAW_DATA_PATH):
             with open(RAW_DATA_PATH, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
-                header = ['session_id', 'label', 'timestamp_ms', 'flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']
-                writer.writerow(header)
+                writer.writerow(expected_header)
             logger.info(f"CSV file created: {RAW_DATA_PATH}")
         return True
     except Exception as e:
@@ -196,13 +213,15 @@ def main():
                 data = read_data(ser)
                 if data:
                     timestamp_ms = int(time.time() * 1000)
-                    row = [SESSION_ID, LABEL, timestamp_ms] + data[:5] + data[5:8] + data[8:11]
+                    # `data` is internal order: flex(5) + accel(3) + gyro(3).
+                    # Write CSV in ESP-aligned order: timestamp, accel, gyro, flex, label.
+                    row = [timestamp_ms] + data[5:8] + data[8:11] + data[:5] + [LABEL]
                     writer.writerow(row)
                     csvfile.flush()
 
                     # Save to MongoDB
                     mongo_doc = {
-                        "session_id": SESSION_ID,
+                        "session_id": "auto_single",
                         "label": LABEL,
                         "timestamp": datetime.utcnow(),
                         "timestamp_ms": timestamp_ms,
@@ -214,7 +233,7 @@ def main():
                     ws_payload = {
                         "type": "sensor_frame_v1",
                         "schema_version": "1.0",
-                        "session_id": SESSION_ID,
+                        "session_id": "auto_single",
                         "source": "pyserial.collect_data",
                         "timestamp_ms": timestamp_ms,
                         "frame": {

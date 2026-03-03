@@ -15,20 +15,19 @@ _last_update = 0.0
 _payload_lock = asyncio.Lock()
 
 SINGLE_SENSOR_HEADER = [
-    "session_id",
-    "label",
     "timestamp_ms",
-    "flex1",
-    "flex2",
-    "flex3",
-    "flex4",
-    "flex5",
-    "accel_x",
-    "accel_y",
-    "accel_z",
-    "gyro_x",
-    "gyro_y",
-    "gyro_z",
+    "ax",
+    "ay",
+    "az",
+    "gx",
+    "gy",
+    "gz",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "label",
 ]
 
 DUAL_SENSOR_HEADER = [
