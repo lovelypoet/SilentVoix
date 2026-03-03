@@ -190,9 +190,9 @@ const trainingCards = computed(() => {
     cards.splice(1, 0, {
       id: 'capture-session',
       icon: '●',
-      title: 'Capture Session',
+      title: 'Fusion Training',
       description: 'Record a labeled gesture with sensor and CV data.',
-      buttonLabel: 'Start Capture',
+      buttonLabel: 'Start Fusion',
       buttonVariant: 'primary',
       disabled: false,
       locked: false,
@@ -219,7 +219,7 @@ const startTraining = async () => {
 }
 
 const startCaptureSession = () => {
-  router.push('/capture')
+  router.push('/fusion-training')
 }
 
 const startAdvancedTraining = async () => {

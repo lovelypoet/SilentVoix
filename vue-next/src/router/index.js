@@ -35,10 +35,14 @@ const router = createRouter({
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
-            path: '/capture',
-            name: 'capture',
+            path: '/fusion-training',
+            name: 'fusion-training',
             component: () => import('../views/CaptureSession.vue'),
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
+        },
+        {
+            path: '/capture',
+            redirect: '/fusion-training'
         },
         {
             path: '/voice',

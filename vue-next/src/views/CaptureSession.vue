@@ -537,7 +537,7 @@ watch(terminalLines, () => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Capture Session</h1>
+        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Fusion Training</h1>
         <p class="text-slate-400">
           Guided flow: Camera Session -> Sensor Source -> Recording -> Export.
         </p>
@@ -549,7 +549,7 @@ watch(terminalLines, () => {
       <BaseCard class="max-w-md mx-auto">
         <h3 class="text-xl font-bold text-red-400 mb-2">Permissions Required</h3>
         <p class="text-slate-400 mb-4">
-          Camera access is required for capture. Please grant permissions in your browser settings.
+          Camera access is required for fusion training. Please grant permissions in your browser settings.
         </p>
         <p class="text-xs text-slate-500">Error: {{ error.name }} - {{ error.message }}</p>
         <BaseBtn class="mt-4" :disabled="isRequesting" @click="startSession">
