@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import OverlayPanel from 'primevue/overlaypanel'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import api from '../services/api'
@@ -21,6 +22,8 @@ const compatibilityByName = ref({})
 const checkingByName = ref({})
 const archivingByName = ref({})
 const deletingByName = ref({})
+const actionPanelRef = ref(null)
+const actionMenuFile = ref(null)
 
 const previewData = ref(null)
 const previewLoading = ref(false)
@@ -28,6 +31,8 @@ const previewError = ref('')
 const statsData = ref(null)
 const statsLoading = ref(false)
 const statsError = ref('')
+const previewModalOpen = ref(false)
+const statsModalOpen = ref(false)
 const confirmDialogOpen = ref(false)
 const confirmActionType = ref('')
 const confirmFileName = ref('')
@@ -45,7 +50,36 @@ const filteredFiles = computed(() => {
   return files.value.filter(f => f.schema_id === schemaFilter.value)
 })
 const activeSelectionKey = computed(() => `${pipeline.value}:${mode.value}`)
-const activeSelectedName = computed(() => selectedByKey.value?.[activeSelectionKey.value]?.name || '')
+const lateSelectionCvKey = computed(() => `${pipeline.value}:${mode.value}:cv`)
+const lateSelectionSensorKey = computed(() => `${pipeline.value}:${mode.value}:sensor`)
+const latePairStatus = computed(() => {
+  if (pipeline.value !== 'late') return null
+  const cv = selectedByKey.value?.[lateSelectionCvKey.value]
+  const sensor = selectedByKey.value?.[lateSelectionSensorKey.value]
+  return {
+    cv,
+    sensor,
+    isComplete: Boolean(cv && sensor)
+  }
+})
+
+const schemaModality = (schemaId = '') => {
+  if (schemaId.startsWith('cv_')) return 'cv'
+  if (schemaId.startsWith('sensor_')) return 'sensor'
+  if (schemaId.startsWith('fusion_')) return 'fusion'
+  return 'unknown'
+}
+
+const isFileSelectedForActiveSlot = (file) => {
+  if (!file?.name) return false
+  if (pipeline.value === 'late') {
+    const modality = schemaModality(file.schema_id)
+    if (modality !== 'cv' && modality !== 'sensor') return false
+    const key = `${pipeline.value}:${mode.value}:${modality}`
+    return selectedByKey.value?.[key]?.name === file.name
+  }
+  return selectedByKey.value?.[activeSelectionKey.value]?.name === file.name
+}
 
 const encodePathParam = (name) => name
   .split('/')
@@ -135,6 +169,7 @@ const checkAllCompatibility = async () => {
 }
 
 const openPreview = async (name) => {
+  previewModalOpen.value = true
   previewLoading.value = true
   previewError.value = ''
   previewData.value = null
@@ -149,6 +184,7 @@ const openPreview = async (name) => {
 }
 
 const openStats = async (name) => {
+  statsModalOpen.value = true
   statsLoading.value = true
   statsError.value = ''
   statsData.value = null
@@ -174,6 +210,14 @@ const downloadFile = async (name) => {
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Download failed.'
   }
+}
+
+const closePreviewModal = () => {
+  previewModalOpen.value = false
+}
+
+const closeStatsModal = () => {
+  statsModalOpen.value = false
 }
 
 const archiveFile = async (name) => {
@@ -213,12 +257,14 @@ const useDataset = async (name) => {
   selectingByName.value = { ...selectingByName.value, [name]: true }
   error.value = ''
   try {
-    await api.admin.csvLibrary.selection.set(name, pipeline.value, mode.value)
+    const file = files.value.find(f => f.name === name)
+    const modality = pipeline.value === 'late' ? schemaModality(file?.schema_id) : null
+    await api.admin.csvLibrary.selection.set(name, pipeline.value, mode.value, modality)
     await loadSelections()
     toast.add({
       severity: 'success',
       summary: 'Dataset Selected',
-      detail: `${name} selected for ${pipeline.value}/${mode.value}.`,
+      detail: `${name} selected for ${pipeline.value}/${mode.value}${pipeline.value === 'late' ? `/${modality}` : ''}.`,
       life: 2800
     })
   } catch (e) {
@@ -279,6 +325,11 @@ const confirmDialogSubmit = async () => {
   }
 }
 
+const openActionMenu = (event, file) => {
+  actionMenuFile.value = file
+  actionPanelRef.value?.toggle(event)
+}
+
 onMounted(() => {
   void loadFiles()
 })
@@ -286,6 +337,7 @@ onMounted(() => {
 watch([compatibleOnly, pipeline, mode, includeArchived], () => {
   void loadFiles()
 })
+
 </script>
 
 <template>
@@ -343,6 +395,16 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
           Compatible only for selected pipeline/mode (training picker view)
         </label>
       </div>
+      <div v-if="pipeline === 'late'" class="mt-3 rounded border border-slate-700 bg-slate-900/50 p-3 text-xs">
+        <p class="text-slate-300">
+          Late fusion needs both slots selected:
+          <span :class="latePairStatus?.cv ? 'text-emerald-300' : 'text-amber-300'">CV</span> +
+          <span :class="latePairStatus?.sensor ? 'text-emerald-300' : 'text-amber-300'">Sensor</span>
+        </p>
+        <p class="mt-1" :class="latePairStatus?.isComplete ? 'text-emerald-300' : 'text-amber-300'">
+          {{ latePairStatus?.isComplete ? 'Pair complete for late-fusion training.' : 'Pair incomplete: select both CV and Sensor datasets.' }}
+        </p>
+      </div>
 
       <p v-if="error" class="text-red-300 text-sm mt-3">{{ error }}</p>
     </BaseCard>
@@ -377,10 +439,10 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
               <td class="py-2 pr-3 text-slate-300">{{ formatDate(file.modified_at) }}</td>
               <td class="py-2 pr-3">
                 <span
-                  v-if="activeSelectedName === file.name"
+                  v-if="isFileSelectedForActiveSlot(file)"
                   class="px-2 py-1 rounded text-xs font-semibold bg-cyan-500/20 text-cyan-300"
                 >
-                  Active
+                  Active {{ pipeline === 'late' ? schemaModality(file.schema_id).toUpperCase() : '' }}
                 </span>
                 <span v-else class="text-xs text-slate-500">-</span>
               </td>
@@ -397,37 +459,13 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
                 <span v-else class="text-xs text-slate-500">Not checked</span>
               </td>
               <td class="py-2 pr-3">
-                <div class="flex flex-wrap gap-2">
-                  <BaseBtn variant="secondary" class="px-3 py-1 text-xs" :disabled="checkingByName[file.name]" @click="checkCompatibility(file.name)">
-                    {{ checkingByName[file.name] ? 'Checking...' : 'Check' }}
-                  </BaseBtn>
-                  <BaseBtn variant="secondary" class="px-3 py-1 text-xs" @click="openPreview(file.name)">Preview</BaseBtn>
-                  <BaseBtn variant="secondary" class="px-3 py-1 text-xs" @click="openStats(file.name)">Stats</BaseBtn>
-                  <BaseBtn variant="secondary" class="px-3 py-1 text-xs" @click="downloadFile(file.name)">Download</BaseBtn>
-                  <BaseBtn
-                    variant="primary"
-                    class="px-3 py-1 text-xs"
-                    :disabled="selectingByName[file.name]"
-                    @click="useDataset(file.name)"
+                <div class="inline-block text-left">
+                  <button
+                    class="h-8 w-8 rounded border border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
+                    @click.stop="openActionMenu($event, file)"
                   >
-                    {{ selectingByName[file.name] ? 'Selecting...' : 'Use' }}
-                  </BaseBtn>
-                  <BaseBtn
-                    variant="danger"
-                    class="px-3 py-1 text-xs"
-                    :disabled="file.scope === 'archive' || archivingByName[file.name]"
-                    @click="openArchiveConfirm(file.name)"
-                  >
-                    {{ file.scope === 'archive' ? 'Archived' : (archivingByName[file.name] ? 'Archiving...' : 'Archive') }}
-                  </BaseBtn>
-                  <BaseBtn
-                    variant="danger"
-                    class="px-3 py-1 text-xs"
-                    :disabled="deletingByName[file.name]"
-                    @click="openDeleteConfirm(file.name)"
-                  >
-                    {{ deletingByName[file.name] ? 'Deleting...' : 'Delete' }}
-                  </BaseBtn>
+                    ...
+                  </button>
                 </div>
               </td>
             </tr>
@@ -436,89 +474,155 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
       </div>
     </BaseCard>
 
-    <BaseCard>
-      <h2 class="text-lg font-semibold text-white mb-3">Preview</h2>
-      <p v-if="previewLoading" class="text-slate-400">Loading preview...</p>
-      <p v-else-if="previewError" class="text-red-300">{{ previewError }}</p>
-      <p v-else-if="!previewData" class="text-slate-500">Select a file and click Preview.</p>
-      <div v-else>
-        <div class="text-sm text-slate-300 mb-3">
-          {{ previewData.name }} | schema: {{ previewData.schema_id }} | check: {{ previewData.schema_check }}
-        </div>
-        <div class="overflow-x-auto border border-slate-800 rounded">
-          <table class="w-full text-xs">
-            <thead>
-              <tr class="bg-slate-900 text-slate-400">
-                <th v-for="h in previewData.header" :key="h" class="px-2 py-2 text-left">{{ h }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, idx) in previewData.rows" :key="`p-${idx}`" class="border-t border-slate-900">
-                <td v-for="h in previewData.header" :key="`c-${idx}-${h}`" class="px-2 py-1 text-slate-300">{{ row[h] }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <OverlayPanel
+      ref="actionPanelRef"
+      :dismissable="true"
+      :show-close-icon="false"
+      class="!bg-slate-950 !border !border-slate-700 !text-slate-100 !shadow-2xl"
+    >
+      <div v-if="actionMenuFile" class="w-44 py-1">
+        <button
+          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+          :disabled="checkingByName[actionMenuFile.name]"
+          @click="actionPanelRef?.hide(); checkCompatibility(actionMenuFile.name)"
+        >
+          {{ checkingByName[actionMenuFile.name] ? 'Testing...' : 'Test Check' }}
+        </button>
+        <button
+          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+          @click="actionPanelRef?.hide(); openPreview(actionMenuFile.name)"
+        >
+          Preview
+        </button>
+        <button
+          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+          @click="actionPanelRef?.hide(); openStats(actionMenuFile.name)"
+        >
+          Stats
+        </button>
+        <button
+          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+          @click="actionPanelRef?.hide(); downloadFile(actionMenuFile.name)"
+        >
+          Download
+        </button>
+        <button
+          class="w-full px-3 py-2 text-left text-xs text-cyan-300 hover:bg-slate-800 disabled:opacity-50"
+          :disabled="selectingByName[actionMenuFile.name]"
+          @click="actionPanelRef?.hide(); useDataset(actionMenuFile.name)"
+        >
+          {{ selectingByName[actionMenuFile.name] ? 'Selecting...' : 'Use' }}
+        </button>
+        <button
+          class="w-full px-3 py-2 text-left text-xs text-amber-300 hover:bg-slate-800 disabled:opacity-50"
+          :disabled="actionMenuFile.scope === 'archive' || archivingByName[actionMenuFile.name]"
+          @click="actionPanelRef?.hide(); openArchiveConfirm(actionMenuFile.name)"
+        >
+          {{ actionMenuFile.scope === 'archive' ? 'Archived' : (archivingByName[actionMenuFile.name] ? 'Archiving...' : 'Archive') }}
+        </button>
+        <button
+          class="w-full px-3 py-2 text-left text-xs text-rose-300 hover:bg-slate-800 disabled:opacity-50"
+          :disabled="deletingByName[actionMenuFile.name]"
+          @click="actionPanelRef?.hide(); openDeleteConfirm(actionMenuFile.name)"
+        >
+          {{ deletingByName[actionMenuFile.name] ? 'Deleting...' : 'Delete' }}
+        </button>
       </div>
-    </BaseCard>
+    </OverlayPanel>
 
-    <BaseCard>
-      <h2 class="text-lg font-semibold text-white mb-3">Stats</h2>
-      <p v-if="statsLoading" class="text-slate-400">Loading stats...</p>
-      <p v-else-if="statsError" class="text-red-300">{{ statsError }}</p>
-      <p v-else-if="!statsData" class="text-slate-500">Select a file and click Stats.</p>
-      <div v-else class="space-y-3 text-sm">
-        <div class="text-slate-300">
-          {{ statsData.name }} | schema: {{ statsData.schema_id }} | columns: {{ statsData.column_count }} | rows: {{ statsData.row_count }}
+    <div v-if="previewModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closePreviewModal">
+      <div class="w-full max-w-5xl rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-white">CSV Preview</h2>
+          <BaseBtn variant="secondary" @click="closePreviewModal">Close</BaseBtn>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <p v-if="previewLoading" class="text-slate-400">Loading preview...</p>
+        <p v-else-if="previewError" class="text-red-300">{{ previewError }}</p>
+        <p v-else-if="!previewData" class="text-slate-500">No preview data.</p>
+        <div v-else>
+          <div class="text-sm text-slate-300 mb-3">
+            {{ previewData.name }} | schema: {{ previewData.schema_id }} | check: {{ previewData.schema_check }}
+          </div>
+          <div class="max-h-[60vh] overflow-x-auto overflow-y-auto border border-slate-800 rounded">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="bg-slate-900 text-slate-400">
+                  <th v-for="h in previewData.header" :key="h" class="px-2 py-2 text-left">{{ h }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, idx) in previewData.rows" :key="`p-${idx}`" class="border-t border-slate-900">
+                  <td v-for="h in previewData.header" :key="`c-${idx}-${h}`" class="px-2 py-1 text-slate-300">{{ row[h] }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="statsModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closeStatsModal">
+      <div class="w-full max-w-3xl rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-white">CSV Stats</h2>
+          <BaseBtn variant="secondary" @click="closeStatsModal">Close</BaseBtn>
+        </div>
+        <p v-if="statsLoading" class="text-slate-400">Loading stats...</p>
+        <p v-else-if="statsError" class="text-red-300">{{ statsError }}</p>
+        <p v-else-if="!statsData" class="text-slate-500">No stats data.</p>
+        <div v-else class="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-1">
+          <div class="text-slate-300">
+            {{ statsData.name }} | schema: {{ statsData.schema_id }} | columns: {{ statsData.column_count }} | rows: {{ statsData.row_count }}
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded border border-slate-800 p-3 bg-slate-950/40">
+              <p class="text-slate-400">Feature Dim</p>
+              <p class="text-slate-200">
+                expected: {{ statsData.expected_feature_dim ?? '--' }},
+                actual: {{ statsData.actual_feature_dim ?? '--' }}
+              </p>
+              <p class="text-slate-400 mt-2">Missing Values</p>
+              <p class="text-slate-200">{{ statsData.missing_values_count }}</p>
+              <p class="text-slate-400 mt-2">Duplicate Timestamps</p>
+              <p class="text-slate-200">{{ statsData.duplicate_timestamp_count }}</p>
+            </div>
+            <div class="rounded border border-slate-800 p-3 bg-slate-950/40">
+              <p class="text-slate-400 mb-1">Health Flags</p>
+              <div v-if="statsData.health_flags?.length" class="flex flex-wrap gap-2">
+                <span
+                  v-for="flag in statsData.health_flags"
+                  :key="`flag-${flag}`"
+                  class="px-2 py-1 rounded text-xs bg-slate-800 text-slate-200"
+                >
+                  {{ flag }}
+                </span>
+              </div>
+              <p v-else class="text-emerald-300">No health flags.</p>
+            </div>
+          </div>
           <div class="rounded border border-slate-800 p-3 bg-slate-950/40">
-            <p class="text-slate-400">Feature Dim</p>
-            <p class="text-slate-200">
-              expected: {{ statsData.expected_feature_dim ?? '--' }},
-              actual: {{ statsData.actual_feature_dim ?? '--' }}
+            <p class="text-slate-400 mb-1">Schema Mismatch Details</p>
+            <p v-if="!(statsData.schema_mismatch_details?.missing_required_columns?.length || statsData.schema_mismatch_details?.notes?.length)" class="text-emerald-300">
+              No mismatch details.
             </p>
-            <p class="text-slate-400 mt-2">Missing Values</p>
-            <p class="text-slate-200">{{ statsData.missing_values_count }}</p>
-            <p class="text-slate-400 mt-2">Duplicate Timestamps</p>
-            <p class="text-slate-200">{{ statsData.duplicate_timestamp_count }}</p>
-          </div>
-          <div class="rounded border border-slate-800 p-3 bg-slate-950/40">
-            <p class="text-slate-400 mb-1">Health Flags</p>
-            <div v-if="statsData.health_flags?.length" class="flex flex-wrap gap-2">
-              <span
-                v-for="flag in statsData.health_flags"
-                :key="`flag-${flag}`"
-                class="px-2 py-1 rounded text-xs bg-slate-800 text-slate-200"
-              >
-                {{ flag }}
-              </span>
-            </div>
-            <p v-else class="text-emerald-300">No health flags.</p>
-          </div>
-        </div>
-        <div class="rounded border border-slate-800 p-3 bg-slate-950/40">
-          <p class="text-slate-400 mb-1">Schema Mismatch Details</p>
-          <p v-if="!(statsData.schema_mismatch_details?.missing_required_columns?.length || statsData.schema_mismatch_details?.notes?.length)" class="text-emerald-300">
-            No mismatch details.
-          </p>
-          <div v-else class="space-y-2">
-            <div v-if="statsData.schema_mismatch_details?.missing_required_columns?.length">
-              <p class="text-rose-300 text-xs">Missing required columns</p>
-              <p class="text-slate-200 text-xs">
-                {{ statsData.schema_mismatch_details.missing_required_columns.join(', ') }}
-              </p>
-            </div>
-            <div v-if="statsData.schema_mismatch_details?.notes?.length">
-              <p class="text-amber-300 text-xs">Notes</p>
-              <p class="text-slate-200 text-xs">
-                {{ statsData.schema_mismatch_details.notes.join(' | ') }}
-              </p>
+            <div v-else class="space-y-2">
+              <div v-if="statsData.schema_mismatch_details?.missing_required_columns?.length">
+                <p class="text-rose-300 text-xs">Missing required columns</p>
+                <p class="text-slate-200 text-xs">
+                  {{ statsData.schema_mismatch_details.missing_required_columns.join(', ') }}
+                </p>
+              </div>
+              <div v-if="statsData.schema_mismatch_details?.notes?.length">
+                <p class="text-amber-300 text-xs">Notes</p>
+                <p class="text-slate-200 text-xs">
+                  {{ statsData.schema_mismatch_details.notes.join(' | ') }}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </BaseCard>
+    </div>
 
     <div v-if="confirmDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">

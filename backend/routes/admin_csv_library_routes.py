@@ -46,6 +46,7 @@ class DatasetSelectionRequest(BaseModel):
     name: str
     pipeline: str = "early"
     mode: str = "single"
+    modality: Optional[str] = None
 
 
 class DeleteCsvRequest(BaseModel):
@@ -339,9 +340,25 @@ def _compatible_schema_ids(pipeline: str, mode: str) -> List[str]:
         return ["fusion_single"] if mode == "single" else ["fusion_dual"]
     if pipeline == "late":
         if mode == "single":
-            return ["cv_single", "sensor_single", "fusion_single"]
-        return ["cv_dual", "sensor_dual", "fusion_dual"]
+            return ["cv_single", "sensor_single"]
+        return ["cv_dual", "sensor_dual"]
     return []
+
+
+def _late_expected_schema(mode: str, modality: str) -> Optional[str]:
+    if mode not in {"single", "dual"}:
+        return None
+    if modality not in {"cv", "sensor"}:
+        return None
+    return f"{modality}_{mode}"
+
+
+def _selection_key(pipeline: str, mode: str, modality: Optional[str] = None) -> str:
+    if pipeline == "late":
+        if modality not in {"cv", "sensor"}:
+            raise HTTPException(status_code=400, detail="modality is required for late pipeline selection")
+        return f"{pipeline}:{mode}:{modality}"
+    return f"{pipeline}:{mode}"
 
 
 def _load_selection_store() -> Dict[str, Dict[str, Any]]:
@@ -622,15 +639,33 @@ async def list_compatible_csv_files(
 async def get_selected_dataset(
     pipeline: str = Query("early", pattern="^(early|late)$"),
     mode: str = Query("single", pattern="^(single|dual)$"),
+    modality: Optional[str] = Query(None, pattern="^(cv|sensor)$"),
     _user=Depends(role_or_internal_dep("admin")),
 ):
-    key = f"{pipeline}:{mode}"
     store = _load_selection_store()
+    if pipeline == "late" and modality is None:
+        key_cv = _selection_key(pipeline, mode, "cv")
+        key_sensor = _selection_key(pipeline, mode, "sensor")
+        selected_cv = store.get(key_cv)
+        selected_sensor = store.get(key_sensor)
+        return {
+            "status": "success",
+            "pipeline": pipeline,
+            "mode": mode,
+            "selection": {
+                "cv": selected_cv,
+                "sensor": selected_sensor,
+                "is_complete_pair": bool(selected_cv and selected_sensor),
+            },
+        }
+
+    key = _selection_key(pipeline, mode, modality)
     selected = store.get(key)
     return {
         "status": "success",
         "pipeline": pipeline,
         "mode": mode,
+        "modality": modality,
         "selection": selected,
     }
 
@@ -653,6 +688,7 @@ async def set_selected_dataset(
 ):
     pipeline = (req.pipeline or "").strip().lower()
     mode = (req.mode or "").strip().lower()
+    modality = (req.modality or "").strip().lower() or None
     if pipeline not in {"early", "late"}:
         raise HTTPException(status_code=400, detail="pipeline must be 'early' or 'late'")
     if mode not in {"single", "dual"}:
@@ -662,13 +698,26 @@ async def set_selected_dataset(
     meta = _scan_csv_file(path)
     allowed = set(_compatible_schema_ids(pipeline, mode))
     schema_id = meta.get("schema_id", "unknown")
-    if schema_id not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"schema_id '{schema_id}' is not compatible with pipeline={pipeline}, mode={mode}",
-        )
+    if pipeline == "late":
+        if modality not in {"cv", "sensor"}:
+            raise HTTPException(status_code=400, detail="modality must be provided for late pipeline selection (cv|sensor)")
+        expected_schema = _late_expected_schema(mode, modality)
+        if schema_id != expected_schema:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Late selection expects schema_id '{expected_schema}' for modality='{modality}', "
+                    f"but got '{schema_id}'"
+                ),
+            )
+    else:
+        if schema_id not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"schema_id '{schema_id}' is not compatible with pipeline={pipeline}, mode={mode}",
+            )
 
-    key = f"{pipeline}:{mode}"
+    key = _selection_key(pipeline, mode, modality)
     store = _load_selection_store()
     selected_at = datetime.now(timezone.utc).isoformat()
     store[key] = {
@@ -677,6 +726,7 @@ async def set_selected_dataset(
         "schema_id": schema_id,
         "pipeline": pipeline,
         "mode": mode,
+        "modality": modality,
         "selected_at": selected_at,
     }
     _save_selection_store(store)

@@ -183,6 +183,12 @@ Response:
 - `compatible_schema_ids`
 - `files` (same file shape as list endpoint)
 
+Compatibility policy:
+- `early + single` -> `fusion_single`
+- `early + dual` -> `fusion_dual`
+- `late + single` -> `cv_single`, `sensor_single`
+- `late + dual` -> `cv_dual`, `sensor_dual`
+
 ### 7. Selected dataset slot (training handoff)
 `GET /admin/csv-library/selection?pipeline=early|late&mode=single|dual`
 
@@ -195,8 +201,20 @@ Response:
 `GET /admin/csv-library/selection/all`
 
 `POST /admin/csv-library/selection`
-- body: `{ name, pipeline, mode }`
+- body: `{ name, pipeline, mode, modality? }`
 - behavior: validates compatibility before persisting selection.
+
+Selection-slot policy:
+- Early pipeline slots:
+  - `early:single`
+  - `early:dual`
+- Late pipeline slots:
+  - `late:single:cv`
+  - `late:single:sensor`
+  - `late:dual:cv`
+  - `late:dual:sensor`
+
+Late selection requires `modality` (`cv` or `sensor`) and schema must match that slot.
 
 ## Health Flags (MVP)
 Use these flags in list/stats endpoints:
@@ -317,6 +335,7 @@ Use these flags in list/stats endpoints:
 - Archive confirmation flow works and refreshes list.
 - Compatible-only view reflects selected `pipeline+mode`.
 - `Use` action updates active selected dataset badge.
+- Late pipeline UI reflects pair state (`cv + sensor`) and indicates incomplete pairs.
 
 ## Open Decisions
 - Should archived files remain downloadable from UI?

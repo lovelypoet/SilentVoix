@@ -163,8 +163,8 @@ export default {
           api.get(`/admin/csv-library/selection?pipeline=${pipeline}&mode=${mode}`),
         getAll: () =>
           api.get('/admin/csv-library/selection/all'),
-        set: (name, pipeline = 'early', mode = 'single') =>
-          api.post('/admin/csv-library/selection', { name, pipeline, mode })
+        set: (name, pipeline = 'early', mode = 'single', modality = null) =>
+          api.post('/admin/csv-library/selection', { name, pipeline, mode, modality })
       },
       preview: (name, limit = 100, offset = 0) =>
         api.get(`/admin/csv-library/files/${name}/preview?limit=${limit}&offset=${offset}`),
