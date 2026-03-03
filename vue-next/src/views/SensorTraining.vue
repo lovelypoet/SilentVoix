@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
@@ -35,6 +35,7 @@ const {
   recordedFrames,
   resetRecording,
   sessionId,
+  startCapture,
   stopCapture,
   startRecording,
   stopRecording
@@ -51,8 +52,34 @@ const {
   lastCheckedAt,
   message: portMessage,
   serialStatus
-} = usePortSession()
+} = usePortSession({ autoStart: false, pollingEnabled: false })
+
 const selectedPort = ref('')
+const showAdvanced = ref(false)
+
+watch(showAdvanced, (open) => {
+  if (open && !lastCheckedAt.value && !isPortLoading.value) {
+    void fetchSerialStatus()
+  }
+})
+
+const isCaptureRunning = computed(() => captureStatus.value === 'running')
+const canConnectStream = computed(() => isCaptureRunning.value && !isConnected.value)
+const canStartRecordingNow = computed(() => isCaptureRunning.value && isConnected.value && !isRecording.value)
+
+const workflowStep = computed(() => {
+  if (!isCaptureRunning.value) return 1
+  if (!isConnected.value) return 2
+  if (!isRecording.value) return 3
+  return 4
+})
+
+const flowHint = computed(() => {
+  if (!isCaptureRunning.value) return 'Start sensor service first.'
+  if (!isConnected.value) return 'Service is running. Connect stream next.'
+  if (!isRecording.value) return 'Stream is live. Start recording to collect samples.'
+  return 'Recording in progress. Stop and export when done.'
+})
 
 const lastFrames = computed(() => {
   if (!liveFrames.value.length) return []
@@ -94,119 +121,113 @@ const channelPercent = (value, index) => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-      <h1 class="text-2xl md:text-3xl font-bold text-teal-300">Sensor Training</h1>
-      <p class="text-slate-400 mt-1">
-        Live websocket capture from <code>/ws/stream</code> with label-aware recording and export.
-      </p>
+        <h1 class="text-2xl md:text-3xl font-bold text-teal-300">Sensor Training</h1>
+        <p class="text-slate-400 mt-1">
+          Guided flow: <code>Service</code> -> <code>Stream</code> -> <code>Recording</code> -> <code>Export</code>
+        </p>
       </div>
       <div class="hidden md:block"></div>
     </section>
 
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-5 mb-6">
+    <section class="mb-6">
       <BaseCard>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Connection</p>
-        <p class="text-lg font-semibold mt-2" :class="isConnected ? 'text-emerald-300' : 'text-amber-300'">
-          {{ connectionState }}
-        </p>
-        <p class="text-xs text-slate-500 mt-2">Endpoint: /ws/stream</p>
-      </BaseCard>
-
-      <BaseCard>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Live Frames</p>
-        <p class="text-2xl font-semibold text-slate-100 mt-2">{{ liveFrames.length }}</p>
-        <p class="text-xs text-slate-500 mt-2">Est. rate: {{ estimatedFps }} fps</p>
-      </BaseCard>
-
-      <BaseCard>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Recording</p>
-        <p class="text-2xl font-semibold text-slate-100 mt-2">{{ recordedFrames.length }}</p>
-        <p class="text-xs mt-2" :class="isRecording ? 'text-emerald-300' : 'text-slate-500'">
-          {{ isRecording ? 'active' : 'idle' }}
-        </p>
-      </BaseCard>
-
-      <BaseCard>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Last Frame</p>
-        <p class="text-lg font-semibold text-slate-100 mt-2">
-          {{ lastFrameAt ? lastFrameAt.toLocaleTimeString() : '--' }}
-        </p>
-        <p class="text-xs text-slate-500 mt-2">Schema: silentvoix.sensor_frame.v1</p>
-      </BaseCard>
-
-      <BaseCard>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Arduino Port</p>
-        <p class="text-sm font-semibold mt-2" :class="serialStatus.single_connected ? 'text-emerald-300' : 'text-amber-300'">
-          {{ serialStatus.single_connected ? 'Connected' : 'Not Connected' }}
-        </p>
-        <p class="text-xs text-slate-500 mt-1">
-          Configured: {{ serialStatus.single_port || '--' }}
-        </p>
-        <p class="text-xs text-slate-500 mt-2 truncate">
-          Detected: {{ (serialStatus.available_ports || []).length ? serialStatus.available_ports.join(', ') : 'none' }}
-        </p>
-        <label class="block text-xs text-slate-400 mt-2">
-          Set Port
-          <select
-            v-model="selectedPort"
-            class="mt-1 w-full rounded border border-slate-700 bg-slate-950/70 px-2 py-1 text-slate-200"
-          >
-            <option value="">Select detected port</option>
-            <option v-for="port in (serialStatus.available_ports || [])" :key="port" :value="port">
-              {{ port }}
-            </option>
-          </select>
-        </label>
-        <p v-if="portError" class="text-xs text-rose-300 mt-2">{{ portError }}</p>
-        <p v-if="portMessage" class="text-xs text-emerald-300 mt-2">{{ portMessage }}</p>
-        <div class="flex items-center justify-between mt-3">
-          <p class="text-[11px] text-slate-500">
-            Last check: {{ lastCheckedAt ? lastCheckedAt.toLocaleTimeString() : '--' }}
-          </p>
-          <BaseBtn
-            variant="secondary"
-            class="!px-2 !py-1 text-xs"
-            :disabled="isPortLoading || isUpdatingConfig"
-            @click="fetchSerialStatus"
-          >
-            {{ isPortLoading ? 'Checking...' : 'Refresh' }}
-          </BaseBtn>
-        </div>
-        <div class="grid grid-cols-2 gap-2 mt-2">
-          <BaseBtn
-            variant="secondary"
-            class="!px-2 !py-1 text-xs"
-            :disabled="isUpdatingConfig"
-            @click="applyAutoDetectedPorts"
-          >
-            {{ isUpdatingConfig ? 'Applying...' : 'Auto Detect' }}
-          </BaseBtn>
-          <BaseBtn
-            variant="secondary"
-            class="!px-2 !py-1 text-xs"
-            :disabled="isUpdatingConfig || !selectedPort"
-            @click="applySinglePort(selectedPort)"
-          >
-            Use Selected
-          </BaseBtn>
-        </div>
-        <p class="text-[11px] mt-2" :class="autoRefresh ? 'text-teal-300' : 'text-amber-300'">
-          Auto-refresh: {{ autoRefresh ? 'on' : 'paused' }}
-        </p>
-      </BaseCard>
-    </section>
-
-    <section class="grid gap-6 xl:grid-cols-3">
-      <BaseCard class="xl:col-span-2">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h2 class="text-xl font-semibold text-slate-100">Live Channel Readout</h2>
-          <div class="flex items-center gap-2">
-            <BaseBtn v-if="!isConnected" variant="primary" @click="connect">Connect</BaseBtn>
-            <BaseBtn v-else variant="secondary" @click="disconnect">Disconnect</BaseBtn>
-            <BaseBtn variant="danger" @click="clearLiveFrames">Clear Live</BaseBtn>
+        <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-slate-400">Primary Workflow</p>
+            <p class="text-sm mt-1 text-slate-300">{{ flowHint }}</p>
+          </div>
+          <div class="text-xs rounded-full px-3 py-1 border" :class="workflowStep === 4 ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'">
+            Step {{ workflowStep }} of 4
           </div>
         </div>
 
-        <p v-if="connectionError" class="text-sm text-rose-300 mb-4">{{ connectionError }}</p>
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-xl border p-3" :class="isCaptureRunning ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+            <p class="text-[11px] uppercase tracking-wide text-slate-400">1. Sensor Service</p>
+            <p class="text-sm mt-1" :class="isCaptureRunning ? 'text-emerald-300' : 'text-amber-300'">
+              {{ isCaptureRunning ? 'Running' : 'Stopped' }}
+              <span v-if="capturePid"> (pid {{ capturePid }})</span>
+            </p>
+            <div class="grid grid-cols-1 gap-2 mt-3">
+              <BaseBtn variant="secondary" :disabled="isCaptureBusy || isCaptureRunning" @click="startCapture">
+                {{ isCaptureBusy ? 'Starting...' : 'Start Sensor Service' }}
+              </BaseBtn>
+              <BaseBtn variant="secondary" :disabled="isCaptureBusy || !isCaptureRunning" @click="stopCapture">
+                Stop Sensor Service
+              </BaseBtn>
+              <BaseBtn variant="secondary" :disabled="isCaptureBusy" @click="fetchCaptureStatus">
+                Refresh Service Status
+              </BaseBtn>
+            </div>
+          </div>
+
+          <div class="rounded-xl border p-3" :class="isConnected ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+            <p class="text-[11px] uppercase tracking-wide text-slate-400">2. Stream Connection</p>
+            <p class="text-sm mt-1" :class="isConnected ? 'text-emerald-300' : 'text-amber-300'">
+              {{ isConnected ? 'Connected' : 'Disconnected' }}
+            </p>
+            <p class="text-xs text-slate-500 mt-1">Endpoint: /ws/stream</p>
+            <div class="grid grid-cols-1 gap-2 mt-3">
+              <BaseBtn variant="secondary" :disabled="!canConnectStream" @click="connect">
+                Connect Stream
+              </BaseBtn>
+              <BaseBtn variant="secondary" :disabled="!isConnected" @click="disconnect">
+                Disconnect Stream
+              </BaseBtn>
+              <BaseBtn variant="danger" :disabled="liveFrames.length === 0" @click="clearLiveFrames">
+                Clear Live Frames
+              </BaseBtn>
+            </div>
+          </div>
+
+          <div class="rounded-xl border p-3" :class="isRecording ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+            <p class="text-[11px] uppercase tracking-wide text-slate-400">3. Recording</p>
+            <p class="text-sm mt-1" :class="isRecording ? 'text-emerald-300' : 'text-amber-300'">
+              {{ isRecording ? 'Recording' : 'Idle' }}
+            </p>
+            <p class="text-xs text-slate-500 mt-1">Saved frames: {{ recordedFrames.length }}</p>
+            <div class="grid grid-cols-1 gap-2 mt-3">
+              <BaseBtn variant="primary" :disabled="!canStartRecordingNow" @click="startRecording">
+                Start Recording
+              </BaseBtn>
+              <BaseBtn variant="amber" :disabled="!isRecording" @click="stopRecording">
+                Stop Recording
+              </BaseBtn>
+              <BaseBtn variant="danger" :disabled="recordedFrames.length === 0 && !isRecording" @click="resetRecording">
+                Reset Recording
+              </BaseBtn>
+            </div>
+          </div>
+
+          <div class="rounded-xl border p-3" :class="canExport ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+            <p class="text-[11px] uppercase tracking-wide text-slate-400">4. Export</p>
+            <p class="text-sm mt-1" :class="canExport ? 'text-emerald-300' : 'text-slate-400'">
+              {{ canExport ? 'Ready' : 'Not ready' }}
+            </p>
+            <p class="text-xs text-slate-500 mt-1">Exported label: {{ (label || 'unlabeled').trim() || 'unlabeled' }}</p>
+            <div class="grid grid-cols-1 gap-2 mt-3">
+              <BaseBtn :disabled="!canExport" variant="secondary" @click="exportRecordedCsv">Export CSV</BaseBtn>
+              <BaseBtn :disabled="!canExport" variant="secondary" @click="exportRecordedJson">Export JSON</BaseBtn>
+            </div>
+          </div>
+        </div>
+
+        <p v-if="captureError" class="text-xs text-rose-300 mt-3">{{ captureError }}</p>
+        <p v-if="connectionError" class="text-xs text-rose-300 mt-1">{{ connectionError }}</p>
+      </BaseCard>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-3 mb-6">
+      <BaseCard class="xl:col-span-2">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 class="text-xl font-semibold text-slate-100">Live Channel Readout</h2>
+          <div class="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>State: {{ connectionState }}</span>
+            <span>FPS: {{ estimatedFps }}</span>
+            <span>Frames: {{ liveFrames.length }}</span>
+            <span>Last: {{ lastFrameAt ? lastFrameAt.toLocaleTimeString() : '--' }}</span>
+          </div>
+        </div>
 
         <div v-if="latestFrame" class="space-y-4">
           <div>
@@ -252,35 +273,7 @@ const channelPercent = (value, index) => {
       </BaseCard>
 
       <BaseCard>
-        <h2 class="text-xl font-semibold text-slate-100 mb-4">Capture Controls</h2>
-        <div class="mb-4 border border-slate-800 rounded-lg p-3 bg-slate-950/40">
-          <p class="text-[11px] uppercase tracking-wide text-slate-400">Capture Service</p>
-          <p class="text-xs mt-1" :class="captureStatus === 'running' ? 'text-emerald-300' : 'text-amber-300'">
-            {{ captureStatus }}
-            <span v-if="capturePid"> (pid {{ capturePid }})</span>
-          </p>
-          <p v-if="captureError" class="text-xs text-rose-300 mt-1">{{ captureError }}</p>
-          <p v-if="captureLogPath" class="text-[11px] text-slate-500 mt-1 truncate">
-            Log: {{ captureLogPath }}
-          </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-            <BaseBtn variant="secondary" :disabled="isCaptureBusy" @click="connect">
-              {{ isCaptureBusy ? 'Working...' : 'Start Capture' }}
-            </BaseBtn>
-            <BaseBtn variant="secondary" :disabled="isCaptureBusy" @click="stopCapture">
-              Stop Capture
-            </BaseBtn>
-          </div>
-          <BaseBtn
-            variant="secondary"
-            class="mt-2 w-full"
-            :disabled="isCaptureBusy"
-            @click="fetchCaptureStatus"
-          >
-            Refresh Capture Status
-          </BaseBtn>
-        </div>
-
+        <h2 class="text-xl font-semibold text-slate-100 mb-4">Session Settings</h2>
         <div class="space-y-3">
           <label class="block text-sm text-slate-300">
             Session ID
@@ -313,15 +306,75 @@ const channelPercent = (value, index) => {
           </label>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-5">
-          <BaseBtn v-if="!isRecording" variant="primary" @click="startRecording">Start</BaseBtn>
-          <BaseBtn v-else variant="amber" @click="stopRecording">Stop</BaseBtn>
-          <BaseBtn variant="danger" @click="resetRecording">Reset</BaseBtn>
-        </div>
+        <div class="mt-4 border border-slate-800 rounded-lg bg-slate-950/40 p-3">
+          <button class="w-full flex items-center justify-between text-sm text-slate-200" @click="showAdvanced = !showAdvanced">
+            <span>Advanced Controls</span>
+            <span class="text-xs text-slate-500">{{ showAdvanced ? 'Hide' : 'Show' }}</span>
+          </button>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
-          <BaseBtn :disabled="!canExport" variant="secondary" @click="exportRecordedCsv">Export CSV</BaseBtn>
-          <BaseBtn :disabled="!canExport" variant="secondary" @click="exportRecordedJson">Export JSON</BaseBtn>
+          <div v-if="showAdvanced" class="mt-3 space-y-3">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-400">Serial Port</p>
+              <p class="text-xs mt-1" :class="serialStatus.single_connected ? 'text-emerald-300' : 'text-amber-300'">
+                {{ serialStatus.single_connected ? 'Connected' : 'Not Connected' }}
+                <span class="text-slate-500"> ({{ serialStatus.single_port || '--' }})</span>
+              </p>
+              <p class="text-[11px] text-slate-500 mt-1">
+                Detected: {{ (serialStatus.available_ports || []).length ? serialStatus.available_ports.join(', ') : 'none' }}
+              </p>
+              <label class="block text-xs text-slate-400 mt-2">
+                Set Port
+                <select
+                  v-model="selectedPort"
+                  class="mt-1 w-full rounded border border-slate-700 bg-slate-950/70 px-2 py-1 text-slate-200"
+                >
+                  <option value="">Select detected port</option>
+                  <option v-for="port in (serialStatus.available_ports || [])" :key="port" :value="port">
+                    {{ port }}
+                  </option>
+                </select>
+              </label>
+              <div class="grid grid-cols-2 gap-2 mt-2">
+                <BaseBtn
+                  variant="secondary"
+                  class="!px-2 !py-1 text-xs"
+                  :disabled="isUpdatingConfig"
+                  @click="applyAutoDetectedPorts"
+                >
+                  {{ isUpdatingConfig ? 'Applying...' : 'Auto Detect' }}
+                </BaseBtn>
+                <BaseBtn
+                  variant="secondary"
+                  class="!px-2 !py-1 text-xs"
+                  :disabled="isUpdatingConfig || !selectedPort"
+                  @click="applySinglePort(selectedPort)"
+                >
+                  Use Selected
+                </BaseBtn>
+              </div>
+              <div class="flex items-center justify-between mt-2">
+                <p class="text-[11px] text-slate-500">Last check: {{ lastCheckedAt ? lastCheckedAt.toLocaleTimeString() : '--' }}</p>
+                <BaseBtn
+                  variant="secondary"
+                  class="!px-2 !py-1 text-xs"
+                  :disabled="isPortLoading || isUpdatingConfig"
+                  @click="fetchSerialStatus"
+                >
+                  {{ isPortLoading ? 'Checking...' : 'Refresh' }}
+                </BaseBtn>
+              </div>
+              <p class="text-[11px] mt-2" :class="autoRefresh ? 'text-teal-300' : 'text-amber-300'">
+                Auto-refresh: {{ autoRefresh ? 'on' : 'paused' }}
+              </p>
+              <p v-if="portError" class="text-xs text-rose-300 mt-1">{{ portError }}</p>
+              <p v-if="portMessage" class="text-xs text-emerald-300 mt-1">{{ portMessage }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-400">Capture Log</p>
+              <p class="text-[11px] text-slate-500 truncate mt-1">{{ captureLogPath || 'No log file yet.' }}</p>
+            </div>
+          </div>
         </div>
       </BaseCard>
     </section>

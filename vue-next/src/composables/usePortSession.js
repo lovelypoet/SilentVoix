@@ -12,7 +12,9 @@ const DEFAULT_STATUS = {
 }
 const POLL_INTERVAL_MS = 2000
 
-export function usePortSession() {
+export function usePortSession(options = {}) {
+  const autoStart = options.autoStart ?? true
+  const pollingEnabled = options.pollingEnabled ?? true
   const serialStatus = ref({ ...DEFAULT_STATUS })
   const isLoading = ref(false)
   const isUpdatingConfig = ref(false)
@@ -107,8 +109,16 @@ export function usePortSession() {
   }
 
   onMounted(() => {
+    if (!autoStart) {
+      autoRefresh.value = false
+      return
+    }
     fetchSerialStatus()
-    startPolling()
+    if (pollingEnabled) {
+      startPolling()
+    } else {
+      autoRefresh.value = false
+    }
   })
 
   onUnmounted(() => {
@@ -125,6 +135,8 @@ export function usePortSession() {
     isUpdatingConfig,
     lastCheckedAt,
     message,
-    serialStatus
+    serialStatus,
+    startPolling,
+    stopPolling
   }
 }

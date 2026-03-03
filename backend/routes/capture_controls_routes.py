@@ -55,9 +55,8 @@ async def start_sensor_capture(mode: str = "single") -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Capture script not found: {script}")
 
     try:
-        runtime_log = os.path.abspath(
-            os.path.join(os.path.dirname(script_path), f"runtime_capture_{mode}.log")
-        )
+        log_name = "data_collection.log" if mode == "single" else "dual_hand_data_collection.log"
+        runtime_log = os.path.abspath(os.path.join(os.path.dirname(script_path), log_name))
         log_handle = open(runtime_log, "a", encoding="utf-8")
         try:
             SENSOR_CAPTURE_PROCESS = subprocess.Popen(

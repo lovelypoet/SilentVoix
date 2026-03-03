@@ -17,7 +17,6 @@ import os
 from utils.cache import cacheable
 from typing import Dict, Any, Optional
 from serial.tools import list_ports
-import serial
 from routes.auth_routes import get_current_user
 from update_env import upsert_env_values, detect_serial_ports
 
@@ -36,28 +35,18 @@ class SerialConfigRequest(BaseModel):
 
 def _is_port_connected(port: Optional[str], available_ports: list[str]) -> bool:
     """
-    Fast connectivity probe for a configured serial port.
-    We do not rely only on list_ports() because Docker device mappings can
-    leave stale device nodes visible briefly after unplug events.
+    Non-invasive connectivity check for a configured serial port.
+    Do not open/close the device here because that can interfere with
+    running capture processes that already own the serial handle.
     """
     if not port:
         return False
 
-    # If the scanner cannot see it at all, treat as disconnected immediately.
-    if port not in available_ports:
-        return False
-
-    try:
-        # Short open/close probe to confirm the device is actually alive.
-        ser = serial.Serial(port=port, baudrate=115200, timeout=0.1)
-        ser.close()
+    if port in available_ports:
         return True
-    except serial.SerialException as exc:
-        msg = str(exc).lower()
-        # If the port is busy/permission-denied, assume physically present.
-        return any(token in msg for token in ("busy", "resource", "permission denied", "access is denied"))
-    except Exception:
-        return False
+
+    # Fallback for environments where list_ports can miss mapped device nodes.
+    return os.path.exists(port)
 
 
 @router.get(

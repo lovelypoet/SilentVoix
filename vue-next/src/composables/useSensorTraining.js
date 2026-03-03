@@ -154,6 +154,14 @@ export function useSensorTraining() {
     }
   }
 
+  const startCapture = async () => {
+    const ok = await ensureCaptureRunning()
+    if (ok) {
+      await fetchCaptureStatus()
+    }
+    return ok
+  }
+
   const addLiveFrame = (frame) => {
     liveFrames.value.push(frame)
 
@@ -322,8 +330,7 @@ export function useSensorTraining() {
   }
 
   onMounted(() => {
-    void ensureCaptureRunning()
-    void connect()
+    void fetchCaptureStatus()
   })
 
   onUnmounted(() => {
@@ -337,6 +344,7 @@ export function useSensorTraining() {
     captureStatus,
     canExport,
     clearLiveFrames,
+    startCapture,
     connect,
     connectionError,
     connectionState,

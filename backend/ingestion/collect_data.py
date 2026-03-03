@@ -3,6 +3,7 @@
 # - Kết nối Arduino và mở đúng cổng serial
 
 import serial
+from serial.tools import list_ports
 import time
 import csv
 import os
@@ -54,16 +55,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _detected_serial_ports():
+    """Return detected serial ports, prioritizing ACM/USB devices."""
+    ports = [p.device for p in list_ports.comports()]
+    if not ports:
+        return []
+    preferred = [p for p in ports if "ttyACM" in p or "ttyUSB" in p]
+    remaining = [p for p in ports if p not in preferred]
+    return preferred + remaining
+
+
 def connect_arduino():
-    try:
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-        time.sleep(2)
-        logger.info(f"Connected to {SERIAL_PORT} successfully!")
-        ser.reset_input_buffer()
-        return ser
-    except Exception as e:
-        logger.error(f"Failed to connect to serial port: {e}")
+    candidates = []
+    if SERIAL_PORT:
+        candidates.append(SERIAL_PORT)
+    for detected in _detected_serial_ports():
+        if detected not in candidates:
+            candidates.append(detected)
+
+    if not candidates:
+        logger.error("No serial ports detected.")
         return None
+
+    for port in candidates:
+        try:
+            ser = serial.Serial(port, BAUD_RATE, timeout=1)
+            time.sleep(2)
+            logger.info(f"Connected to {port} successfully!")
+            ser.reset_input_buffer()
+            return ser
+        except Exception as e:
+            logger.warning(f"Failed to connect to serial port {port}: {e}")
+
+    logger.error(f"Failed to connect to any serial port. Candidates tried: {candidates}")
+    return None
 
 
 def read_data(ser):

@@ -4,6 +4,7 @@
 # - This script collects data from both hands simultaneously
 
 import serial
+from serial.tools import list_ports
 import time
 import csv
 import os
@@ -56,6 +57,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def _detected_serial_ports() -> List[str]:
+    """Return detected serial ports, prioritizing ACM/USB devices."""
+    ports = [p.device for p in list_ports.comports()]
+    if not ports:
+        return []
+    preferred = [p for p in ports if "ttyACM" in p or "ttyUSB" in p]
+    remaining = [p for p in ports if p not in preferred]
+    return preferred + remaining
+
+
+def _resolve_dual_ports(config_left: str, config_right: str) -> Tuple[Optional[str], Optional[str]]:
+    detected = _detected_serial_ports()
+
+    # Keep configured ports first if they are currently visible.
+    left = config_left if config_left in detected else None
+    right = config_right if config_right in detected else None
+
+    # Fill missing sides from remaining detected ports.
+    available = [p for p in detected if p not in {left, right}]
+    if left is None and available:
+        left = available.pop(0)
+    if right is None and available:
+        right = available.pop(0)
+
+    # If only one port exists, mirror to keep behavior backward-compatible.
+    if left is None and right is not None:
+        left = right
+    if right is None and left is not None:
+        right = left
+
+    return left, right
+
+
 class DualHandDataCollector:
     def __init__(self):
         self.left_serial = None
@@ -64,18 +99,27 @@ class DualHandDataCollector:
         
     def connect_arduinos(self) -> bool:
         """Connect to both Arduino devices"""
+        left_port, right_port = _resolve_dual_ports(LEFT_HAND_PORT, RIGHT_HAND_PORT)
+        if not left_port or not right_port:
+            logger.error(
+                "Failed to resolve dual-hand serial ports. "
+                f"Configured left/right=({LEFT_HAND_PORT}, {RIGHT_HAND_PORT}), "
+                f"detected={_detected_serial_ports()}"
+            )
+            return False
+
         try:
             # Connect to left hand
-            self.left_serial = serial.Serial(LEFT_HAND_PORT, BAUD_RATE, timeout=1)
+            self.left_serial = serial.Serial(left_port, BAUD_RATE, timeout=1)
             time.sleep(2)
             self.left_serial.reset_input_buffer()
-            logger.info(f"Connected to left hand on {LEFT_HAND_PORT}")
+            logger.info(f"Connected to left hand on {left_port}")
             
             # Connect to right hand
-            self.right_serial = serial.Serial(RIGHT_HAND_PORT, BAUD_RATE, timeout=1)
+            self.right_serial = serial.Serial(right_port, BAUD_RATE, timeout=1)
             time.sleep(2)
             self.right_serial.reset_input_buffer()
-            logger.info(f"Connected to right hand on {RIGHT_HAND_PORT}")
+            logger.info(f"Connected to right hand on {right_port}")
             
             return True
             

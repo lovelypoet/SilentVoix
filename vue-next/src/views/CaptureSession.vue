@@ -37,6 +37,7 @@ const isAwaitingSyncCue = ref(false)
 const terminalComponent = ref(null)
 const isExportingSensorCsv = ref(false)
 const exportStatusMessage = ref('')
+const showAdvancedControls = ref(false)
 
 const {
   collectedLandmarks,
@@ -110,6 +111,29 @@ const expectedSyncLabel = computed(() => {
   return new Date(expectedSyncTimestampMs.value).toLocaleTimeString()
 })
 
+const isSensorRunning = computed(() => sensorCaptureStatus.value?.status === 'running')
+const sensorReady = computed(() => isSensorRunning.value || simulateSensor.value)
+const canStartTake = computed(
+  () => Boolean(currentGestureName.value.trim()) && !isCollecting.value && !isAwaitingSyncCue.value && sensorReady.value
+)
+const canExportFusion = computed(
+  () => collectedLandmarks.value.length > 0 && !isExportingSensorCsv.value
+)
+const framesInCurrentTake = computed(() => Math.max(0, collectedLandmarks.value.length - recordingStartCount.value))
+const workflowStep = computed(() => {
+  if (!isSessionActive.value) return 1
+  if (!sensorReady.value) return 2
+  if (!isCollecting.value && !isAwaitingSyncCue.value) return 3
+  return 4
+})
+const flowHint = computed(() => {
+  if (!isSessionActive.value) return 'Enable camera session first.'
+  if (!sensorReady.value) return 'Start sensor service or enable mock sensor.'
+  if (!isCollecting.value && !isAwaitingSyncCue.value) return 'Set gesture name and start recording.'
+  if (isAwaitingSyncCue.value) return 'Sync cue active. Recording starts when countdown hits zero.'
+  return 'Recording in progress. Stop and export when done.'
+})
+
 let frameCount = 0
 let lastTime = performance.now()
 let fpsInterval = null
@@ -173,6 +197,11 @@ const resetRecording = () => {
   recordingStartCount.value = 0
   expectedSyncTimestampMs.value = null
   hasAutoSavedCurrentRun.value = false
+}
+
+const stopTake = () => {
+  cancelPendingRecording()
+  stopCollecting()
 }
 
 const stopAndAutoSave = async () => {
@@ -509,7 +538,7 @@ watch(terminalLines, () => {
       <div class="text-left md:text-center">
         <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Capture Session</h1>
         <p class="text-slate-400">
-          Record labeled gestures with consistent frame caps and CSV export.
+          Guided flow: Camera Session -> Sensor Source -> Recording -> Export.
         </p>
       </div>
       <div class="hidden md:block"></div>
@@ -565,7 +594,7 @@ watch(terminalLines, () => {
 
         <div class="mt-6 flex flex-col md:flex-row items-stretch gap-4">
           <BaseBtn variant="primary" :disabled="isRequesting" class="flex-none" @click="startSession">
-            {{ isRequesting ? 'Requesting...' : 'Start Capture Session' }}
+            {{ isRequesting ? 'Requesting...' : 'Enable Camera Session' }}
           </BaseBtn>
 
           <CaptureSyncGraph
@@ -611,63 +640,62 @@ watch(terminalLines, () => {
       <div class="lg:col-span-2 lg:sticky lg:top-6 self-start">
         <BaseCard class="w-full">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-white">Capture Controls</h3>
+            <h3 class="text-lg font-bold text-white">Session Workflow</h3>
             <BaseBtn variant="secondary" @click="showSettings = true">Settings</BaseBtn>
           </div>
 
-          <div class="mb-4 space-y-2 text-sm">
+          <div class="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
             <div class="flex items-center justify-between">
-              <span class="text-slate-400">Glove Left</span>
-              <span :class="serialStatus.left_connected ? 'text-green-400' : 'text-red-400'">
-                {{ serialStatus.left_connected ? 'Online' : 'Offline' }}
+              <p class="text-xs uppercase tracking-wide text-slate-400">Flow Status</p>
+              <span class="text-xs rounded-full px-3 py-1 border" :class="workflowStep === 4 ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'">
+                Step {{ workflowStep }} of 4
               </span>
             </div>
-            <div class="text-xs text-slate-500">
-              Port: {{ serialStatus.left_port || '--' }}
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-400">Glove Right</span>
-              <span :class="serialStatus.right_connected ? 'text-green-400' : 'text-red-400'">
-                {{ serialStatus.right_connected ? 'Online' : 'Offline' }}
-              </span>
-            </div>
-            <div class="text-xs text-slate-500">
-              Port: {{ serialStatus.right_port || '--' }}
-            </div>
+            <p class="text-sm text-slate-300 mt-2">{{ flowHint }}</p>
           </div>
 
-          <div class="mb-4 text-xs text-slate-500">
-            Available ports: {{ serialStatus.available_ports?.length ? serialStatus.available_ports.join(', ') : '--' }}
-          </div>
-
-          <div class="mb-4">
-            <label class="block text-sm text-slate-400 mb-2">Capture Mode</label>
-            <select v-model="captureMode" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white w-full">
-              <option value="single">Single Hand</option>
-              <option value="dual">Dual Hand</option>
-            </select>
-          </div>
-
-          <div class="mb-4 space-y-2">
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-slate-400">Sensor Capture</span>
-              <span :class="sensorCaptureStatus.status === 'running' ? 'text-green-400' : 'text-red-400'">
-                {{ sensorCaptureStatus.status === 'running' ? 'Running' : 'Stopped' }}
-              </span>
-            </div>
-            <div class="flex flex-wrap gap-3">
-              <BaseBtn variant="primary" @click="startSensorCapture(captureMode)">Start Sensor</BaseBtn>
-              <BaseBtn variant="secondary" @click="stopSensorCapture">Stop Sensor</BaseBtn>
-              <BaseBtn
-                variant="secondary"
-                :class="simulateSensor ? 'border-teal-400 text-teal-300' : ''"
-                @click="simulateSensor = !simulateSensor"
-              >
-                {{ simulateSensor ? 'Mock: On' : 'Mock Sensor' }}
+          <div class="mb-4 grid grid-cols-1 gap-3">
+            <div class="rounded-xl border p-3" :class="isSessionActive ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+              <p class="text-[11px] uppercase tracking-wide text-slate-400">1. Camera Session</p>
+              <p class="text-sm mt-1" :class="isSessionActive ? 'text-emerald-300' : 'text-amber-300'">
+                {{ isSessionActive ? 'Active' : 'Inactive' }}
+              </p>
+              <BaseBtn class="mt-3 w-full" variant="secondary" :disabled="isRequesting" @click="startSession">
+                {{ isRequesting ? 'Requesting...' : 'Enable Camera Session' }}
               </BaseBtn>
             </div>
-            <div class="text-xs text-slate-500">
-              Synthetic sensor spikes for testing when hardware is unavailable.
+
+            <div class="rounded-xl border p-3" :class="sensorReady ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+              <p class="text-[11px] uppercase tracking-wide text-slate-400">2. Sensor Source</p>
+              <p class="text-sm mt-1" :class="isSensorRunning ? 'text-emerald-300' : 'text-amber-300'">
+                {{ isSensorRunning ? 'Service Running' : 'Service Stopped' }}
+              </p>
+              <p class="text-xs text-slate-500 mt-1">
+                Mode: {{ captureMode === 'dual' ? 'Dual hand' : 'Single hand' }}
+              </p>
+              <div class="mt-3">
+                <label class="block text-xs text-slate-400 mb-1">Capture Mode</label>
+                <select v-model="captureMode" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white w-full">
+                  <option value="single">Single Hand</option>
+                  <option value="dual">Dual Hand</option>
+                </select>
+              </div>
+              <div class="flex flex-wrap gap-2 mt-3">
+                <BaseBtn variant="secondary" class="flex-1 min-w-[120px]" @click="startSensorCapture(captureMode)">
+                  Start Sensor Service
+                </BaseBtn>
+                <BaseBtn variant="secondary" class="flex-1 min-w-[120px]" @click="stopSensorCapture">
+                  Stop Sensor Service
+                </BaseBtn>
+                <BaseBtn
+                  variant="secondary"
+                  class="w-full"
+                  :class="simulateSensor ? 'border-teal-400 text-teal-300' : ''"
+                  @click="simulateSensor = !simulateSensor"
+                >
+                  {{ simulateSensor ? 'Mock Sensor: On' : 'Enable Mock Sensor' }}
+                </BaseBtn>
+              </div>
             </div>
           </div>
 
@@ -682,23 +710,29 @@ watch(terminalLines, () => {
             />
           </div>
 
-          <div class="flex flex-wrap gap-3">
+          <div class="mb-4 grid grid-cols-1 gap-2">
             <BaseBtn
               v-if="!isCollecting"
-              :disabled="!currentGestureName.trim() || isAwaitingSyncCue"
+              :disabled="!canStartTake"
               variant="primary"
               @click="startRecording"
             >
-              {{ isAwaitingSyncCue ? 'Syncing...' : 'Start Recording' }}
+              {{ isAwaitingSyncCue ? 'Syncing...' : '3. Start Recording' }}
             </BaseBtn>
-            <BaseBtn v-else variant="danger" @click="stopCollecting">Stop Recording</BaseBtn>
+            <BaseBtn v-else variant="danger" @click="stopTake">Stop Recording</BaseBtn>
+            <BaseBtn v-if="isAwaitingSyncCue" variant="secondary" @click="cancelPendingRecording">
+              Cancel Sync Cue
+            </BaseBtn>
+            <BaseBtn variant="secondary" @click="triggerSyncCue">Manual Sync Cue</BaseBtn>
+          </div>
 
+          <div class="grid grid-cols-1 gap-2">
             <BaseBtn
-              :disabled="collectedLandmarks.length === 0 || isExportingSensorCsv"
+              :disabled="!canExportFusion"
               variant="secondary"
               @click="downloadCvSensorCsv"
             >
-              {{ isExportingSensorCsv ? 'Preparing...' : 'Download CV+Sensor CSV' }}
+              {{ isExportingSensorCsv ? 'Preparing...' : '4. Export CV+Sensor CSV' }}
             </BaseBtn>
 
             <BaseBtn
@@ -710,10 +744,27 @@ watch(terminalLines, () => {
             </BaseBtn>
 
             <BaseBtn variant="secondary" @click="resetRecording">Reset</BaseBtn>
-            <BaseBtn variant="secondary" @click="triggerSyncCue">Sync Cue</BaseBtn>
           </div>
 
-          <div class="mt-4 border border-slate-800 bg-black/70 rounded-lg px-4 py-3 font-mono text-xs text-slate-200">
+          <div class="mt-4 border border-slate-800 rounded-lg bg-slate-950/40 p-3">
+            <button class="w-full flex items-center justify-between text-sm text-slate-200" @click="showAdvancedControls = !showAdvancedControls">
+              <span>Advanced Details</span>
+              <span class="text-xs text-slate-500">{{ showAdvancedControls ? 'Hide' : 'Show' }}</span>
+            </button>
+          </div>
+
+          <div v-if="showAdvancedControls" class="mt-4 border border-slate-800 bg-black/70 rounded-lg px-4 py-3 font-mono text-xs text-slate-200">
+            <div class="text-slate-500 mb-2">
+              Left: <span :class="serialStatus.left_connected ? 'text-green-400' : 'text-red-400'">{{ serialStatus.left_connected ? 'Online' : 'Offline' }}</span>
+              ({{ serialStatus.left_port || '--' }})
+            </div>
+            <div class="text-slate-500 mb-2">
+              Right: <span :class="serialStatus.right_connected ? 'text-green-400' : 'text-red-400'">{{ serialStatus.right_connected ? 'Online' : 'Offline' }}</span>
+              ({{ serialStatus.right_port || '--' }})
+            </div>
+            <div class="text-slate-500 mb-2">
+              Available ports: {{ serialStatus.available_ports?.length ? serialStatus.available_ports.join(', ') : '--' }}
+            </div>
             <div class="text-slate-500 mb-2">Take Console</div>
             <div v-if="takeLogs.length === 0" class="text-slate-500">
               No takes recorded yet.
@@ -737,7 +788,7 @@ watch(terminalLines, () => {
               {{ exportStatusMessage }}
             </div>
             <div class="text-slate-400">
-              Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length - recordingStartCount }}</span>
+              Frames collected: <span class="text-white font-bold">{{ framesInCurrentTake }}</span>
               <span class="text-slate-500"> / {{ frameLimit }}</span>
             </div>
           </div>
