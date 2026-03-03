@@ -61,6 +61,12 @@ const router = createRouter({
             name: 'profile',
             component: () => import('../views/Profile.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/csv-library',
+            name: 'csv-library',
+            component: () => import('../views/CsvLibrary.vue'),
+            meta: { requiresAuth: true, allowedRoles: ['admin'] }
         }
     ]
 })

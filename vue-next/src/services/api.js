@@ -151,6 +151,34 @@ export default {
       api.get(`/sync/sensor-window?mode=${mode}&start_ms=${startMs}&end_ms=${endMs}&pad_ms=${padMs}`)
   },
 
+  // ===================== Admin CSV Library API =====================
+  admin: {
+    csvLibrary: {
+      listFiles: (includeArchived = false) =>
+        api.get(`/admin/csv-library/files?include_archived=${includeArchived ? 'true' : 'false'}`),
+      listCompatible: (pipeline = 'early', mode = 'single', includeArchived = false) =>
+        api.get(`/admin/csv-library/compatible?pipeline=${pipeline}&mode=${mode}&include_archived=${includeArchived ? 'true' : 'false'}`),
+      selection: {
+        get: (pipeline = 'early', mode = 'single') =>
+          api.get(`/admin/csv-library/selection?pipeline=${pipeline}&mode=${mode}`),
+        getAll: () =>
+          api.get('/admin/csv-library/selection/all'),
+        set: (name, pipeline = 'early', mode = 'single') =>
+          api.post('/admin/csv-library/selection', { name, pipeline, mode })
+      },
+      preview: (name, limit = 100, offset = 0) =>
+        api.get(`/admin/csv-library/files/${name}/preview?limit=${limit}&offset=${offset}`),
+      stats: (name) =>
+        api.get(`/admin/csv-library/files/${name}/stats`),
+      compatibility: (name, pipeline = 'early', mode = 'single') =>
+        api.get(`/admin/csv-library/files/${name}/compatibility?pipeline=${pipeline}&mode=${mode}`),
+      archive: (name) =>
+        api.post(`/admin/csv-library/files/${name}/archive`),
+      download: (name) =>
+        api.get(`/admin/csv-library/files/${name}/download`, { responseType: 'blob' })
+    }
+  },
+
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');

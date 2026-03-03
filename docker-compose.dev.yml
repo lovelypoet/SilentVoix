@@ -30,3 +30,4 @@ services:
     - SERIAL_PORT_SINGLE=/dev/ttyACM0
     volumes:
       - /dev:/dev
+      - ./backend/data:/app/data

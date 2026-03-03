@@ -173,6 +173,31 @@ Response:
 - `to_path`
 - `archived_at`
 
+### 6. List compatible files (training picker)
+`GET /admin/csv-library/compatible?pipeline=early|late&mode=single|dual&include_archived=false`
+
+Response:
+- `status`
+- `pipeline`
+- `mode`
+- `compatible_schema_ids`
+- `files` (same file shape as list endpoint)
+
+### 7. Selected dataset slot (training handoff)
+`GET /admin/csv-library/selection?pipeline=early|late&mode=single|dual`
+
+Response:
+- `status`
+- `pipeline`
+- `mode`
+- `selection` (nullable object)
+
+`GET /admin/csv-library/selection/all`
+
+`POST /admin/csv-library/selection`
+- body: `{ name, pipeline, mode }`
+- behavior: validates compatibility before persisting selection.
+
 ## Health Flags (MVP)
 Use these flags in list/stats endpoints:
 - `schema_mismatch`
@@ -203,14 +228,21 @@ Use these flags in list/stats endpoints:
   - filename, size, updated time, `schema_id`, rows, quick health badge.
 - Filters:
   - `schema_id`, modality, hand_mode, schema_version, date range, filename contains, label contains.
+  - `compatible only` toggle for selected `pipeline+mode`.
 - Row actions:
-  - Preview, Download, Archive.
+  - Check compatibility, Preview, Stats, Download, Use, Archive.
 
 ### Preview panel
 - Header list.
 - Paged row table.
 - Validation summary badges.
 - Label distribution chart (optional).
+
+### Stats panel
+- Expected vs actual feature dims.
+- Missing values and duplicate timestamp counts.
+- Schema mismatch details (`missing_required_columns`, `notes`).
+- Health flags summary.
 
 ### UX rules
 - Destructive action must show confirmation modal.
@@ -237,6 +269,31 @@ Use these flags in list/stats endpoints:
   - e.g. `GET /admin/csv-library/compatible?pipeline=early&mode=single`
 - Frontend: expose only compatible datasets in training pages.
 
+### Phase 5 (UI/UX Refine)
+- Improve table readability and responsive layout for large datasets.
+- Add sticky controls + clearer selected-slot state (`pipeline+mode` chips).
+- Reduce repeated actions with row action menu.
+- Add clearer empty states for early-fusion mode (no `fusion_*` files yet).
+- Tune polling/fetch cadence and loading skeletons.
+
+## Implementation Status (Current)
+
+- Phase 1: **Done**
+  - backend `files`, `preview`, `download` implemented
+  - frontend CSV Library list/preview/download shipped
+- Phase 2: **Done**
+  - backend `stats` endpoint + schema mismatch details implemented
+  - frontend stats panel shipped
+- Phase 3: **Done**
+  - backend archive endpoint implemented (soft move)
+  - frontend archive action with confirmation shipped
+- Phase 4: **Done (Data Controller scope)**
+  - backend `compatible` endpoint implemented
+  - backend `selection` endpoints implemented (`get`, `getAll`, `set`)
+  - frontend compatible-only toggle + `Use` action + active selection badge shipped
+- Phase 5: **Next**
+  - UI/UX refine pass
+
 ## Test Plan
 
 ### Backend
@@ -248,12 +305,18 @@ Use these flags in list/stats endpoints:
 - Schema registry detection tests for all 6 `schema_id` types.
 - `feature_dim` validation tests (`63/126/11/22/74/148`).
 - Compatibility filter tests (early single -> only `fusion_single`, early dual -> only `fusion_dual`).
+- Selection slot tests:
+  - valid compatible set succeeds
+  - incompatible set rejected with `400`
+  - `GET selection` returns persisted value per `pipeline+mode`
 
 ### Frontend
 - Admin route hidden for non-admin.
 - API permission errors surfaced correctly.
 - Table/preview pagination works.
 - Archive confirmation flow works and refreshes list.
+- Compatible-only view reflects selected `pipeline+mode`.
+- `Use` action updates active selected dataset badge.
 
 ## Open Decisions
 - Should archived files remain downloadable from UI?

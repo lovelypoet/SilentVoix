@@ -8,6 +8,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const isMobileNavOpen = ref(false)
 const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
+const canAccessAdminPages = computed(() => authStore.user?.role === 'admin')
 const isFullscreenLayout = computed(() => {
   if (route.meta.layout === 'empty' || route.meta.layout === 'fullscreen') return true
   return route.name === 'training' && route.query.trainingSession === '1'
@@ -40,6 +41,9 @@ watch(
         </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Library
+        </RouterLink>
+        <RouterLink v-if="canAccessAdminPages" to="/csv-library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+          CSV Library
         </RouterLink>
         <RouterLink to="/voice" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Voice Studio
@@ -82,6 +86,9 @@ watch(
         </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Library
+        </RouterLink>
+        <RouterLink v-if="canAccessAdminPages" to="/csv-library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+          CSV Library
         </RouterLink>
         <RouterLink to="/voice" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Voice Studio
