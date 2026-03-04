@@ -26,7 +26,7 @@ watch(
   <div class="min-h-screen bg-slate-950 text-slate-200 flex app-bg">
     <Toast /> <!-- Add Toast component here -->
     <!-- Sidebar (Hidden on login) -->
-    <aside v-if="!isFullscreenLayout" class="hidden lg:flex w-52 border-r border-slate-800 p-5 flex-col fixed h-screen top-0 left-0">
+    <aside v-if="!isFullscreenLayout" class="hidden lg:flex w-52 p-5 flex-col sticky top-0 h-screen shrink-0">
       <RouterLink to="/" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
       
       <nav class="flex flex-col gap-2">
@@ -105,8 +105,7 @@ watch(
     <main
       class="flex-1 overflow-auto"
       :class="{
-        'p-4 sm:p-6 lg:py-8 lg:pr-8 lg:pl-0': !isFullscreenLayout,
-        'lg:ml-52': !isFullscreenLayout
+        'p-4 sm:p-6 lg:py-8 lg:pr-8 lg:pl-0 lg:border-l lg:border-slate-800': !isFullscreenLayout
       }"
     >
       <div
