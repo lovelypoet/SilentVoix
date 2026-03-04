@@ -51,6 +51,9 @@ watch(
         <RouterLink to="/profile" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Profile
         </RouterLink>
+        <RouterLink to="/about" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+          About
+        </RouterLink>
       </nav>
 
       <div class="mt-auto"></div>
@@ -95,6 +98,9 @@ watch(
         </RouterLink>
         <RouterLink to="/profile" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Profile
+        </RouterLink>
+        <RouterLink to="/about" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+          About
         </RouterLink>
       </nav>
 

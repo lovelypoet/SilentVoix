@@ -26,6 +26,10 @@ export default defineConfig({
         target: 'http://backend:8080',
         changeOrigin: true,
       },
+      '/pics': {
+        target: 'http://backend:8080',
+        changeOrigin: true,
+      },
     }
   },
 })

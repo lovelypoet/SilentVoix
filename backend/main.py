@@ -24,6 +24,7 @@ from core.error_handler import create_error_response, error_tracker, performance
 from contextlib import asynccontextmanager
 import logging
 import asyncio
+import os
 from routes.auth_routes import ensure_default_editor
 
 # Improved logging configuration
@@ -113,6 +114,7 @@ app.include_router(playground_routes.router)
 # Mount models directory for static files if needed
 app.mount("/models", StaticFiles(directory=settings.DATA_DIR), name="models")
 app.mount("/static/tts", StaticFiles(directory=settings.TTS_CACHE_DIR), name="tts")
+app.mount("/pics", StaticFiles(directory=os.path.join(settings.BASE_DIR, "pics")), name="pics")
 
 @app.get("/")
 def root():

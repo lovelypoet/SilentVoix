@@ -101,6 +101,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/about',
+            name: 'about',
+            component: () => import('../views/About.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/csv-library',
             name: 'csv-library',
             component: () => import('../views/CsvLibrary.vue'),
