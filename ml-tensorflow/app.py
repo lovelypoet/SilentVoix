@@ -163,3 +163,66 @@ def run_predict(payload: PredictPayload):
         return _error("RUNTIME_PREDICT_FAILED", str(exc))
     except Exception as exc:
         return _error("RUNTIME_PREDICT_FAILED", str(exc), retryable=True)
+
+
+# ---------------------------------------------------------------------------
+# Legacy single-hand sensor prediction (forwarded from backend-api)
+# ---------------------------------------------------------------------------
+import os
+import logging
+import tensorflow as tf
+
+_logger = logging.getLogger("ml-tensorflow")
+
+_LEGACY_MODEL_PATH = os.environ.get(
+    "LEGACY_TFLITE_MODEL_PATH",
+    "/shared/AI/gesture_model.tflite",
+)
+_LEGACY_INTERPRETER = None
+_LEGACY_LABEL_MAP = {
+    0: "Hello", 1: "Yes", 2: "No", 3: "We",
+    4: "Are", 5: "Students", 6: "Rest",
+}
+
+def _get_legacy_interpreter():
+    global _LEGACY_INTERPRETER
+    if _LEGACY_INTERPRETER is not None:
+        return _LEGACY_INTERPRETER
+    if not os.path.exists(_LEGACY_MODEL_PATH):
+        _logger.warning("Legacy TFLite model not found at %s", _LEGACY_MODEL_PATH)
+        return None
+    _LEGACY_INTERPRETER = tf.lite.Interpreter(model_path=_LEGACY_MODEL_PATH)
+    _LEGACY_INTERPRETER.allocate_tensors()
+    _logger.info("Legacy TFLite model loaded from %s", _LEGACY_MODEL_PATH)
+    return _LEGACY_INTERPRETER
+
+
+class LegacyPredictPayload(BaseModel):
+    values: List[float]
+
+
+@app.post("/v1/predict-legacy")
+def predict_legacy(payload: LegacyPredictPayload):
+    interp = _get_legacy_interpreter()
+    if interp is None:
+        return {"status": "error", "message": "Legacy TFLite model is not loaded."}
+
+    values = payload.values
+    if len(values) != 11:
+        return {"status": "error", "message": f"Invalid sensor input (expected 11 values, got {len(values)})"}
+
+    try:
+        input_data = np.array([values], dtype=np.float32)
+        input_details = interp.get_input_details()
+        output_details = interp.get_output_details()
+        interp.set_tensor(input_details[0]["index"], input_data)
+        interp.invoke()
+        output = interp.get_tensor(output_details[0]["index"])
+        predicted_index = int(np.argmax(output))
+        confidence = float(np.max(output))
+        label = _LEGACY_LABEL_MAP.get(predicted_index, f"Class {predicted_index}")
+        return {"status": "success", "prediction": label, "confidence": confidence}
+    except Exception as exc:
+        _logger.error("Legacy prediction error: %s", exc)
+        return {"status": "error", "message": str(exc)}
+

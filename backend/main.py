@@ -54,11 +54,12 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logging.warning("Runtime preflight failed: %s", exc)
 
-    # Check AI model
+    # Legacy model check – the model object will be None when TF is unavailable
+    # (expected in the API-only Docker image where USE_RUNTIME_SERVICES=true).
     if model is None:
-        logging.error("H5 model is NOT loaded! WebSocket predictions will fail.")
+        logging.info("Local TFLite model is not loaded; predictions will be forwarded to ml-tensorflow service.")
     else:
-        logging.info(f"H5 model loaded successfully from: {settings.MODEL_PATH}")
+        logging.info(f"Local TFLite model loaded successfully from: {settings.MODEL_PATH}")
 
     yield
     client.close()
@@ -108,12 +109,6 @@ app.include_router(sync_routes.http_router)
 app.include_router(model_status.router)
 app.include_router(admin_csv_library_routes.router)
 app.include_router(playground_routes.router)
-if settings.TRAINING_FEATURES_ENABLED:
-    from routes import training_routes
-    app.include_router(training_routes.router)
-    logger.info("Training routes are enabled")
-else:
-    logger.info("Training routes are disabled by TRAINING_FEATURES_ENABLED=false")
 
 # Mount models directory for static files if needed
 app.mount("/models", StaticFiles(directory=settings.DATA_DIR), name="models")

@@ -33,10 +33,10 @@ services:
       - TTS_PROVIDER=gtts
       - BACKEND_BASE_URL=http://localhost:8080
       - SERIAL_PORT_SINGLE=/dev/ttyACM0
-      - USE_RUNTIME_SERVICES=${USE_RUNTIME_SERVICES:-false}
+      - USE_RUNTIME_SERVICES=${USE_RUNTIME_SERVICES:-true}
       - ML_TENSORFLOW_URL=${ML_TENSORFLOW_URL:-http://ml-tensorflow:8091}
       - ML_PYTORCH_URL=${ML_PYTORCH_URL:-http://ml-pytorch:8092}
-      - USE_WORKER_LIBRARY=${USE_WORKER_LIBRARY:-false}
+      - USE_WORKER_LIBRARY=${USE_WORKER_LIBRARY:-true}
       - WORKER_LIBRARY_URL=${WORKER_LIBRARY_URL:-http://worker-library:8093}
     volumes:
       - /dev:/dev
@@ -50,6 +50,7 @@ services:
       - "8091:8091"
     volumes:
       - ./backend/AI/model_library:/shared/model_library:ro
+      - ./backend/AI:/shared/AI:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8091/health', timeout=5)"]
       interval: 30s
