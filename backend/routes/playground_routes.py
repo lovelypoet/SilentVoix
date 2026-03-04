@@ -28,6 +28,7 @@ router = APIRouter(prefix="/playground", tags=["Realtime AI Playground"])
 
 ALLOWED_MODEL_EXTENSIONS = SUPPORTED_MODEL_EXTENSIONS
 ALLOWED_EXPORT_FORMATS = SUPPORTED_EXPORT_FORMATS
+ALLOWED_MODALITIES = {"cv", "sensor"}
 MODEL_CACHE_LOCK = threading.Lock()
 MODEL_CACHE: Dict[str, Dict[str, Any]] = {}
 
@@ -60,6 +61,25 @@ def _load_registry() -> Dict[str, Any]:
             data["models"] = []
         if "active_model_id" not in data:
             data["active_model_id"] = None
+        changed = False
+        for entry in data["models"]:
+            if not isinstance(entry, dict):
+                continue
+            metadata = entry.get("metadata")
+            if not isinstance(metadata, dict):
+                continue
+            if metadata.get("modality"):
+                continue
+            input_dim = int(entry.get("input_dim") or 0)
+            inferred = _infer_modality_from_dim(input_dim)
+            if inferred:
+                metadata["modality"] = inferred
+                input_spec = metadata.get("input_spec")
+                if isinstance(input_spec, dict):
+                    input_spec["modality"] = inferred
+                changed = True
+        if changed:
+            _save_registry(data)
         return data
     except Exception:
         return {"models": [], "active_model_id": None}
@@ -145,6 +165,28 @@ def _input_dim_from_metadata(metadata: Dict[str, Any]) -> int:
     raise HTTPException(status_code=400, detail="Unable to infer input dimension from metadata.input_spec")
 
 
+def _infer_modality_from_dim(input_dim: int) -> Optional[str]:
+    if input_dim in {63, 126}:
+        return "cv"
+    if input_dim in {11, 22}:
+        return "sensor"
+    return None
+
+
+def _resolve_model_modality(metadata: Dict[str, Any], input_dim: int) -> Optional[str]:
+    input_spec = metadata.get("input_spec") or {}
+    raw = metadata.get("modality") or input_spec.get("modality")
+    if raw is not None:
+        modality = str(raw).strip().lower()
+        if modality not in ALLOWED_MODALITIES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported modality: {modality}. Allowed: cv, sensor",
+            )
+        return modality
+    return _infer_modality_from_dim(input_dim)
+
+
 def _load_model_runtime(model_entry: Dict[str, Any]) -> Dict[str, Any]:
     model_path = Path(model_entry["model_path"]).resolve()
     if not model_path.exists():
@@ -185,6 +227,52 @@ def _predict_with_runtime(runtime: Dict[str, Any], cv_values: np.ndarray) -> np.
         raise HTTPException(status_code=500, detail=f"Runtime prediction failed: {exc}") from exc
 
 
+def _runtime_status_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _perform_runtime_check(entry: Dict[str, Any]) -> Dict[str, Any]:
+    expected_dim = int(entry.get("input_dim") or 0)
+    if expected_dim <= 0:
+        raise HTTPException(status_code=400, detail="Invalid model input dimension")
+
+    runtime = _load_model_runtime(entry)
+    probe = np.zeros((expected_dim,), dtype=np.float32)
+    probs = _predict_with_runtime(runtime, probe)
+    probs = np.asarray(probs, dtype=np.float32).reshape(-1)
+    if probs.size == 0:
+        raise HTTPException(status_code=500, detail="Model runtime-check returned empty output")
+
+    return {
+        "status": "success",
+        "model_id": str(entry.get("id", "")),
+        "model_name": entry.get("display_name"),
+        "export_format": str(entry.get("metadata", {}).get("export_format", "")),
+        "input_dim": expected_dim,
+        "output_dim": int(probs.shape[0]),
+        "message": "Runtime load and dry-run inference succeeded",
+    }
+
+
+def _compute_runtime_status(entry: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        result = _perform_runtime_check(entry)
+        return {
+            "state": "pass",
+            "checked_at": _runtime_status_timestamp(),
+            "input_dim": int(result["input_dim"]),
+            "output_dim": int(result["output_dim"]),
+            "message": str(result["message"]),
+        }
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+        return {
+            "state": "fail",
+            "checked_at": _runtime_status_timestamp(),
+            "message": detail,
+        }
+
+
 @router.post("/models/upload")
 async def upload_playground_model(
     model_file: UploadFile = File(...),
@@ -209,6 +297,12 @@ async def upload_playground_model(
     metadata = _parse_metadata_bytes(metadata_bytes)
     _validate_metadata(metadata, suffix)
     input_dim = _input_dim_from_metadata(metadata)
+    modality = _resolve_model_modality(metadata, input_dim)
+    if modality:
+        metadata["modality"] = modality
+        metadata.setdefault("input_spec", {})
+        if isinstance(metadata["input_spec"], dict):
+            metadata["input_spec"]["modality"] = modality
 
     model_id = str(uuid4())
     model_dir = _models_root() / model_id
@@ -230,6 +324,7 @@ async def upload_playground_model(
         "input_dim": input_dim,
         "created_at": now,
     }
+    entry["runtime_status"] = _compute_runtime_status(entry)
 
     registry = _load_registry()
     registry["models"] = [*registry.get("models", []), entry]
@@ -273,6 +368,7 @@ async def activate_playground_model(model_id: str, _user=Depends(role_or_interna
     registry = _load_registry()
     target = _get_model_entry(registry, model_id)
     registry["active_model_id"] = model_id
+    target["runtime_status"] = _compute_runtime_status(target)
     _save_registry(registry)
     return {
         "status": "success",
@@ -301,26 +397,26 @@ async def download_playground_model_artifact(
 async def runtime_check_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
     registry = _load_registry()
     entry = _get_model_entry(registry, model_id)
-    expected_dim = int(entry.get("input_dim") or 0)
-    if expected_dim <= 0:
-        raise HTTPException(status_code=400, detail="Invalid model input dimension")
-
-    runtime = _load_model_runtime(entry)
-    probe = np.zeros((expected_dim,), dtype=np.float32)
-    probs = _predict_with_runtime(runtime, probe)
-    probs = np.asarray(probs, dtype=np.float32).reshape(-1)
-    if probs.size == 0:
-        raise HTTPException(status_code=500, detail="Model runtime-check returned empty output")
-
-    return {
-        "status": "success",
-        "model_id": model_id,
-        "model_name": entry.get("display_name"),
-        "export_format": str(entry.get("metadata", {}).get("export_format", "")),
-        "input_dim": expected_dim,
-        "output_dim": int(probs.shape[0]),
-        "message": "Runtime load and dry-run inference succeeded",
-    }
+    try:
+        result = _perform_runtime_check(entry)
+        entry["runtime_status"] = {
+            "state": "pass",
+            "checked_at": _runtime_status_timestamp(),
+            "input_dim": int(result["input_dim"]),
+            "output_dim": int(result["output_dim"]),
+            "message": str(result["message"]),
+        }
+        _save_registry(registry)
+        return result
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+        entry["runtime_status"] = {
+            "state": "fail",
+            "checked_at": _runtime_status_timestamp(),
+            "message": detail,
+        }
+        _save_registry(registry)
+        raise
 
 
 @router.delete("/models/{model_id}")
@@ -363,6 +459,12 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
     model_entry = next((m for m in registry.get("models", []) if m.get("id") == model_id), None)
     if not model_entry:
         raise HTTPException(status_code=404, detail=f"Model not found: {model_id}")
+    model_modality = str(model_entry.get("metadata", {}).get("modality") or "").strip().lower()
+    if model_modality == "sensor":
+        raise HTTPException(
+            status_code=400,
+            detail="Selected model modality is sensor, but /playground/predict/cv expects a CV model.",
+        )
 
     expected_dim = int(model_entry.get("input_dim") or 0)
     vector = np.asarray(req.cv_values, dtype=np.float32).reshape(-1)

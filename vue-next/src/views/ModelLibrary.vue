@@ -115,6 +115,27 @@ const runtimeStatusFor = (modelId) => {
   return check.ok ? 'pass' : 'fail'
 }
 
+const hydrateRuntimeChecks = (rows) => {
+  const next = {}
+  for (const model of rows) {
+    const status = model?.runtime_status
+    if (!status) continue
+    const state = String(status.state || '').toLowerCase()
+    if (state === 'pass') {
+      next[model.id] = {
+        ok: true,
+        message: status.message || `OK: in ${status.input_dim ?? '--'} -> out ${status.output_dim ?? '--'}`
+      }
+    } else if (state === 'fail') {
+      next[model.id] = {
+        ok: false,
+        message: status.message || 'Runtime check failed.'
+      }
+    }
+  }
+  runtimeCheckState.value = next
+}
+
 const isActive = (modelId) => activeModelId.value === modelId
 
 const fetchModels = async () => {
@@ -122,8 +143,10 @@ const fetchModels = async () => {
   error.value = ''
   try {
     const res = await api.playground.listModels()
-    models.value = Array.isArray(res?.models) ? res.models : []
+    const rows = Array.isArray(res?.models) ? res.models : []
+    models.value = rows
     activeModelId.value = res?.active_model_id || null
+    hydrateRuntimeChecks(rows)
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Failed to load model library.'
   } finally {

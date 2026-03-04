@@ -57,12 +57,20 @@ def default_input_dim(name: str) -> int:
     return 63
 
 
+def infer_modality(input_dim: int) -> str:
+    if input_dim in (11, 22):
+        return "sensor"
+    return "cv"
+
+
 def make_metadata(name: str, input_dim: int) -> dict:
+    modality = infer_modality(input_dim)
     return {
         "model_name": name,
         "model_family": "pytorch",
-        "input_spec": {"input_dim": input_dim, "shape": [1, input_dim]},
+        "input_spec": {"input_dim": input_dim, "shape": [1, input_dim], "modality": modality},
         "labels": DEFAULT_LABELS,
+        "modality": modality,
         "export_format": "pytorch",
         "version": "imported-local-1",
         "precision": 0.0,
