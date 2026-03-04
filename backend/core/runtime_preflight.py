@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+import httpx
+
 from core.settings import settings
 
 
@@ -60,12 +62,56 @@ def _read_registry() -> Dict[str, Any]:
         return {"ok": False, "path": str(registry_path), "error": str(exc)}
 
 
+def _check_runtime_service(name: str, base_url: str) -> Dict[str, Any]:
+    url = f"{str(base_url).rstrip('/')}/health"
+    try:
+        resp = httpx.get(url, timeout=2.5)
+    except Exception as exc:
+        return {"ok": False, "name": name, "url": url, "error": str(exc)}
+
+    if resp.status_code >= 400:
+        return {
+            "ok": False,
+            "name": name,
+            "url": url,
+            "status_code": int(resp.status_code),
+            "error": "non-success status",
+        }
+
+    try:
+        payload = resp.json()
+    except Exception:
+        payload = {}
+    return {
+        "ok": True,
+        "name": name,
+        "url": url,
+        "status_code": int(resp.status_code),
+        "payload": payload if isinstance(payload, dict) else {},
+    }
+
+
+def _runtime_services_preflight() -> Dict[str, Any]:
+    enabled = bool(settings.USE_RUNTIME_SERVICES)
+    if not enabled:
+        return {"enabled": False}
+
+    tf = _check_runtime_service("ml-tensorflow", settings.ML_TENSORFLOW_URL)
+    torch = _check_runtime_service("ml-pytorch", settings.ML_PYTORCH_URL)
+    return {
+        "enabled": True,
+        "tensorflow": tf,
+        "pytorch": torch,
+    }
+
+
 def run_runtime_preflight() -> Dict[str, Any]:
     return {
         "ml_runtime": settings.ML_RUNTIME,
         "use_runtime_services": settings.USE_RUNTIME_SERVICES,
         "ml_tensorflow_url": settings.ML_TENSORFLOW_URL,
         "ml_pytorch_url": settings.ML_PYTORCH_URL,
+        "runtime_services": _runtime_services_preflight(),
         "training_features_enabled": settings.TRAINING_FEATURES_ENABLED,
         "tensorflow": _import_version("tensorflow"),
         "torch": _import_version("torch"),

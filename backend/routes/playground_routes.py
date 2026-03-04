@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+import httpx
 import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query
 from fastapi.responses import FileResponse
@@ -31,6 +32,7 @@ ALLOWED_EXPORT_FORMATS = SUPPORTED_EXPORT_FORMATS
 ALLOWED_MODALITIES = {"cv", "sensor"}
 MODEL_CACHE_LOCK = threading.Lock()
 MODEL_CACHE: Dict[str, Dict[str, Any]] = {}
+REMOTE_MODEL_LIBRARY_ROOT = Path("/shared/model_library")
 
 
 class PlaygroundPredictRequest(BaseModel):
@@ -201,6 +203,92 @@ def _entry_modality(entry: Dict[str, Any]) -> str:
     return inferred or ""
 
 
+def _uses_runtime_services() -> bool:
+    return bool(settings.USE_RUNTIME_SERVICES)
+
+
+def _runtime_service_url(export_format: str) -> str:
+    normalized = normalize_export_format(export_format)
+    if normalized in {"tflite", "keras", "h5"}:
+        return str(settings.ML_TENSORFLOW_URL).rstrip("/")
+    if normalized == "pytorch":
+        return str(settings.ML_PYTORCH_URL).rstrip("/")
+    raise HTTPException(status_code=400, detail=f"Unsupported export format: {export_format}")
+
+
+def _runtime_service_model_path(entry: Dict[str, Any]) -> str:
+    local_path = Path(str(entry.get("model_path", ""))).resolve()
+    root = _models_root().resolve()
+    try:
+        rel = local_path.relative_to(root)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Model path is outside model library root") from exc
+    return str(REMOTE_MODEL_LIBRARY_ROOT / rel)
+
+
+def _runtime_payload(entry: Dict[str, Any], input_vector: Optional[np.ndarray] = None) -> Dict[str, Any]:
+    metadata = entry.get("metadata", {}) or {}
+    payload: Dict[str, Any] = {
+        "model_id": str(entry.get("id", "")),
+        "model_path": _runtime_service_model_path(entry),
+        "export_format": str(metadata.get("export_format", "")),
+        "input_dim": int(entry.get("input_dim") or 0),
+        "labels": [str(v) for v in (metadata.get("labels") or [])],
+        "modality": _entry_modality(entry) or None,
+    }
+    if input_vector is not None:
+        payload["input_vector"] = [float(v) for v in input_vector.tolist()]
+    return payload
+
+
+def _call_runtime_service(entry: Dict[str, Any], endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    service_url = _runtime_service_url(str(entry.get("metadata", {}).get("export_format", "")))
+    url = f"{service_url}{endpoint}"
+    try:
+        resp = httpx.post(url, json=payload, timeout=10.0)
+    except httpx.TimeoutException as exc:
+        raise HTTPException(status_code=504, detail=f"Runtime service timeout: {service_url}") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Runtime service request failed: {service_url}") from exc
+
+    try:
+        data = resp.json()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Runtime service returned invalid JSON") from exc
+
+    if resp.status_code >= 400:
+        detail = data.get("message") if isinstance(data, dict) else f"Runtime service HTTP {resp.status_code}"
+        raise HTTPException(status_code=502, detail=str(detail))
+    if isinstance(data, dict) and data.get("status") == "error":
+        code = str(data.get("code", "")).strip().upper()
+        detail = str(data.get("message") or "Runtime service returned an error")
+        if code in {
+            "MODEL_NOT_FOUND",
+            "UNSUPPORTED_EXPORT_FORMAT",
+            "INVALID_MODEL_ARTIFACT",
+            "STATE_DICT_ONLY_ARTIFACT",
+            "INPUT_DIM_MISMATCH",
+            "NON_FINITE_INPUT",
+            "EMPTY_OUTPUT",
+            "NON_FINITE_OUTPUT",
+        }:
+            raise HTTPException(status_code=400, detail=detail)
+        raise HTTPException(status_code=502, detail=detail)
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=502, detail="Runtime service response is not an object")
+    return data
+
+
+def _remote_runtime_check(entry: Dict[str, Any]) -> Dict[str, Any]:
+    payload = _runtime_payload(entry)
+    return _call_runtime_service(entry, "/v1/runtime-check", payload)
+
+
+def _remote_predict(entry: Dict[str, Any], vector: np.ndarray) -> Dict[str, Any]:
+    payload = _runtime_payload(entry, input_vector=vector)
+    return _call_runtime_service(entry, "/v1/predict", payload)
+
+
 def _load_model_runtime(model_entry: Dict[str, Any]) -> Dict[str, Any]:
     model_path = Path(model_entry["model_path"]).resolve()
     if not model_path.exists():
@@ -281,6 +369,21 @@ def _perform_runtime_check(entry: Dict[str, Any]) -> Dict[str, Any]:
     expected_dim = int(entry.get("input_dim") or 0)
     if expected_dim <= 0:
         raise HTTPException(status_code=400, detail="Invalid model input dimension")
+
+    if _uses_runtime_services():
+        result = _remote_runtime_check(entry)
+        output_dim = int(result.get("output_dim") or 0)
+        if output_dim <= 0:
+            raise HTTPException(status_code=502, detail="Runtime service returned invalid output dimension")
+        return {
+            "status": "success",
+            "model_id": str(entry.get("id", "")),
+            "model_name": entry.get("display_name"),
+            "export_format": str(entry.get("metadata", {}).get("export_format", "")),
+            "input_dim": expected_dim,
+            "output_dim": output_dim,
+            "message": str(result.get("message") or "Runtime load and dry-run inference succeeded"),
+        }
 
     runtime = _load_model_runtime(entry)
     probe = np.zeros((expected_dim,), dtype=np.float32)
@@ -515,6 +618,18 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
     expected_dim = int(model_entry.get("input_dim") or 0)
     vector = _coerce_input_vector(req.cv_values, expected_dim, "cv_values")
 
+    if _uses_runtime_services():
+        remote = _remote_predict(model_entry, vector)
+        prediction = remote.get("prediction")
+        if not isinstance(prediction, dict):
+            raise HTTPException(status_code=502, detail="Runtime service returned invalid prediction payload")
+        return {
+            "status": "success",
+            "model_id": model_id,
+            "model_name": model_entry.get("display_name"),
+            "prediction": prediction,
+        }
+
     runtime = _load_model_runtime(model_entry)
     probs = _predict_with_runtime(runtime, vector)
     labels = [str(v) for v in (model_entry.get("metadata", {}).get("labels") or [])]
@@ -565,6 +680,18 @@ async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=D
 
     expected_dim = int(model_entry.get("input_dim") or 0)
     vector = _coerce_input_vector(req.sensor_values, expected_dim, "sensor_values")
+
+    if _uses_runtime_services():
+        remote = _remote_predict(model_entry, vector)
+        prediction = remote.get("prediction")
+        if not isinstance(prediction, dict):
+            raise HTTPException(status_code=502, detail="Runtime service returned invalid prediction payload")
+        return {
+            "status": "success",
+            "model_id": model_id,
+            "model_name": model_entry.get("display_name"),
+            "prediction": prediction,
+        }
 
     runtime = _load_model_runtime(model_entry)
     probs = _predict_with_runtime(runtime, vector)

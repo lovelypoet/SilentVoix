@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from routes import sensor_routes, admin_routes, dashboard_routes, gestures_predict
 from routes import utils_routes, auth_routes, voice_routes, sync_routes, liveWS, capture_controls_routes, admin_csv_library_routes, playground_routes
-from AI.gesture_model_inference import preprocess_frame, predict_gesture
 from routes import model_status
 from routes import audio_files_routes
 from ingestion.streaming.live_data import get_latest_data

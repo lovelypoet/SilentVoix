@@ -7,6 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+ARG BACKEND_REQUIREMENTS=requirements-api.txt
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
@@ -17,11 +19,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements*.txt ./
 
 # Install Python dependencies
 RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+    && pip install -r ${BACKEND_REQUIREMENTS}
 
 # Copy application code
 COPY . .

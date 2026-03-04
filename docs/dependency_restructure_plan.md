@@ -29,6 +29,14 @@ This restructure is the correct next step before adding more runtime features.
 
 Expected total with both ML runtimes enabled: roughly 3.0 to 6.2 GB.
 
+## Progress Snapshot (2026-03-04)
+- Built images after runtime split scaffold:
+  - `silentvoix-backend:api-only` = 829 MB
+  - `silentvoix-ml-pytorch:latest` = 1.45 GB
+  - `silentvoix-ml-tensorflow:latest` = 3.16 GB
+- Approx stack subtotal (without DB volume growth): ~5.4 GB plus frontend/database overhead.
+- Current result is within the original 6 GB expectation, with TensorFlow image as the biggest optimization target.
+
 ## Scope Rules
 In scope:
 - dependency split and runtime service boundaries

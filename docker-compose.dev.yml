@@ -12,7 +12,10 @@ services:
         condition: service_healthy
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        BACKEND_REQUIREMENTS: requirements-api.txt
     env_file:
       - ./backend/.env
     privileged: true
@@ -34,7 +37,7 @@ services:
       - ./backend/AI/model_library:/app/AI/model_library
 
   ml-tensorflow:
-    profiles: ["runtime-split", "full"]
+    profiles: ["tf", "runtime-split", "full"]
     build: ./ml-tensorflow
     ports:
       - "8091:8091"
@@ -48,7 +51,7 @@ services:
       start_period: 5s
 
   ml-pytorch:
-    profiles: ["runtime-split", "full"]
+    profiles: ["torch", "runtime-split", "full"]
     build: ./ml-pytorch
     ports:
       - "8092:8092"

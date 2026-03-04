@@ -6,7 +6,6 @@ Model inference logic for single-hand gesture prediction in the sign glove syste
 # core/model.py
 
 import numpy as np
-import tensorflow as tf
 import os
 import logging
 from core.settings import settings
@@ -14,9 +13,18 @@ from core.settings import settings
 # Initialize logger
 logger = logging.getLogger("signglove")
 
+try:
+    import tensorflow as tf  # type: ignore
+except Exception as exc:  # pragma: no cover - depends on deployment profile
+    tf = None
+    logger.warning("TensorFlow is unavailable in backend-api profile: %s", exc)
+
 def load_model():
     """Loads the TFLite model and returns the interpreter."""
     try:
+        if tf is None:
+            logger.warning("Skipping TFLite model load because TensorFlow is unavailable")
+            return None
         if not os.path.exists(settings.MODEL_PATH):
             logger.error(f"Model file not found at: {settings.MODEL_PATH}")
             return None
