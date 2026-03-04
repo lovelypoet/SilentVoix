@@ -146,6 +146,20 @@ Why this helps:
 - keeps fallback available during early migration
 - catches environment/runtime issues early (dependencies, model loading, container config)
 
+## Phase 2 Idea: "Model Thinking" Visualization (Not Priority)
+- Idea:
+  - visualize prediction confidence over time
+  - show channel-level contribution hints
+  - show decision timeline and uncertainty moments
+- Priority decision:
+  - this is **Phase 2 UX/interpretability**
+  - do **not** prioritize before runtime correctness/stability is complete
+- Runtime correctness remains first:
+  - modality-safe endpoints
+  - strict input/output validation
+  - reliable runtime status (pass/fail) and preflight checks
+  - automated contract/smoke testing
+
 ## Risks and Controls
 - Risk: API payload drift during runtime migration.
   - Control: contract tests on prediction response schema.

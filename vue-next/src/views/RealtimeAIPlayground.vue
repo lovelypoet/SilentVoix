@@ -26,6 +26,11 @@ const mediaStream = ref(null)
 const isLive = ref(false)
 const liveStatus = ref('Camera idle.')
 const prediction = ref(null)
+const sensorSnapshot = ref({
+  values: [],
+  realSensor: false,
+  updatedAt: null
+})
 let lastPredictTs = 0
 let isPredictingFrame = false
 let sensorPollTimer = null
@@ -56,6 +61,48 @@ const modelModality = computed(() => {
   const dim = modelInputDim.value
   if (dim === 11 || dim === 22) return 'sensor'
   return 'cv'
+})
+
+const activeRuntimeState = computed(() => {
+  const state = String(activeModel.value?.runtime_status?.state || '').trim().toLowerCase()
+  if (state === 'pass' || state === 'fail') return state
+  return 'untested'
+})
+
+const sensorUpdatedAtText = computed(() => {
+  const ts = sensorSnapshot.value?.updatedAt
+  if (!ts) return '--'
+  const d = new Date(ts)
+  return Number.isNaN(d.getTime()) ? '--' : d.toLocaleTimeString()
+})
+
+const sensorDisplayRows = computed(() => {
+  const values = Array.isArray(sensorSnapshot.value?.values) ? sensorSnapshot.value.values : []
+  const rows = []
+
+  if (modelInputDim.value === 11) {
+    const labels = ['F1', 'F2', 'F3', 'F4', 'F5', 'AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']
+    labels.forEach((label, i) => {
+      rows.push({ label, value: Number(values[i] ?? 0) })
+    })
+    return rows
+  }
+
+  if (modelInputDim.value === 22) {
+    const labels = [
+      'L-F1', 'L-F2', 'L-F3', 'L-F4', 'L-F5', 'L-AX', 'L-AY', 'L-AZ', 'L-GX', 'L-GY', 'L-GZ',
+      'R-F1', 'R-F2', 'R-F3', 'R-F4', 'R-F5', 'R-AX', 'R-AY', 'R-AZ', 'R-GX', 'R-GY', 'R-GZ'
+    ]
+    labels.forEach((label, i) => {
+      rows.push({ label, value: Number(values[i] ?? 0) })
+    })
+    return rows
+  }
+
+  for (let i = 0; i < values.length; i += 1) {
+    rows.push({ label: `V${i + 1}`, value: Number(values[i] ?? 0) })
+  }
+  return rows
 })
 
 const parseJsonFile = (file) => new Promise((resolve, reject) => {
@@ -274,6 +321,11 @@ const predictFromLatestSensor = async () => {
   isPredictingFrame = true
   try {
     const latest = await api.utils.latestSensorFrame()
+    sensorSnapshot.value = {
+      values: Array.isArray(latest?.values) ? latest.values : [],
+      realSensor: Boolean(latest?.real_sensor),
+      updatedAt: Date.now()
+    }
     const normalized = normalizeSensorVectorForModel(latest?.values || [])
     if (!normalized) {
       prediction.value = {
@@ -327,6 +379,10 @@ const stopLive = () => {
 const startLive = async () => {
   if (!activeModel.value) {
     liveStatus.value = 'Upload and activate a model first.'
+    return
+  }
+  if (activeRuntimeState.value === 'fail') {
+    liveStatus.value = 'Active model runtime-check is failing. Fix model package or run Runtime Check in Model Library.'
     return
   }
   if (modelModality.value === 'sensor') {
@@ -416,6 +472,9 @@ onMounted(() => {
         <p class="text-slate-400 mt-1">Format: {{ modelSummary.format }} | Version: {{ modelSummary.version }}</p>
         <p class="text-slate-400 mt-1">Precision: {{ modelSummary.precision }} | Recall: {{ modelSummary.recall }} | F1: {{ modelSummary.f1 }}</p>
         <p class="text-slate-400 mt-1">Labels: {{ modelSummary.labels.join(', ') }}</p>
+        <p class="mt-2 text-xs" :class="activeRuntimeState === 'pass' ? 'text-emerald-300' : activeRuntimeState === 'fail' ? 'text-amber-300' : 'text-slate-400'">
+          Runtime status: {{ activeRuntimeState }}
+        </p>
       </div>
     </BaseCard>
 
@@ -437,8 +496,24 @@ onMounted(() => {
         <video v-show="modelModality !== 'sensor'" ref="videoEl" autoplay playsinline muted class="absolute inset-0 h-full w-full object-cover"></video>
         <canvas v-show="modelModality !== 'sensor'" ref="landmarkCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
         <canvas v-show="modelModality !== 'sensor'" ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
-        <div v-if="modelModality === 'sensor'" class="absolute inset-0 flex items-center justify-center text-sm text-slate-300">
-          Sensor live mode (no camera overlay)
+        <div v-if="modelModality === 'sensor'" class="absolute inset-0 overflow-auto bg-slate-950/70 p-4">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm text-slate-200 font-medium">Realtime Sensor Telemetry</p>
+            <div class="text-xs text-slate-400">
+              <span class="mr-3">Source: {{ sensorSnapshot.realSensor ? 'real sensor' : 'snapshot/fallback' }}</span>
+              <span>Updated: {{ sensorUpdatedAtText }}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2">
+            <div
+              v-for="item in sensorDisplayRows"
+              :key="item.label"
+              class="rounded border border-slate-800 bg-slate-900/70 px-2 py-2"
+            >
+              <p class="text-[11px] text-slate-400">{{ item.label }}</p>
+              <p class="text-sm text-slate-100 font-semibold">{{ Number(item.value).toFixed(3) }}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -449,7 +524,7 @@ onMounted(() => {
         </p>
         <p v-else class="text-slate-500 mt-1">No hand detected.</p>
         <p class="text-xs text-slate-500 mt-2">
-          {{ prediction?.note || (activeModel ? 'Start camera for real inference.' : 'Upload & activate a model first.') }}
+          {{ prediction?.note || (activeModel ? 'Start real inference.' : 'Upload & activate a model first.') }}
         </p>
         <p v-if="prediction?.top3?.length" class="text-xs text-slate-400 mt-2">
           Top-3: {{ prediction.top3.map((x) => `${x.label} ${(x.confidence * 100).toFixed(1)}%`).join(' | ') }}

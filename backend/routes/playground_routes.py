@@ -241,6 +241,38 @@ def _predict_with_runtime(runtime: Dict[str, Any], cv_values: np.ndarray) -> np.
         raise HTTPException(status_code=500, detail=f"Runtime prediction failed: {exc}") from exc
 
 
+def _coerce_input_vector(values: List[float], expected_dim: int, field_name: str) -> np.ndarray:
+    vector = np.asarray(values, dtype=np.float32).reshape(-1)
+    if expected_dim <= 0:
+        raise HTTPException(status_code=500, detail="Invalid model input dimension")
+    if vector.shape[0] != expected_dim:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_name} length mismatch: expected {expected_dim}, got {vector.shape[0]}",
+        )
+    if not np.isfinite(vector).all():
+        raise HTTPException(status_code=400, detail=f"{field_name} contains non-finite values")
+    return vector
+
+
+def _normalize_probs(probs: np.ndarray) -> np.ndarray:
+    work = np.asarray(probs, dtype=np.float32).reshape(-1)
+    if work.size == 0:
+        raise HTTPException(status_code=500, detail="Model returned empty prediction")
+    if np.any(~np.isfinite(work)):
+        raise HTTPException(status_code=500, detail="Model returned non-finite prediction values")
+    if np.any(work < 0) or work.sum() <= 0:
+        exp = np.exp(work - np.max(work))
+        denom = float(np.sum(exp))
+        if denom <= 0:
+            raise HTTPException(status_code=500, detail="Model returned invalid logits for normalization")
+        return exp / denom
+    total = float(np.sum(work))
+    if total <= 0:
+        raise HTTPException(status_code=500, detail="Model returned invalid probability sum")
+    return work / total
+
+
 def _runtime_status_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -481,14 +513,7 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
         )
 
     expected_dim = int(model_entry.get("input_dim") or 0)
-    vector = np.asarray(req.cv_values, dtype=np.float32).reshape(-1)
-    if expected_dim <= 0:
-        raise HTTPException(status_code=500, detail="Invalid model input dimension")
-    if vector.shape[0] != expected_dim:
-        raise HTTPException(
-            status_code=400,
-            detail=f"cv_values length mismatch: expected {expected_dim}, got {vector.shape[0]}",
-        )
+    vector = _coerce_input_vector(req.cv_values, expected_dim, "cv_values")
 
     runtime = _load_model_runtime(model_entry)
     probs = _predict_with_runtime(runtime, vector)
@@ -500,16 +525,7 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
         labels = labels[:n]
         probs = probs[:n]
 
-    # Normalize probabilities if needed.
-    probs = np.asarray(probs, dtype=np.float32)
-    if probs.size == 0:
-        raise HTTPException(status_code=500, detail="Model returned empty prediction")
-    if np.any(probs < 0) or probs.sum() <= 0:
-        exp = np.exp(probs - np.max(probs))
-        probs = exp / np.sum(exp)
-    else:
-        total = float(np.sum(probs))
-        probs = probs / total
+    probs = _normalize_probs(probs)
 
     best_idx = int(np.argmax(probs))
     best_label = labels[best_idx]
@@ -548,14 +564,7 @@ async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=D
         )
 
     expected_dim = int(model_entry.get("input_dim") or 0)
-    vector = np.asarray(req.sensor_values, dtype=np.float32).reshape(-1)
-    if expected_dim <= 0:
-        raise HTTPException(status_code=500, detail="Invalid model input dimension")
-    if vector.shape[0] != expected_dim:
-        raise HTTPException(
-            status_code=400,
-            detail=f"sensor_values length mismatch: expected {expected_dim}, got {vector.shape[0]}",
-        )
+    vector = _coerce_input_vector(req.sensor_values, expected_dim, "sensor_values")
 
     runtime = _load_model_runtime(model_entry)
     probs = _predict_with_runtime(runtime, vector)
@@ -567,14 +576,7 @@ async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=D
         labels = labels[:n]
         probs = probs[:n]
 
-    probs = np.asarray(probs, dtype=np.float32)
-    if probs.size == 0:
-        raise HTTPException(status_code=500, detail="Model returned empty prediction")
-    if np.any(probs < 0) or probs.sum() <= 0:
-        exp = np.exp(probs - np.max(probs))
-        probs = exp / np.sum(exp)
-    else:
-        probs = probs / float(np.sum(probs))
+    probs = _normalize_probs(probs)
 
     best_idx = int(np.argmax(probs))
     best_label = labels[best_idx]
