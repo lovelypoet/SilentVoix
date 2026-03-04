@@ -1,6 +1,6 @@
 services:
   frontend:
-    build: 
+    build:
       context: ./vue-next
       dockerfile: Dockerfile.dev
     environment:
@@ -23,11 +23,40 @@ services:
       - "c 166:* rmw"
       - "c 188:* rmw"
     environment:
-    - MONGO_URI=mongodb+srv://namanh14122005:test123@signglove-cluster.2fgsv8h.mongodb.net/sign_glove?retryWrites=true&w=majority
-    - DB_NAME=sign_glove
-    - TTS_PROVIDER=gtts
-    - BACKEND_BASE_URL=http://localhost:8080
-    - SERIAL_PORT_SINGLE=/dev/ttyACM0
+      - MONGO_URI=mongodb+srv://namanh14122005:test123@signglove-cluster.2fgsv8h.mongodb.net/sign_glove?retryWrites=true&w=majority
+      - DB_NAME=sign_glove
+      - TTS_PROVIDER=gtts
+      - BACKEND_BASE_URL=http://localhost:8080
+      - SERIAL_PORT_SINGLE=/dev/ttyACM0
     volumes:
       - /dev:/dev
       - ./backend/data:/app/data
+      - ./backend/AI/model_library:/app/AI/model_library
+
+  ml-tensorflow:
+    profiles: ["runtime-split", "full"]
+    build: ./ml-tensorflow
+    ports:
+      - "8091:8091"
+    volumes:
+      - ./backend/AI/model_library:/shared/model_library:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8091/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  ml-pytorch:
+    profiles: ["runtime-split", "full"]
+    build: ./ml-pytorch
+    ports:
+      - "8092:8092"
+    volumes:
+      - ./backend/AI/model_library:/shared/model_library:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8092/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

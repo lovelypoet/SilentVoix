@@ -63,6 +63,9 @@ def _read_registry() -> Dict[str, Any]:
 def run_runtime_preflight() -> Dict[str, Any]:
     return {
         "ml_runtime": settings.ML_RUNTIME,
+        "use_runtime_services": settings.USE_RUNTIME_SERVICES,
+        "ml_tensorflow_url": settings.ML_TENSORFLOW_URL,
+        "ml_pytorch_url": settings.ML_PYTORCH_URL,
         "training_features_enabled": settings.TRAINING_FEATURES_ENABLED,
         "tensorflow": _import_version("tensorflow"),
         "torch": _import_version("torch"),
