@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from core.settings import settings
@@ -19,17 +19,66 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
+class AlertChannels(BaseModel):
+    in_app: bool = True
+    email: bool = False
+    slack: bool = False
+
+class QuietHours(BaseModel):
+    enabled: bool = False
+    start: str = "22:00"
+    end: str = "07:00"
+    timezone: str = "UTC"
+
+class DashboardDefaults(BaseModel):
+    window: str = "24h"
+    refresh_seconds: int = 30
+    segment_filter: str = "all"
+
+class OperatorPreferences(BaseModel):
+    alert_channels: AlertChannels = Field(default_factory=AlertChannels)
+    alert_min_severity: Literal["warning", "critical"] = "warning"
+    quiet_hours: QuietHours = Field(default_factory=QuietHours)
+    dashboard_defaults: DashboardDefaults = Field(default_factory=DashboardDefaults)
+
+class AccessScope(BaseModel):
+    environments: List[str] = Field(default_factory=lambda: ["production"])
+    models: List[str] = Field(default_factory=list)
+
 class UpdateProfileRequest(BaseModel):
     display_name: Optional[str] = None
     email: Optional[EmailStr] = None
+    operator_preferences: Optional[OperatorPreferences] = None
+    access_scope: Optional[AccessScope] = None
 
 class UserPublic(BaseModel):
     id: str
     email: EmailStr
     role: Literal["guest", "editor", "admin"]
     display_name: Optional[str] = None
+    operator_preferences: OperatorPreferences = Field(default_factory=OperatorPreferences)
+    access_scope: AccessScope = Field(default_factory=AccessScope)
 
 COOKIE_NAME = "access_token"
+
+def _normalized_operator_preferences(raw: Optional[dict]) -> dict:
+    if isinstance(raw, dict):
+        try:
+            return OperatorPreferences(**raw).model_dump()
+        except Exception:
+            pass
+    return OperatorPreferences().model_dump()
+
+def _normalized_access_scope(raw: Optional[dict]) -> dict:
+    if isinstance(raw, dict):
+        try:
+            data = AccessScope(**raw).model_dump()
+            data["environments"] = [str(v).strip().lower() for v in data.get("environments", []) if str(v).strip()]
+            data["models"] = [str(v).strip() for v in data.get("models", []) if str(v).strip()]
+            return data
+        except Exception:
+            pass
+    return AccessScope().model_dump()
 
 async def get_user_by_email(email: str) -> Optional[dict]:
     return await users_collection.find_one({"email": email})
@@ -151,7 +200,9 @@ async def me(user: dict = Depends(get_current_user)):
         "id": str(user.get("_id")),
         "email": user["email"],
         "role": user.get("role", "guest"),
-        "display_name": user.get("display_name")
+        "display_name": user.get("display_name"),
+        "operator_preferences": _normalized_operator_preferences(user.get("operator_preferences")),
+        "access_scope": _normalized_access_scope(user.get("access_scope")),
     }
 
 @router.put("/me")
@@ -169,6 +220,15 @@ async def update_me(data: UpdateProfileRequest, response: Response, user: dict =
         update_fields["email"] = data.email
         email_changed = True
 
+    if data.operator_preferences is not None:
+        update_fields["operator_preferences"] = data.operator_preferences.model_dump()
+
+    if data.access_scope is not None:
+        scoped = data.access_scope.model_dump()
+        scoped["environments"] = [str(v).strip().lower() for v in scoped.get("environments", []) if str(v).strip()]
+        scoped["models"] = [str(v).strip() for v in scoped.get("models", []) if str(v).strip()]
+        update_fields["access_scope"] = scoped
+
     if update_fields:
         await users_collection.update_one({"_id": user["_id"]}, {"$set": update_fields})
 
@@ -180,7 +240,9 @@ async def update_me(data: UpdateProfileRequest, response: Response, user: dict =
         "id": str(updated_user.get("_id")),
         "email": updated_user["email"],
         "role": updated_user.get("role", "guest"),
-        "display_name": updated_user.get("display_name")
+        "display_name": updated_user.get("display_name"),
+        "operator_preferences": _normalized_operator_preferences(updated_user.get("operator_preferences")),
+        "access_scope": _normalized_access_scope(updated_user.get("access_scope")),
     }
 
     if email_changed:

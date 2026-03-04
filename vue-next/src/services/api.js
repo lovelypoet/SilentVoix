@@ -173,7 +173,8 @@ export default {
   // ===================== Dashboard API =====================
   dashboard: {
     legacy: () => api.get('/dashboard'),
-    monitoring: () => api.get('/dashboard/monitoring'),
+    monitoring: (window = null) =>
+      api.get('/dashboard/monitoring', window ? { params: { window } } : undefined),
   },
 
   // ===================== WebSocket Helper =====================

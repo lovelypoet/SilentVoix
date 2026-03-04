@@ -1,7 +1,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '../services/api'
+import { useAuthStore } from '../stores/auth'
 
 const BASE_INTERVAL_MS = 30_000
+const MIN_INTERVAL_MS = 10_000
 const MAX_INTERVAL_MS = 120_000
 
 const createDefaultState = () => ({
@@ -54,13 +56,29 @@ const createDefaultState = () => ({
 })
 
 export const useMonitoringDashboard = () => {
+  const authStore = useAuthStore()
   const monitoring = ref(createDefaultState())
   const isLoading = ref(true)
   const refreshError = ref('')
   const lastUpdated = ref(null)
   const pollIntervalMs = ref(BASE_INTERVAL_MS)
+  const activeWindow = ref('24h')
 
   let pollTimer = null
+
+  const applyUserDefaults = () => {
+    const defaults = authStore.user?.operator_preferences?.dashboard_defaults
+    const preferredWindow = String(defaults?.window || '24h')
+    if (['1h', '6h', '24h', '7d'].includes(preferredWindow)) {
+      activeWindow.value = preferredWindow
+    } else {
+      activeWindow.value = '24h'
+    }
+
+    const refreshSeconds = Number(defaults?.refresh_seconds || 30)
+    const clampedMs = Math.min(MAX_INTERVAL_MS, Math.max(MIN_INTERVAL_MS, refreshSeconds * 1000))
+    pollIntervalMs.value = clampedMs
+  }
 
   const healthTone = computed(() => {
     const status = monitoring.value?.health?.status || 'unknown'
@@ -91,14 +109,15 @@ export const useMonitoringDashboard = () => {
 
     try {
       refreshError.value = ''
-      const response = await api.dashboard.monitoring()
+      applyUserDefaults()
+      const response = await api.dashboard.monitoring(activeWindow.value)
       const payload = response?.data || createDefaultState()
       monitoring.value = {
         ...createDefaultState(),
         ...payload,
       }
       lastUpdated.value = new Date()
-      pollIntervalMs.value = BASE_INTERVAL_MS
+      applyUserDefaults()
     } catch (error) {
       const status = error?.response?.status
       if (status === 401) {
@@ -116,6 +135,7 @@ export const useMonitoringDashboard = () => {
   }
 
   onMounted(() => {
+    applyUserDefaults()
     fetchMonitoringData()
   })
 
@@ -129,6 +149,7 @@ export const useMonitoringDashboard = () => {
     refreshError,
     lastUpdated,
     healthTone,
+    activeWindow,
     refresh: () => fetchMonitoringData(),
   }
 }

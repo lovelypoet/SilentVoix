@@ -12,7 +12,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pymongo import DESCENDING
 
 from core.database import model_collection, sensor_collection
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 # Simple in-memory cache for dashboard stats
 _dashboard_cache = {"data": None, "timestamp": 0}
-_monitoring_cache = {"data": None, "timestamp": 0}
+_monitoring_cache: Dict[str, Dict[str, Any]] = {}
 CACHE_TTL = 30  # seconds
 MONITORING_CACHE_TTL = settings.MONITORING_CACHE_TTL_SECONDS
 WINDOW_5M_SECONDS = settings.MONITORING_WINDOW_SECONDS
@@ -129,6 +129,19 @@ def _calc_percentile(values: List[float], percentile: float) -> float:
     return float(d0 + d1)
 
 
+def _parse_window_to_timedelta(window: str) -> timedelta:
+    value = str(window or "").strip().lower()
+    if value == "1h":
+        return timedelta(hours=1)
+    if value == "6h":
+        return timedelta(hours=6)
+    if value == "24h":
+        return timedelta(hours=24)
+    if value == "7d":
+        return timedelta(days=7)
+    raise HTTPException(status_code=400, detail="Invalid window. Allowed: 1h, 6h, 24h, 7d")
+
+
 async def _probe_health_endpoint(name: str, base_url: str) -> Dict[str, Any]:
     url = f"{str(base_url).rstrip('/')}/health"
     try:
@@ -224,14 +237,18 @@ async def get_dashboard_stats():
 
 
 @router.get("/monitoring")
-async def get_monitoring_dashboard_stats():
+async def get_monitoring_dashboard_stats(
+    window: str = Query("24h", pattern="^(1h|6h|24h|7d)$"),
+):
     now = time.time()
-    if _monitoring_cache["data"] is not None and now - _monitoring_cache["timestamp"] < MONITORING_CACHE_TTL:
-        return _monitoring_cache["data"]
+    cache_key = f"window:{window}"
+    cached = _monitoring_cache.get(cache_key)
+    if cached and now - float(cached.get("timestamp", 0)) < MONITORING_CACHE_TTL:
+        return cached["data"]
 
     try:
         now_dt = datetime.now(timezone.utc)
-        recent_window = now_dt - timedelta(hours=24)
+        recent_window = now_dt - _parse_window_to_timedelta(window)
         short_window = now_dt - timedelta(minutes=5)
 
         window_stats = performance_monitor.get_window_stats(
@@ -546,14 +563,14 @@ async def get_monitoring_dashboard_stats():
                 },
                 "performance": {
                     "metric_name": "accuracy",
-                    "window": "24h",
+                    "window": window,
                     "current_value": model_accuracy if model_accuracy is not None else 0.0,
                     "trend": trend_points,
                     "segment_regressions": segment_regressions,
                 },
                 "events": sorted(events, key=lambda item: item["timestamp"], reverse=True),
                 "meta": {
-                    "window": "24h",
+                    "window": window,
                     "generated_at": now_dt.isoformat(),
                     "thresholds": {
                         "warn_error_rate_5m_pct": settings.MONITORING_WARN_ERROR_RATE_5M_PCT,
@@ -568,8 +585,7 @@ async def get_monitoring_dashboard_stats():
             },
         }
 
-        _monitoring_cache["data"] = monitoring
-        _monitoring_cache["timestamp"] = now
+        _monitoring_cache[cache_key] = {"data": monitoring, "timestamp": now}
         return monitoring
     except Exception as exc:
         logging.error("Monitoring dashboard stats error: %s", exc)

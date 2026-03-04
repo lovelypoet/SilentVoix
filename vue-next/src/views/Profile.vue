@@ -1,50 +1,142 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
-import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import api from '../services/api.js'
-import { useToast } from 'primevue/usetoast'; // Import useToast
+import { useToast } from 'primevue/usetoast'
 
 const authStore = useAuthStore()
-const toast = useToast(); // Initialize toast
+const toast = useToast()
 
-const form = ref({
-  name: authStore.user?.email || '',
-  email: authStore.user?.email || '',
-  device: 'SignGlove-V2'
+const defaults = () => ({
+  display_name: '',
+  email: '',
+  access_scope: {
+    environments: ['production'],
+    models: [],
+  },
+  operator_preferences: {
+    alert_channels: {
+      in_app: true,
+      email: false,
+      slack: false,
+    },
+    alert_min_severity: 'warning',
+    quiet_hours: {
+      enabled: false,
+      start: '22:00',
+      end: '07:00',
+      timezone: 'UTC',
+    },
+    dashboard_defaults: {
+      window: '24h',
+      refresh_seconds: 30,
+      segment_filter: 'all',
+    },
+  },
 })
-const deviceSettings = ref({
-  hapticFeedback: true,
-  autoConnect: false
+
+const form = ref(defaults())
+const modelScopeCsv = ref('')
+const isSaving = ref(false)
+
+const roleLabel = computed(() => {
+  const role = authStore.user?.role || 'guest'
+  return String(role).toUpperCase()
 })
+
+const hydrateFromUser = (user) => {
+  const base = defaults()
+  const merged = {
+    ...base,
+    ...user,
+    access_scope: {
+      ...base.access_scope,
+      ...(user?.access_scope || {}),
+    },
+    operator_preferences: {
+      ...base.operator_preferences,
+      ...(user?.operator_preferences || {}),
+      alert_channels: {
+        ...base.operator_preferences.alert_channels,
+        ...(user?.operator_preferences?.alert_channels || {}),
+      },
+      quiet_hours: {
+        ...base.operator_preferences.quiet_hours,
+        ...(user?.operator_preferences?.quiet_hours || {}),
+      },
+      dashboard_defaults: {
+        ...base.operator_preferences.dashboard_defaults,
+        ...(user?.operator_preferences?.dashboard_defaults || {}),
+      },
+    },
+  }
+  form.value = merged
+  modelScopeCsv.value = (merged.access_scope.models || []).join(', ')
+}
 
 onMounted(() => {
   if (authStore.user) {
-    form.value.name = authStore.user.display_name || ''
-    form.value.email = authStore.user.email || ''
-    // form.value.device = authStore.user.device || '' // Assuming device might be part of user profile
+    hydrateFromUser(authStore.user)
   }
 })
 
+const toggleEnv = (env) => {
+  const set = new Set(form.value.access_scope.environments || [])
+  if (set.has(env)) {
+    set.delete(env)
+  } else {
+    set.add(env)
+  }
+  const next = Array.from(set)
+  form.value.access_scope.environments = next.length ? next : ['production']
+}
+
 const saveChanges = async () => {
+  isSaving.value = true
   try {
-    const updatedUser = await api.auth.updateProfile({
-      display_name: form.value.name,
+    const models = modelScopeCsv.value
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+
+    const payload = {
+      display_name: form.value.display_name,
       email: form.value.email,
-      // device: form.value.device, // Include if device is part of user profile update
-    })
+      access_scope: {
+        environments: form.value.access_scope.environments,
+        models,
+      },
+      operator_preferences: {
+        alert_channels: form.value.operator_preferences.alert_channels,
+        alert_min_severity: form.value.operator_preferences.alert_min_severity,
+        quiet_hours: form.value.operator_preferences.quiet_hours,
+        dashboard_defaults: {
+          ...form.value.operator_preferences.dashboard_defaults,
+          refresh_seconds: Number(form.value.operator_preferences.dashboard_defaults.refresh_seconds || 30),
+        },
+      },
+    }
+
+    const updatedUser = await api.auth.updateProfile(payload)
     if (updatedUser.access_token) {
       authStore.token = updatedUser.access_token
       localStorage.setItem('access_token', updatedUser.access_token)
     }
+
     authStore.user = updatedUser
     localStorage.setItem('user', JSON.stringify(updatedUser))
-    toast.add({ severity: 'success', summary: 'Success', detail: 'Profile updated successfully!', life: 3000 });
+    hydrateFromUser(updatedUser)
+
+    toast.add({ severity: 'success', summary: 'Saved', detail: 'Operator profile updated.', life: 2500 })
   } catch (error) {
     console.error('Failed to update profile:', error)
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to update profile.', life: 3000 });
+    const detail = error?.response?.data?.detail || 'Failed to update profile settings.'
+    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -54,74 +146,170 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold text-white mb-8">Profile Settings</h1>
+  <div class="max-w-4xl mx-auto space-y-6">
+    <div>
+      <h1 class="text-3xl font-bold text-white">Operator Profile</h1>
+      <p class="text-sm text-slate-400 mt-1">Configure how you monitor models, alerts, and dashboard defaults.</p>
+    </div>
 
-    <div class="space-y-6">
-      <!-- User Info -->
-      <BaseCard>
-        <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Personal Information</h2>
-        <div class="space-y-4">
-            <BaseInput v-model="form.name" label="Display Name" />
-            <BaseInput v-model="form.email" label="Email Address" type="email" />
-        </div>
-        <div class="mt-6 flex justify-end">
-            <BaseBtn @click="saveChanges">Save Changes</BaseBtn>
-        </div>
-      </BaseCard>
+    <BaseCard>
+      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Identity</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <BaseInput v-model="form.display_name" label="Display Name" />
+        <BaseInput v-model="form.email" label="Email" type="email" />
+      </div>
+      <div class="mt-4 text-sm">
+        <span class="text-slate-400">Role:</span>
+        <span class="ml-2 px-2 py-1 rounded-full border border-cyan-400/30 text-cyan-200 bg-cyan-500/10">{{ roleLabel }}</span>
+      </div>
+    </BaseCard>
 
-      <!-- Device Settings -->
-      <BaseCard>
-        <h2 class="text-xl font-bold text-white mb-6 pb-4 border-b border-white/5">Device Configuration</h2>
-        <div class="space-y-4">
-            <BaseInput v-model="form.device" label="Active Device" />
-            
-            <div class="flex items-center justify-between py-2">
-                <div>
-                   <div class="text-white font-medium">Haptic Feedback</div>
-                   <div class="text-sm text-slate-400">Vibrate when gesture is recognized</div>
-                </div>
-                <button
-                  type="button"
-                  class="w-12 h-6 rounded-full cursor-pointer relative transition-colors"
-                  role="switch"
-                  :aria-checked="deviceSettings.hapticFeedback"
-                  :class="deviceSettings.hapticFeedback ? 'bg-teal-600' : 'bg-slate-700'"
-                  @click="deviceSettings.hapticFeedback = !deviceSettings.hapticFeedback"
-                >
-                  <span
-                    class="absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all"
-                    :class="deviceSettings.hapticFeedback ? 'right-1' : 'left-1'"
-                  ></span>
-                </button>
-            </div>
-             <div class="flex items-center justify-between py-2">
-                <div>
-                   <div class="text-white font-medium">Auto-Connect</div>
-                   <div class="text-sm text-slate-400">Connect to glove on startup</div>
-                </div>
-                <button
-                  type="button"
-                  class="w-12 h-6 rounded-full cursor-pointer relative transition-colors"
-                  role="switch"
-                  :aria-checked="deviceSettings.autoConnect"
-                  :class="deviceSettings.autoConnect ? 'bg-teal-600' : 'bg-slate-700'"
-                  @click="deviceSettings.autoConnect = !deviceSettings.autoConnect"
-                >
-                  <span
-                    class="absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all"
-                    :class="deviceSettings.autoConnect ? 'right-1' : 'left-1'"
-                  ></span>
-                </button>
-            </div>
+    <BaseCard>
+      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Access Scope Defaults</h2>
+      <div>
+        <p class="text-sm text-slate-400 mb-2">Environments</p>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="scope-chip"
+            :class="form.access_scope.environments.includes('production') ? 'scope-chip-active' : 'scope-chip-inactive'"
+            @click="toggleEnv('production')"
+          >Production</button>
+          <button
+            type="button"
+            class="scope-chip"
+            :class="form.access_scope.environments.includes('staging') ? 'scope-chip-active' : 'scope-chip-inactive'"
+            @click="toggleEnv('staging')"
+          >Staging</button>
+          <button
+            type="button"
+            class="scope-chip"
+            :class="form.access_scope.environments.includes('development') ? 'scope-chip-active' : 'scope-chip-inactive'"
+            @click="toggleEnv('development')"
+          >Development</button>
         </div>
-      </BaseCard>
+      </div>
+      <div class="mt-4">
+        <BaseInput v-model="modelScopeCsv" label="Model Scope" placeholder="model-v1, baseline-xgb, cv-prod" />
+        <p class="text-xs text-slate-500 mt-1">Comma-separated model IDs. Leave empty for all models.</p>
+      </div>
+    </BaseCard>
 
-        <div class="flex items-center justify-between">
-            <BaseBtn class="bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20" @click="handleLogout">
-                Sign Out
-            </BaseBtn>
+    <BaseCard>
+      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Alert Preferences</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <label class="toggle-row">
+          <span>In-app</span>
+          <input v-model="form.operator_preferences.alert_channels.in_app" type="checkbox" />
+        </label>
+        <label class="toggle-row">
+          <span>Email</span>
+          <input v-model="form.operator_preferences.alert_channels.email" type="checkbox" />
+        </label>
+        <label class="toggle-row">
+          <span>Slack</span>
+          <input v-model="form.operator_preferences.alert_channels.slack" type="checkbox" />
+        </label>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
+          <label class="label">Minimum Severity</label>
+          <select v-model="form.operator_preferences.alert_min_severity" class="select">
+            <option value="warning">Warning</option>
+            <option value="critical">Critical</option>
+          </select>
         </div>
+        <div class="flex flex-col gap-2">
+          <label class="label">Quiet Hours</label>
+          <label class="toggle-row">
+            <span>Enable Quiet Hours</span>
+            <input v-model="form.operator_preferences.quiet_hours.enabled" type="checkbox" />
+          </label>
+        </div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <BaseInput v-model="form.operator_preferences.quiet_hours.start" label="Quiet Start" placeholder="22:00" />
+        <BaseInput v-model="form.operator_preferences.quiet_hours.end" label="Quiet End" placeholder="07:00" />
+        <BaseInput v-model="form.operator_preferences.quiet_hours.timezone" label="Timezone" placeholder="UTC" />
+      </div>
+    </BaseCard>
+
+    <BaseCard>
+      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Dashboard Defaults</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="label">Time Window</label>
+          <select v-model="form.operator_preferences.dashboard_defaults.window" class="select">
+            <option value="1h">1h</option>
+            <option value="6h">6h</option>
+            <option value="24h">24h</option>
+            <option value="7d">7d</option>
+          </select>
+        </div>
+        <BaseInput
+          v-model="form.operator_preferences.dashboard_defaults.refresh_seconds"
+          label="Refresh Interval (sec)"
+          type="number"
+        />
+        <BaseInput v-model="form.operator_preferences.dashboard_defaults.segment_filter" label="Segment Filter" />
+      </div>
+    </BaseCard>
+
+    <div class="flex items-center justify-between gap-3">
+      <BaseBtn variant="danger" @click="handleLogout">Sign Out</BaseBtn>
+      <BaseBtn :disabled="isSaving" @click="saveChanges">{{ isSaving ? 'Saving...' : 'Save Operator Settings' }}</BaseBtn>
     </div>
   </div>
 </template>
+
+<style scoped>
+.scope-chip {
+  border-radius: 9999px;
+  border: 1px solid;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.7rem;
+  transition: all 180ms ease;
+}
+
+.scope-chip-active {
+  border-color: rgba(45, 212, 191, 0.5);
+  color: #99f6e4;
+  background: rgba(15, 118, 110, 0.18);
+}
+
+.scope-chip-inactive {
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.4rem;
+  margin-left: 0.2rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.select {
+  width: 100%;
+  border: 1px solid rgb(51 65 85);
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  border-radius: 0.5rem;
+  padding: 0.58rem 0.75rem;
+}
+</style>
