@@ -4,6 +4,7 @@ import BaseCard from '../components/base/BaseCard.vue'
 
 const teamPhotoUrl = `/pics/${encodeURIComponent('Ảnh nhóm V hand .webp')}`
 const activeMemberId = ref(null)
+const memberKey = (member) => member.id || member.name
 
 const members = [
   {
@@ -12,7 +13,7 @@ const members = [
     role: 'AI Engineer',
     department: 'Information and Communication Technology (ICT)',
     category: 'Main Member',
-    marker: { x: 15, y: 36 },
+    marker: { x: 46, y: 30 },
   },
   {
     id: 'do-hung-anh',
@@ -20,7 +21,7 @@ const members = [
     role: 'ML Ops Engineer',
     department: 'Information and Communication Technology (ICT)',
     category: 'Main Member',
-    marker: { x: 30, y: 33 },
+    marker: { x: 63, y: 30 },
   },
   {
     id: 'do-tran-nam-anh',
@@ -28,7 +29,7 @@ const members = [
     role: 'Software Development and Operations Engineer',
     department: 'Information and Communication Technology (ICT)',
     category: 'Main Member',
-    marker: { x: 46, y: 30 },
+    marker: { x: 15, y: 36 },
   },
   {
     id: 'le-huu-phuc-minh',
@@ -36,7 +37,7 @@ const members = [
     role: 'Hardware Engineer',
     department: 'Mechatronics (MET)',
     category: 'Main Member',
-    marker: { x: 63, y: 30 },
+    marker: { x: 30, y: 33 },
   },
   {
     id: 'nguyen-duc-duong',
@@ -55,7 +56,6 @@ const members = [
     marker: { x: 23, y: 72 },
   },
   {
-    id: 'pham-gia-bao',
     name: 'Pham Gia Bao',
     role: 'Collaborator - Computer Vision',
     department: 'Information and Communication Technology (ICT)',
@@ -63,7 +63,6 @@ const members = [
     marker: { x: 37, y: 72 },
   },
   {
-    id: 'luong-duc-anh',
     name: 'Luong Duc Anh',
     role: 'Collaborator - Machine Learning and Data Minning, Natural Language Processing',
     department: 'Information and Communication Technology (ICT)',
@@ -71,7 +70,6 @@ const members = [
     marker: { x: 52, y: 72 },
   },
   {
-    id: 'do-nam-khanh',
     name: 'Do Nam Khanh',
     role: 'Collaborator - Natural Language Processing',
     department: 'Information and Communication Technology (ICT)',
@@ -79,7 +77,6 @@ const members = [
     marker: { x: 66, y: 72 },
   },
   {
-    id: 'nguyen-xuan-duc',
     name: 'Nguyen Xuan Duc',
     role: 'Collaborator - Computer Vision, Machine Learning and Data Minning',
     department: 'Information and Communication Technology (ICT)',
@@ -119,16 +116,70 @@ const supportMembers = computed(() => members.filter((member) => member.category
             loading="lazy"
           />
           <button
-            v-for="member in mainMembers"
-            :key="`marker-${member.id}`"
             type="button"
             class="member-marker"
-            :class="activeMemberId === member.id ? 'marker-active' : ''"
-            :style="{ left: `${member.marker.x}%`, top: `${member.marker.y}%` }"
-            :aria-label="`Highlight ${member.name}`"
-            @mouseenter="activeMemberId = member.id"
+            :class="activeMemberId === 'nguyen-duc-anh' ? 'marker-active' : ''"
+            :style="{ left: '15%', top: '36%' }"
+            aria-label="Highlight Nguyễn Đức Anh (C)"
+            @mouseenter="activeMemberId = 'nguyen-duc-anh'"
             @mouseleave="activeMemberId = null"
-            @focus="activeMemberId = member.id"
+            @focus="activeMemberId = 'nguyen-duc-anh'"
+            @blur="activeMemberId = null"
+          >
+            <span class="marker-pulse"></span>
+          </button>
+
+          <button
+            type="button"
+            class="member-marker"
+            :class="activeMemberId === 'do-hung-anh' ? 'marker-active' : ''"
+            :style="{ left: '30%', top: '33%' }"
+            aria-label="Highlight Đỗ Hùng Anh"
+            @mouseenter="activeMemberId = 'do-hung-anh'"
+            @mouseleave="activeMemberId = null"
+            @focus="activeMemberId = 'do-hung-anh'"
+            @blur="activeMemberId = null"
+          >
+            <span class="marker-pulse"></span>
+          </button>
+
+          <button
+            type="button"
+            class="member-marker"
+            :class="activeMemberId === 'do-tran-nam-anh' ? 'marker-active' : ''"
+            :style="{ left: '46%', top: '30%' }"
+            aria-label="Highlight Đỗ Trần Nam Anh"
+            @mouseenter="activeMemberId = 'do-tran-nam-anh'"
+            @mouseleave="activeMemberId = null"
+            @focus="activeMemberId = 'do-tran-nam-anh'"
+            @blur="activeMemberId = null"
+          >
+            <span class="marker-pulse"></span>
+          </button>
+
+          <button
+            type="button"
+            class="member-marker"
+            :class="activeMemberId === 'le-huu-phuc-minh' ? 'marker-active' : ''"
+            :style="{ left: '63%', top: '30%' }"
+            aria-label="Highlight Lê Hữu Phúc Minh"
+            @mouseenter="activeMemberId = 'le-huu-phuc-minh'"
+            @mouseleave="activeMemberId = null"
+            @focus="activeMemberId = 'le-huu-phuc-minh'"
+            @blur="activeMemberId = null"
+          >
+            <span class="marker-pulse"></span>
+          </button>
+
+          <button
+            type="button"
+            class="member-marker"
+            :class="activeMemberId === 'nguyen-duc-duong' ? 'marker-active' : ''"
+            :style="{ left: '79%', top: '35%' }"
+            aria-label="Highlight Nguyễn Đức Dương"
+            @mouseenter="activeMemberId = 'nguyen-duc-duong'"
+            @mouseleave="activeMemberId = null"
+            @focus="activeMemberId = 'nguyen-duc-duong'"
             @blur="activeMemberId = null"
           >
             <span class="marker-pulse"></span>
@@ -138,17 +189,17 @@ const supportMembers = computed(() => members.filter((member) => member.category
     </BaseCard>
 
     <div class="space-y-3">
-      <h3 class="text-xl font-bold text-white">Main Members</h3>
+      <h3 class="text-xl font-bold text-white text-center">Main Members</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in mainMembers"
-          :key="member.id"
+          :key="memberKey(member)"
           class="member-card transition-all duration-200"
           :class="{
-            'member-card-active': activeMemberId === member.id,
-            'member-card-dim': activeMemberId && activeMemberId !== member.id
+            'member-card-active': activeMemberId === memberKey(member),
+            'member-card-dim': activeMemberId && activeMemberId !== memberKey(member)
           }"
-          @mouseenter="activeMemberId = member.id"
+          @mouseenter="activeMemberId = memberKey(member)"
           @mouseleave="activeMemberId = null"
         >
           <div class="text-xs uppercase tracking-wider text-cyan-300/80">Main Member</div>
@@ -160,17 +211,17 @@ const supportMembers = computed(() => members.filter((member) => member.category
     </div>
 
     <div class="space-y-3">
-      <h3 class="text-xl font-bold text-white">Support Team</h3>
+      <h3 class="text-xl font-bold text-white text-center">Support Team</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in supportMembers"
-          :key="member.id"
+          :key="memberKey(member)"
           class="member-card transition-all duration-200"
           :class="{
-            'member-card-active': activeMemberId === member.id,
-            'member-card-dim': activeMemberId && activeMemberId !== member.id
+            'member-card-active': activeMemberId === memberKey(member),
+            'member-card-dim': activeMemberId && activeMemberId !== memberKey(member)
           }"
-          @mouseenter="activeMemberId = member.id"
+          @mouseenter="activeMemberId = memberKey(member)"
           @mouseleave="activeMemberId = null"
         >
           <div class="text-xs uppercase tracking-wider text-cyan-300/80">{{ member.category }}</div>
