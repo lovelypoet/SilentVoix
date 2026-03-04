@@ -94,6 +94,12 @@ app.include_router(sync_routes.http_router)
 app.include_router(model_status.router)
 app.include_router(admin_csv_library_routes.router)
 app.include_router(playground_routes.router)
+if settings.TRAINING_FEATURES_ENABLED:
+    from routes import training_routes
+    app.include_router(training_routes.router)
+    logger.info("Training routes are enabled")
+else:
+    logger.info("Training routes are disabled by TRAINING_FEATURES_ENABLED=false")
 
 # Mount models directory for static files if needed
 app.mount("/models", StaticFiles(directory=settings.DATA_DIR), name="models")

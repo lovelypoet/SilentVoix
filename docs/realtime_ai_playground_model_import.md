@@ -14,10 +14,10 @@ Allow admin/editor users to upload an **already exported model** (within support
 ## Supported Model Families (initial range)
 - LSTM-based sequence models (exported for inference)
 - CNN-based image/frame models (exported for inference)
-- Other deep learning models can be plugged but within the acceptance output range(.pth, .pt, .tflite, .h5, .onxx)
+- Other deep learning models within the curated acceptance range: `.tflite`, `.keras`, `.h5`, `.pth`
 - Optional extension: hybrid CNN+LSTM exported variants
 
-Note: training framework is not required at runtime; only exported inference artifact is loaded.
+Note: training framework is not required at runtime; only the exported inference artifact is loaded. Support for `onnx` is a separate future milestone.
 
 ## Required Upload Contract
 Package must include:

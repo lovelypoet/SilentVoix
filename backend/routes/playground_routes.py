@@ -9,18 +9,25 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 import numpy as np
-import tensorflow as tf
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from AI.runtime_adapter import (
+    SUPPORTED_EXPORT_FORMATS,
+    SUPPORTED_MODEL_EXTENSIONS,
+    load_runtime,
+    normalize_export_format,
+    predict as predict_runtime,
+    validate_export_and_extension,
+)
 from core.settings import settings
 from routes.auth_routes import role_or_internal_dep
 
 router = APIRouter(prefix="/playground", tags=["Realtime AI Playground"])
 
-ALLOWED_MODEL_EXTENSIONS = {".tflite", ".keras", ".h5"}
-ALLOWED_EXPORT_FORMATS = {"tflite", "tensorflow-lite", "keras", "h5"}
+ALLOWED_MODEL_EXTENSIONS = SUPPORTED_MODEL_EXTENSIONS
+ALLOWED_EXPORT_FORMATS = SUPPORTED_EXPORT_FORMATS
 MODEL_CACHE_LOCK = threading.Lock()
 MODEL_CACHE: Dict[str, Dict[str, Any]] = {}
 
@@ -31,7 +38,7 @@ class PlaygroundPredictRequest(BaseModel):
 
 
 def _models_root() -> Path:
-    root = Path(settings.UPLOAD_DIR) / "playground_models"
+    root = Path(settings.MODEL_LIBRARY_DIR)
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -112,17 +119,10 @@ def _validate_metadata(metadata: Dict[str, Any], model_suffix: str) -> None:
         if not isinstance(metadata.get(metric_name), (int, float)):
             raise HTTPException(status_code=400, detail=f"metadata.{metric_name} must be numeric")
     export_format = str(metadata.get("export_format", "")).strip().lower()
-    if export_format not in ALLOWED_EXPORT_FORMATS:
-        raise HTTPException(status_code=400, detail=f"Unsupported export_format: {export_format}")
-
-    # Validate extension and format consistency.
-    suffix = model_suffix.lower()
-    if suffix not in ALLOWED_MODEL_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"Unsupported model file extension: {suffix}")
-    if suffix == ".tflite" and export_format not in {"tflite", "tensorflow-lite"}:
-        raise HTTPException(status_code=400, detail="Model extension .tflite requires export_format=tflite|tensorflow-lite")
-    if suffix in {".keras", ".h5"} and export_format not in {"keras", "h5"}:
-        raise HTTPException(status_code=400, detail="Model extension .keras/.h5 requires export_format=keras|h5")
+    try:
+        validate_export_and_extension(model_suffix, export_format)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _input_dim_from_metadata(metadata: Dict[str, Any]) -> int:
@@ -145,17 +145,6 @@ def _input_dim_from_metadata(metadata: Dict[str, Any]) -> int:
     raise HTTPException(status_code=400, detail="Unable to infer input dimension from metadata.input_spec")
 
 
-def _normalize_model_output(output: np.ndarray) -> np.ndarray:
-    if output.ndim == 0:
-        return np.array([float(output)], dtype=np.float32)
-    if output.ndim == 1:
-        return output.astype(np.float32)
-    if output.ndim >= 2:
-        first = output[0]
-        return np.asarray(first, dtype=np.float32).reshape(-1)
-    return output.astype(np.float32).reshape(-1)
-
-
 def _load_model_runtime(model_entry: Dict[str, Any]) -> Dict[str, Any]:
     model_path = Path(model_entry["model_path"]).resolve()
     if not model_path.exists():
@@ -169,17 +158,18 @@ def _load_model_runtime(model_entry: Dict[str, Any]) -> Dict[str, Any]:
             return cached
 
     export_format = str(model_entry["metadata"]["export_format"]).lower()
-    runtime: Dict[str, Any] = {"mtime": model_mtime, "export_format": export_format}
-    if export_format in {"tflite", "tensorflow-lite"}:
-        interpreter = tf.lite.Interpreter(model_path=str(model_path))
-        interpreter.allocate_tensors()
-        runtime["interpreter"] = interpreter
-        runtime["input_details"] = interpreter.get_input_details()
-        runtime["output_details"] = interpreter.get_output_details()
-    elif export_format in {"keras", "h5"}:
-        runtime["model"] = tf.keras.models.load_model(str(model_path), compile=False)
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported export_format at runtime: {export_format}")
+    try:
+        runtime: Dict[str, Any] = load_runtime(str(model_path), export_format)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load model runtime: {exc}") from exc
+    runtime["mtime"] = model_mtime
+    runtime["export_format"] = normalize_export_format(export_format)
 
     with MODEL_CACHE_LOCK:
         MODEL_CACHE[model_id] = runtime
@@ -187,27 +177,12 @@ def _load_model_runtime(model_entry: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _predict_with_runtime(runtime: Dict[str, Any], cv_values: np.ndarray) -> np.ndarray:
-    export_format = runtime["export_format"]
-    if export_format in {"tflite", "tensorflow-lite"}:
-        interpreter = runtime["interpreter"]
-        input_details = runtime["input_details"][0]
-        output_details = runtime["output_details"][0]
-
-        input_dtype = input_details.get("dtype", np.float32)
-        input_shape = input_details.get("shape", np.array([1, cv_values.shape[0]]))
-        if len(input_shape) == 2:
-            feed = cv_values.reshape(1, -1).astype(input_dtype)
-        else:
-            # Generic fallback: preserve batch axis, flatten to model width if possible.
-            feed = cv_values.reshape(1, -1).astype(input_dtype)
-        interpreter.set_tensor(input_details["index"], feed)
-        interpreter.invoke()
-        output = interpreter.get_tensor(output_details["index"])
-        return _normalize_model_output(np.asarray(output))
-
-    model = runtime["model"]
-    raw = model.predict(cv_values.reshape(1, -1), verbose=0)
-    return _normalize_model_output(np.asarray(raw))
+    try:
+        return predict_runtime(runtime, cv_values)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Runtime prediction failed: {exc}") from exc
 
 
 @router.post("/models/upload")

@@ -138,6 +138,12 @@ Why this helps:
 - Move plaintext secrets out of `docker-compose.dev.yml` into `.env` immediately.
 - Rotate exposed DB credentials if already committed/shared.
 
+## Model Library Storage (Current)
+- Active model library root is `backend/AI/model_library`.
+- Playground registry is stored at `backend/AI/model_library/registry.json`.
+- Uploaded/imported model packages are stored under per-model subfolders in `backend/AI/model_library/<model_id>/`.
+- These files are runtime artifacts and should be gitignored (not versioned as source code).
+
 ## Testing Procedure
 1. Pre-check configuration
    - Set `ML_RUNTIME=tflite`, then `ML_RUNTIME=torch` in `.env` (one at a time).
@@ -192,6 +198,39 @@ Pass criteria:
 - No TensorFlow import dependency remains in active runtime.
 - Playground prediction contract remains backward compatible.
 - Training endpoints are no longer active in production runtime.
+
+## Endpoint Status Table
+
+The following table tracks the status of key API paths during the migration from a training platform to a model testing ground.
+
+| API Path | Method | Status | Notes |
+| :--- | :--- | :--- | :--- |
+| `/training/run` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
+| `/training/trigger` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
+| `/training/dual-hand/run` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
+| `/training/late-fusion/run` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
+| `/training/metrics/latest` | `GET` | **Deprecated** | Metrics should be provided in uploaded metadata. |
+| `/training/visualizations/*` | `GET` | **Deprecated** | Visualizations are tied to legacy training. |
+| `/training/data/info` | `GET` | **Deprecated** | Data collection remains active for external training. |
+| `/training/late-fusion/predict` | `POST` | **Active** | Remains active for inference testing. |
+| `/playground/models/upload` | `POST` | **Active** | Primary entry point for new models. |
+| `/playground/models` | `GET` | **Active** | List and manage uploaded models. |
+| `/playground/models/{id}/activate` | `POST` | **Active** | Set the current model for inference. |
+| `/playground/predict/cv` | `POST` | **Active** | Real-time camera inference endpoint. |
+
+## Migration FAQ
+
+**Q: What happens to my existing training data?**
+A: Data collection features remain active. You can still collect sensor data to export for **external** training. The in-app training script is simply being phased out.
+
+**Q: Which model formats are supported now?**
+A: We officially support `.tflite`, `.keras`, `.h5`, and `.pth` (PyTorch). Support for `onnx` is planned for a future milestone.
+
+**Q: Why was in-app training removed?**
+A: To provide a more flexible "testing ground" where researchers can bring their own models trained on more powerful hardware or specialized pipelines, rather than being restricted to the built-in training script.
+
+**Q: How do I migrate my old trained models?**
+A: If you have the exported artifacts, you can upload them via the new Playground Model Upload interface along with a simple metadata JSON file.
 
 ## Definition of Done
 - Backend runs with `.pth` runtime as default.

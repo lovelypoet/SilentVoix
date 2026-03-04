@@ -9,3 +9,10 @@ data/
 logs/
 
 .pyc
+
+# Runtime model library artifacts (uploaded/imported models + generated metadata)
+AI/model_library/
+
+# Local model binaries placed in backend root for ad-hoc testing/import
+*.pth
+*.pt

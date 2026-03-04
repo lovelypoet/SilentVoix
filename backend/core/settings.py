@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     ENCODER_PATH: str = os.path.join(AI_DIR, 'label_encoder.pkl')
     METRICS_PATH: str = os.path.join(AI_DIR, 'training_metrics.json')
     RESULTS_DIR: str = os.path.join(AI_DIR, 'results')
+    MODEL_LIBRARY_DIR: str = os.path.join(AI_DIR, 'model_library')
     
     # CORS
     CORS_ORIGINS: List[str] = Field(["http://localhost:5173"], env="CORS_ORIGINS")
@@ -121,6 +122,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = Field("uploads", env="UPLOAD_DIR")
     MAX_FILE_SIZE: int = Field(50 * 1024 * 1024, env="MAX_FILE_SIZE")  # 50MB
     ALLOWED_FILE_TYPES: List[str] = Field([".csv", ".json", ".txt"], env="ALLOWED_FILE_TYPES")
+
+    # Feature flags
+    TRAINING_FEATURES_ENABLED: bool = Field(False, env="TRAINING_FEATURES_ENABLED")
+    ML_RUNTIME: str = Field("tflite", env="ML_RUNTIME")
     
     @validator("CORS_ORIGINS", pre=True)
     def parse_cors_origins(cls, v):
@@ -167,6 +172,7 @@ def ensure_directories():
         settings.DATA_DIR,
         settings.AI_DIR,
         settings.RESULTS_DIR,
+        settings.MODEL_LIBRARY_DIR,
         os.path.dirname(settings.LOG_FILE),
         settings.UPLOAD_DIR,
         settings.TTS_CACHE_DIR

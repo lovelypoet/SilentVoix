@@ -1,5 +1,10 @@
 # Technical Specification: Late Fusion Multimodal Pipeline (v1.1)
 
+> **⚠️ DEPRECATION NOTICE (March 2026)**
+> The in-app training pipeline for Late Fusion (described in Sections 8-10) is now **deprecated**. 
+> While the inference logic remains active for model testing, users should train their expert models externally and use the **Playground Model Upload** feature to import them.
+> See the [Migration Guide](migration_guide.md) for more details.
+
 **Role:** Senior Software Engineer / System Architect  
 **Project:** SilentVoix Hybrid Recognition  
 **Methodology:** Decision-Level Fusion (Weighted Soft Voting)

@@ -1,4 +1,10 @@
 # Technical Specification: Early Fusion Multimodal Pipeline (v1.0)
+
+> **⚠️ DEPRECATION NOTICE (March 2026)**
+> The in-app training pipeline for Early Fusion (described in Section 6) is now **deprecated**. 
+> Users should perform feature-level concatenation and training externally, then use the **Playground Model Upload** feature to import the resulting models.
+> See the [Migration Guide](migration_guide.md) for more details.
+
 **Role:** Senior Software Engineer / System Architect
 **Project:** SilentVoix Hybrid Recognition
 **Methodology:** Feature-Level Concatenation (Early Fusion)

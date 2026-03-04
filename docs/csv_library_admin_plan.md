@@ -1,35 +1,40 @@
-# Admin-Only CSV Library Plan
+# Admin-Only CSV Library Plan (Data Controller)
 
 ## Goal
 Create an admin-only CSV Library in the web app to inspect, validate, and manage captured CSV datasets without shell/container access.
-This page is the first implementation of the **Data Controller**.
+This page serves as the primary **Data Controller** for gathering datasets intended for **external model training**.
+
+> **⚠️ SCOPE ALIGNMENT (March 2026)**
+> The CSV Library now focuses on high-quality data collection and export for **external training pipelines**. 
+> While legacy compatibility gates for in-app training remain for metadata purposes, the primary workflow is:
+> 1. Collect & Validate Data (CSV Library)
+> 2. Export & Train Externally (Google Colab, etc.)
+> 3. Upload Resulting Model (Playground)
 
 ## Delivery Contract (Role, Scope, Constraints, Testing)
 
 ### Role
 - Codex acts as implementation engineer for this plan.
 - Primary responsibility: deliver admin-safe CSV Data Controller features incrementally.
-- Secondary responsibility: prevent schema-mixing and training misuse through validation gates.
+- Secondary responsibility: ensure high data quality for external training through validation gates.
 
 ### Scope (In-Scope)
 - Admin-only CSV Library backend and frontend work described in this document.
 - Dataset classification for all 6 canonical schema types.
 - Validation, preview, download, and archive flows.
-- Training compatibility checks for dataset selection.
+- Export-readiness checks for external training.
 
 ### Out of Scope (Until explicitly requested)
-- Model architecture changes.
-- Training algorithm tuning/hyperparameter optimization.
+- In-app model training logic (Deprecated).
+- Training algorithm tuning.
 - Non-admin dataset management UI.
-- Hard-delete data lifecycle policy.
 
 ### Constraints
 - Server-side admin authorization is mandatory for all `/admin/csv-library/*` endpoints.
 - No frontend-only security assumptions.
 - Only `.csv` files under approved base directories are accessible.
 - Path traversal and unsafe filename patterns must be rejected.
-- Dataset type compatibility must be enforced before training selection.
-- Never mix incompatible feature dimensions in one training run.
+- Dataset type compatibility must be enforced for clean exports.
 
 ### Testing Rules (Definition of Done)
 - Every backend phase must include authz + validation tests.
@@ -37,7 +42,6 @@ This page is the first implementation of the **Data Controller**.
   - admin `200`, non-admin `403`
   - invalid filename/path traversal rejected
   - schema detection and `feature_dim` checks correct
-  - compatibility filtering returns only allowed datasets
 - Minimum frontend checks per phase:
   - non-admin cannot see/access CSV Library route
   - list/preview/download UX works with API errors surfaced clearly
@@ -173,7 +177,7 @@ Response:
 - `to_path`
 - `archived_at`
 
-### 6. List compatible files (training picker)
+### 6. List compatible files (Export picker)
 `GET /admin/csv-library/compatible?pipeline=early|late&mode=single|dual&include_archived=false`
 
 Response:
@@ -189,7 +193,7 @@ Compatibility policy:
 - `late + single` -> `cv_single`, `sensor_single`
 - `late + dual` -> `cv_dual`, `sensor_dual`
 
-### 7. Selected dataset slot (training handoff)
+### 7. Selected dataset slot (External Handoff)
 `GET /admin/csv-library/selection?pipeline=early|late&mode=single|dual`
 
 Response:
@@ -202,7 +206,7 @@ Response:
 
 `POST /admin/csv-library/selection`
 - body: `{ name, pipeline, mode, modality? }`
-- behavior: validates compatibility before persisting selection.
+- behavior: validates compatibility before persisting selection for external use/export.
 
 Selection-slot policy:
 - Early pipeline slots:
@@ -237,7 +241,7 @@ Use these flags in list/stats endpoints:
   - Timeout/streaming parse for very large files.
 - Archive operation should be atomic where possible.
 - Add request logging for all admin file operations.
-- Reject training picker usage when `schema_id` is not compatible with selected pipeline/mode.
+- Reject picker usage when `schema_id` is not compatible with selected pipeline/mode.
 
 ## Frontend (Admin)
 
@@ -285,7 +289,7 @@ Use these flags in list/stats endpoints:
 ### Phase 4
 - Backend: training-picker compatibility endpoint:
   - e.g. `GET /admin/csv-library/compatible?pipeline=early&mode=single`
-- Frontend: expose only compatible datasets in training pages.
+- Frontend: expose only compatible datasets for export/use.
 
 ### Phase 5 (UI/UX Refine)
 - Improve table readability and responsive layout for large datasets.
@@ -348,4 +352,4 @@ Use these flags in list/stats endpoints:
 - Admin can archive CSVs safely.
 - Health flags help detect bad captures before training.
 - CSV Library can classify and filter all 6 schema types.
-- Dataset compatibility checks prevent wrong-schema training selection.
+- Dataset compatibility checks ensure high quality for external training.

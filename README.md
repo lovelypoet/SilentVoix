@@ -1,19 +1,29 @@
 # SilentVoix
 
-A sign language glove project that translates hand gestures into text and speech using machine learning.
+A sign language glove project that serves as a **multi-format model testing ground**, translating hand gestures into text and speech using machine learning.
 
 ## Overview
 
-SilentVoix is an innovative assistive technology project that uses a smart glove equipped with sensors to recognize sign language gestures and convert them to speech. The system consists of a hardware component (ESP32-based glove with sensors), a backend API (FastAPI/Python), and a web-based frontend (Vue 3) for configuration, training, and monitoring.
+SilentVoix is an innovative assistive technology project that uses a smart glove equipped with sensors to recognize sign language gestures. The system has shifted from an in-app training platform to a **model testing ground**, where researchers and developers can upload, store, and test curated model formats in real-time.
+
+The system consists of a hardware component (ESP32-based glove with sensors), a backend API (FastAPI/Python), and a web-based frontend (Vue 3) for model management, monitoring, and playground inference.
 
 ## Features
 
-- **Real-time Gesture Recognition**: Recognizes hand gestures using sensor data from the glove
-- **Text-to-Speech (TTS)**: Converts recognized gestures to spoken words
-- **Training Interface**: Web-based UI for collecting training data and improving gesture recognition
-- **User Management**: Role-based authentication with admin, editor, and user roles
-- **Audio Management**: Upload and manage custom audio files for different gestures
-- **MongoDB Integration**: Stores gesture data, user information, and training datasets
+- **Model Testing Ground**: Upload and manage exported model packages for testing.
+- **Real-time Inference Playground**: Run live gesture recognition using uploaded models (`.tflite`, `.keras`, `.h5`, `.pth`).
+- **Text-to-Speech (TTS)**: Converts recognized gestures to spoken words.
+- **Multi-Format Support**: Curated support for popular deep learning model formats.
+- **User Management**: Role-based authentication with admin, editor, and user roles.
+- **Audio Management**: Upload and manage custom audio files for different gestures.
+- **MongoDB Integration**: Stores model metadata, user information, and gesture logs.
+
+## ⚠️ Deprecation Notice: In-App Training
+
+The internal training pipeline (previously under `/training/*`) is now **deprecated**. 
+- **In-app model training is no longer supported.**
+- Users should train models externally and use the **Model Upload** feature in the Playground to import exported model packages.
+- Data collection features remain active for gathering external training datasets.
 
 ## Prerequisites
 
