@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     libssl-dev \
     libffi-dev \
+    libgomp1 \
     ca-certificates \
     curl \
     build-essential \

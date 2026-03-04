@@ -126,6 +126,7 @@ class Settings(BaseSettings):
     # Feature flags
     TRAINING_FEATURES_ENABLED: bool = Field(False, env="TRAINING_FEATURES_ENABLED")
     ML_RUNTIME: str = Field("tflite", env="ML_RUNTIME")
+    RUNTIME_PREFLIGHT_ON_STARTUP: bool = Field(True, env="RUNTIME_PREFLIGHT_ON_STARTUP")
     
     @validator("CORS_ORIGINS", pre=True)
     def parse_cors_origins(cls, v):

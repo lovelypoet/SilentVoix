@@ -14,6 +14,7 @@ from ingestion.streaming.live_data import get_latest_data
 from core.indexes import create_indexes 
 from core.database import client, test_connection
 from core.settings import settings
+from core.runtime_preflight import run_runtime_preflight
 from core.model import model, predict_gesture  # Ensure H5 model is loaded
 from routes.auth_routes import (
     role_required_dep as role_required,
@@ -39,6 +40,20 @@ async def lifespan(app: FastAPI):
     await create_indexes()
     await ensure_default_editor()
     logging.info("Indexes created. App is starting...")
+    logging.info(
+        "Runtime flags | ML_RUNTIME=%s TRAINING_FEATURES_ENABLED=%s RUNTIME_PREFLIGHT_ON_STARTUP=%s MODEL_LIBRARY_DIR=%s",
+        settings.ML_RUNTIME,
+        settings.TRAINING_FEATURES_ENABLED,
+        settings.RUNTIME_PREFLIGHT_ON_STARTUP,
+        settings.MODEL_LIBRARY_DIR,
+    )
+
+    if settings.RUNTIME_PREFLIGHT_ON_STARTUP:
+        try:
+            preflight = run_runtime_preflight()
+            logging.info("Runtime preflight: %s", preflight)
+        except Exception as exc:
+            logging.warning("Runtime preflight failed: %s", exc)
 
     # Check AI model
     if model is None:
