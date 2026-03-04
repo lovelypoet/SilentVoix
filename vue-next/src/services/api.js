@@ -230,6 +230,8 @@ export default {
     downloadModelArtifact: (modelId, kind = 'model') =>
       api.get(`/playground/models/${modelId}/download?kind=${kind}`, { responseType: 'blob' }),
     predictCv: (cvValues, modelId = null) =>
-      api.post('/playground/predict/cv', modelId ? { cv_values: cvValues, model_id: modelId } : { cv_values: cvValues })
+      api.post('/playground/predict/cv', modelId ? { cv_values: cvValues, model_id: modelId } : { cv_values: cvValues }),
+    predictSensor: (sensorValues, modelId = null) =>
+      api.post('/playground/predict/sensor', modelId ? { sensor_values: sensorValues, model_id: modelId } : { sensor_values: sensorValues })
   }
 };

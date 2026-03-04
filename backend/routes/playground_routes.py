@@ -38,6 +38,11 @@ class PlaygroundPredictRequest(BaseModel):
     model_id: Optional[str] = None
 
 
+class PlaygroundSensorPredictRequest(BaseModel):
+    sensor_values: List[float]
+    model_id: Optional[str] = None
+
+
 def _models_root() -> Path:
     root = Path(settings.MODEL_LIBRARY_DIR)
     root.mkdir(parents=True, exist_ok=True)
@@ -185,6 +190,15 @@ def _resolve_model_modality(metadata: Dict[str, Any], input_dim: int) -> Optiona
             )
         return modality
     return _infer_modality_from_dim(input_dim)
+
+
+def _entry_modality(entry: Dict[str, Any]) -> str:
+    metadata = entry.get("metadata") or {}
+    raw = str(metadata.get("modality") or "").strip().lower()
+    if raw in ALLOWED_MODALITIES:
+        return raw
+    inferred = _infer_modality_from_dim(int(entry.get("input_dim") or 0))
+    return inferred or ""
 
 
 def _load_model_runtime(model_entry: Dict[str, Any]) -> Dict[str, Any]:
@@ -459,7 +473,7 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
     model_entry = next((m for m in registry.get("models", []) if m.get("id") == model_id), None)
     if not model_entry:
         raise HTTPException(status_code=404, detail=f"Model not found: {model_id}")
-    model_modality = str(model_entry.get("metadata", {}).get("modality") or "").strip().lower()
+    model_modality = _entry_modality(model_entry)
     if model_modality == "sensor":
         raise HTTPException(
             status_code=400,
@@ -496,6 +510,71 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
     else:
         total = float(np.sum(probs))
         probs = probs / total
+
+    best_idx = int(np.argmax(probs))
+    best_label = labels[best_idx]
+    best_confidence = float(probs[best_idx])
+    probabilities = {labels[i]: float(probs[i]) for i in range(len(labels))}
+    top3 = sorted(probabilities.items(), key=lambda item: item[1], reverse=True)[:3]
+
+    return {
+        "status": "success",
+        "model_id": model_id,
+        "model_name": model_entry.get("display_name"),
+        "prediction": {
+            "label": best_label,
+            "confidence": best_confidence,
+            "probabilities": probabilities,
+            "top3": [{"label": label, "confidence": conf} for label, conf in top3],
+        },
+    }
+
+
+@router.post("/predict/sensor")
+async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=Depends(role_or_internal_dep("editor"))):
+    registry = _load_registry()
+    model_id = req.model_id or registry.get("active_model_id")
+    if not model_id:
+        raise HTTPException(status_code=404, detail="No active playground model")
+    model_entry = next((m for m in registry.get("models", []) if m.get("id") == model_id), None)
+    if not model_entry:
+        raise HTTPException(status_code=404, detail=f"Model not found: {model_id}")
+
+    model_modality = _entry_modality(model_entry)
+    if model_modality == "cv":
+        raise HTTPException(
+            status_code=400,
+            detail="Selected model modality is cv, but /playground/predict/sensor expects a sensor model.",
+        )
+
+    expected_dim = int(model_entry.get("input_dim") or 0)
+    vector = np.asarray(req.sensor_values, dtype=np.float32).reshape(-1)
+    if expected_dim <= 0:
+        raise HTTPException(status_code=500, detail="Invalid model input dimension")
+    if vector.shape[0] != expected_dim:
+        raise HTTPException(
+            status_code=400,
+            detail=f"sensor_values length mismatch: expected {expected_dim}, got {vector.shape[0]}",
+        )
+
+    runtime = _load_model_runtime(model_entry)
+    probs = _predict_with_runtime(runtime, vector)
+    labels = [str(v) for v in (model_entry.get("metadata", {}).get("labels") or [])]
+    if not labels:
+        raise HTTPException(status_code=500, detail="Model metadata labels are missing")
+    if len(labels) != probs.shape[0]:
+        n = min(len(labels), probs.shape[0])
+        labels = labels[:n]
+        probs = probs[:n]
+
+    probs = np.asarray(probs, dtype=np.float32)
+    if probs.size == 0:
+        raise HTTPException(status_code=500, detail="Model returned empty prediction")
+    if np.any(probs < 0) or probs.sum() <= 0:
+        exp = np.exp(probs - np.max(probs))
+        probs = exp / np.sum(exp)
+    else:
+        probs = probs / float(np.sum(probs))
 
     best_idx = int(np.argmax(probs))
     best_label = labels[best_idx]

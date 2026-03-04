@@ -28,6 +28,7 @@ const liveStatus = ref('Camera idle.')
 const prediction = ref(null)
 let lastPredictTs = 0
 let isPredictingFrame = false
+let sensorPollTimer = null
 
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
@@ -49,6 +50,13 @@ const modelSummary = computed(() => {
 })
 
 const modelInputDim = computed(() => Number(activeModel.value?.input_dim || 63))
+const modelModality = computed(() => {
+  const raw = String(activeModel.value?.metadata?.modality || '').trim().toLowerCase()
+  if (raw === 'cv' || raw === 'sensor') return raw
+  const dim = modelInputDim.value
+  if (dim === 11 || dim === 22) return 'sensor'
+  return 'cv'
+})
 
 const parseJsonFile = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
@@ -250,7 +258,58 @@ const predictFromResults = async (results) => {
   }
 }
 
+const normalizeSensorVectorForModel = (values) => {
+  const dim = modelInputDim.value
+  const vector = Array.isArray(values) ? values.map((v) => Number(v ?? 0)) : []
+  if (vector.length === dim) return vector
+  return null
+}
+
+const predictFromLatestSensor = async () => {
+  if (!activeModel.value || modelModality.value !== 'sensor') return
+  if (isPredictingFrame) return
+  const now = Date.now()
+  if (now - lastPredictTs < 250) return
+  lastPredictTs = now
+  isPredictingFrame = true
+  try {
+    const latest = await api.utils.latestSensorFrame()
+    const normalized = normalizeSensorVectorForModel(latest?.values || [])
+    if (!normalized) {
+      prediction.value = {
+        label: 'error',
+        confidence: 0,
+        note: `Sensor vector mismatch: expected ${modelInputDim.value}, got ${(latest?.values || []).length || 0}.`
+      }
+      return
+    }
+    const res = await api.playground.predictSensor(normalized, activeModel.value.id)
+    const pred = res?.prediction
+    if (pred) {
+      prediction.value = {
+        label: pred.label,
+        confidence: pred.confidence,
+        top3: pred.top3 || [],
+        note: `Realtime sensor inference (${res?.model_name || activeModel.value.display_name}).`
+      }
+      liveStatus.value = latest?.real_sensor ? 'Live sensor stream running.' : 'Using last available sensor snapshot.'
+    }
+  } catch (e) {
+    prediction.value = {
+      label: 'error',
+      confidence: 0,
+      note: e?.response?.data?.detail || 'Sensor inference failed.'
+    }
+  } finally {
+    isPredictingFrame = false
+  }
+}
+
 const stopLive = () => {
+  if (sensorPollTimer) {
+    clearInterval(sensorPollTimer)
+    sensorPollTimer = null
+  }
   stopHandTracking()
   if (mediaStream.value) {
     mediaStream.value.getTracks().forEach((t) => t.stop())
@@ -266,6 +325,21 @@ const stopLive = () => {
 }
 
 const startLive = async () => {
+  if (!activeModel.value) {
+    liveStatus.value = 'Upload and activate a model first.'
+    return
+  }
+  if (modelModality.value === 'sensor') {
+    stopLive()
+    isLive.value = true
+    liveStatus.value = 'Starting realtime sensor polling...'
+    sensorPollTimer = setInterval(() => {
+      void predictFromLatestSensor()
+    }, 250)
+    void predictFromLatestSensor()
+    return
+  }
+
   liveStatus.value = 'Requesting camera...'
   try {
     stopLive()
@@ -305,7 +379,7 @@ onMounted(() => {
       </div>
       <div class="text-left md:text-center">
         <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Realtime AI Playground</h1>
-        <p class="text-slate-400">Upload exported model package metadata and test live CV overlays.</p>
+        <p class="text-slate-400">Upload exported model package metadata and test live CV or sensor inference.</p>
       </div>
       <div class="hidden md:block"></div>
     </section>
@@ -347,18 +421,25 @@ onMounted(() => {
 
     <BaseCard>
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-xl text-white font-semibold">Live CV Preview</h2>
+        <h2 class="text-xl text-white font-semibold">Live Preview</h2>
         <div class="flex gap-2">
-          <BaseBtn variant="secondary" :disabled="isLive" @click="startLive">Start CV Live</BaseBtn>
-          <BaseBtn variant="secondary" :disabled="!isLive" @click="stopLive">Stop CV Live</BaseBtn>
+          <BaseBtn variant="secondary" :disabled="isLive" @click="startLive">
+            {{ modelModality === 'sensor' ? 'Start Sensor Live' : 'Start CV Live' }}
+          </BaseBtn>
+          <BaseBtn variant="secondary" :disabled="!isLive" @click="stopLive">
+            {{ modelModality === 'sensor' ? 'Stop Sensor Live' : 'Stop CV Live' }}
+          </BaseBtn>
         </div>
       </div>
       <p class="mt-2 text-sm text-slate-400">{{ liveStatus }}</p>
 
       <div class="mt-4 relative aspect-video w-full overflow-hidden rounded-xl border border-slate-700 bg-black">
-        <video ref="videoEl" autoplay playsinline muted class="absolute inset-0 h-full w-full object-cover"></video>
-        <canvas ref="landmarkCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
-        <canvas ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
+        <video v-show="modelModality !== 'sensor'" ref="videoEl" autoplay playsinline muted class="absolute inset-0 h-full w-full object-cover"></video>
+        <canvas v-show="modelModality !== 'sensor'" ref="landmarkCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
+        <canvas v-show="modelModality !== 'sensor'" ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
+        <div v-if="modelModality === 'sensor'" class="absolute inset-0 flex items-center justify-center text-sm text-slate-300">
+          Sensor live mode (no camera overlay)
+        </div>
       </div>
 
       <div class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm">
@@ -376,7 +457,7 @@ onMounted(() => {
       </div>
 
       <p class="mt-3 text-xs text-amber-300">
-        Supported inference adapters in this phase: exported `.tflite`, `.keras`, `.h5` with valid metadata contract.
+        Supported inference adapters in this phase: exported `.tflite`, `.keras`, `.h5`, `.pth`, `.pt` with valid metadata contract.
       </p>
     </BaseCard>
   </div>
