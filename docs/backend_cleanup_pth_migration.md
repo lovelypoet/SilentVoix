@@ -6,6 +6,23 @@
 - Prepare a clean backend runtime for PyTorch `.pth` model upload, storage, activation, and inference.
 - Keep inference API behavior stable during migration.
 
+## Implementation Status (as of 2026-03-04)
+- Completed:
+  - Feature flags added: `TRAINING_FEATURES_ENABLED` and `ML_RUNTIME`.
+  - Training router mount is now conditional in backend startup (`TRAINING_FEATURES_ENABLED=false` disables `/training/*` mount).
+  - Multi-format runtime adapter implemented for `.tflite`, `.keras`, `.h5`, `.pth`, `.pt`.
+  - Playground model runtime-check endpoint implemented: `GET /playground/models/{model_id}/runtime-check`.
+  - Model library storage centralized at `backend/AI/model_library` (with registry + per-model folders).
+  - Model Library UI includes runtime-check action + pass/fail status.
+  - CSV Library and Model Library ellipsis menus unified with shared popover component.
+  - Runtime model artifacts are gitignored (`backend/.gitignore` includes `AI/model_library/`, `*.pth`, `*.pt`).
+- Verified by manual run:
+  - After rebuilding/rerunning the image, uploaded/imported model is visible and loaded in web UI.
+- Still pending:
+  - Full retirement/removal of legacy training code paths and docs.
+  - Full runtime unification for non-playground legacy prediction endpoints.
+  - End-to-end automated tests for each supported runtime format.
+
 ## Product Scope Decision
 - New scope:
   - Upload exported model packages.
@@ -34,7 +51,7 @@
 - TensorFlow training script writes `.tflite` artifacts (`train_dual_hand_model.py`).
 - Inference script initializes `tf.lite.Interpreter` (`gesture_model_inference.py`).
 - Training routes are still active (`/training/run`, `/training/trigger`, dual-hand, late-fusion).
-- Playground currently accepts `.tflite`, `.keras`, `.h5` only; no `.pth` runtime yet.
+- Playground runtime now supports `.tflite`, `.keras`, `.h5`, `.pth`, `.pt`.
 
 ## Deprecation Matrix (Scope Change)
 - Remove/deprecate backend training API surface:
@@ -63,6 +80,7 @@ Acceptance criteria:
 - Training run endpoints are blocked or clearly marked deprecated.
 - App boots with either inference runtime value during transition.
 - No direct TensorFlow imports outside the legacy adapter.
+Status: In progress (feature flags and conditional training router mount are implemented).
 
 ### Phase 2: Introduce Torch Runtime
 - Add a new inference module (example: `backend/AI/torch_inference.py`) that:
@@ -75,6 +93,7 @@ Acceptance criteria:
 Acceptance criteria:
 - `.pth` model uploads, stores, activates, and loads in container.
 - One end-to-end prediction returns valid label and confidence payload.
+Status: In progress (runtime adapter + playground `.pth` path + runtime-check endpoint implemented).
 
 ### Phase 3: Dependency and Container Cleanup
 - Update backend dependencies:
@@ -86,6 +105,7 @@ Acceptance criteria:
 Acceptance criteria:
 - `docker compose -f docker-compose.dev.yml up backend` runs cleanly.
 - No TensorFlow import errors and no unresolved torch libs.
+Status: In progress (`torch` dependency added; final cleanup/removal of TensorFlow not done yet).
 
 ### Phase 4: Remove Training Surface
 - Remove training endpoints and their service wiring from runtime.
@@ -96,6 +116,7 @@ Acceptance criteria:
 Acceptance criteria:
 - No dead imports to removed modules.
 - API/docs reflect testing-ground capabilities only.
+Status: Pending.
 
 ### Phase 5: Final Removal
 - Delete legacy TFLite-only and training-only code/artifacts after one stable release window.
@@ -105,6 +126,7 @@ Acceptance criteria:
 - Codebase has one active inference runtime path for playground use.
 - No executable training pipeline remains in active backend.
 - CI/test suite passes with torch-only dependencies.
+Status: Pending.
 
 ## Recommended Task Order
 1. Freeze/deprecate training features behind `TRAINING_FEATURES_ENABLED=false`.

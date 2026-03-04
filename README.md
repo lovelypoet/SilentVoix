@@ -12,11 +12,16 @@ The system consists of a hardware component (ESP32-based glove with sensors), a 
 
 - **Model Testing Ground**: Upload and manage exported model packages for testing.
 - **Real-time Inference Playground**: Run live gesture recognition using uploaded models (`.tflite`, `.keras`, `.h5`, `.pth`).
+- **Runtime Health Check**: Validate model load/inference readiness before live testing from Model Library.
 - **Text-to-Speech (TTS)**: Converts recognized gestures to spoken words.
 - **Multi-Format Support**: Curated support for popular deep learning model formats.
 - **User Management**: Role-based authentication with admin, editor, and user roles.
 - **Audio Management**: Upload and manage custom audio files for different gestures.
 - **MongoDB Integration**: Stores model metadata, user information, and gesture logs.
+
+## Runtime Notes
+- Model library runtime artifacts are stored under `backend/AI/model_library`.
+- For PyTorch imports, upload/export callable inference artifacts (`.pth`/`.pt`), not state_dict-only checkpoints.
 
 ## ⚠️ Deprecation Notice: In-App Training
 

@@ -54,7 +54,7 @@ If metadata is missing or invalid, upload is rejected.
 
 ## Backend/Service Responsibilities
 - Parse metadata safely.
-- Cache loaded model by `model_name + version`.
+- Cache loaded model runtime by model entry and artifact mtime.
 - Provide inference endpoint/session for live frames.
 - Return structured prediction payload:
   - bounding box
@@ -63,6 +63,30 @@ If metadata is missing or invalid, upload is rejected.
   - class probabilities
   - model metadata used
   - model evaluation summary (`precision`, `recall`, `f1`) for UI display/audit context
+
+## Runtime Health and Model Library
+- Active model library path: `backend/AI/model_library`.
+- Model registry path: `backend/AI/model_library/registry.json`.
+- Runtime preflight endpoint:
+  - `GET /playground/models/{model_id}/runtime-check`
+  - validates model load + dry-run inference shape before live camera testing
+- UI integration:
+  - Model Library provides `Runtime Check` action
+  - per-model runtime badge: `Untested`, `Pass`, `Fail`
+
+## Current Runtime Format Support
+- Supported upload/inference formats:
+  - `.tflite`
+  - `.keras`
+  - `.h5`
+  - `.pth`
+  - `.pt`
+- PyTorch note:
+  - state_dict-only checkpoints are rejected for playground inference
+  - export callable artifacts (TorchScript or callable module artifact)
+
+## Latest Validation Note
+- Manual validation confirmed that after image rebuild/rerun, the model appears loaded in web Model Library.
 
 ## Security and Role Scope
 - Upload/replace model: admin/editor only.

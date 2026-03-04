@@ -12,7 +12,7 @@ Previously, SilentVoix aimed to be an all-in-one platform where you could collec
 
 ### Training Models
 - **OLD:** You used `/training/run` or the web UI to trigger a training script inside the backend.
-- **NEW:** Train your models externally. Once you have a stable model artifact (`.tflite`, `.keras`, `.h5`, or `.pth`), use the **Playground Model Upload** feature.
+- **NEW:** Train your models externally. Once you have a stable model artifact (`.tflite`, `.keras`, `.h5`, `.pth`, or `.pt`), use the **Playground Model Upload** feature.
 
 ### Data Collection
 - **STAYS THE SAME:** Data collection features remain fully active. You can still use the SignGlove hardware and the `/data/collect` endpoints to gather datasets. 
@@ -20,11 +20,13 @@ Previously, SilentVoix aimed to be an all-in-one platform where you could collec
 
 ### Inference & Playground
 - **IMPROVED:** The Playground now supports multiple model versions. You can upload different iterations of your model, switch between them instantly, and compare their performance in real-time.
+- **NEW:** You can run a runtime preflight check per model before live camera testing:
+  - `GET /playground/models/{model_id}/runtime-check`
 
 ## 3. How to Migrate Your Models
 
 To migrate a model to the new Playground, you need two files:
-1. **Model Artifact**: The exported file (e.g., `my_model.pth`).
+1. **Model Artifact**: The exported file (e.g., `my_model.pth` or `my_model.pt`).
 2. **Metadata JSON**: A small file describing your model.
 
 ### Metadata Schema Example (`metadata.json`)
@@ -37,13 +39,30 @@ To migrate a model to the new Playground, you need two files:
     "input_dim": 126
   },
   "labels": ["hello", "thank_you", "yes", "no"],
-  "export_format": "pth",
+  "export_format": "pytorch",
   "version": "2.1.0",
   "precision": 0.94,
   "recall": 0.92,
   "f1": 0.93
 }
 ```
+
+### Supported Runtime Formats (Current)
+- `.tflite`
+- `.keras`
+- `.h5`
+- `.pth`
+- `.pt`
+
+### Important PyTorch Note
+- `state_dict`-only checkpoints are not directly runnable in the Playground runtime.
+- Export a callable inference artifact (TorchScript or callable model artifact) for runtime inference.
+
+### Model Library Storage
+- Runtime model artifacts are stored at:
+  - `backend/AI/model_library/`
+- Registry file:
+  - `backend/AI/model_library/registry.json`
 
 ## 4. Migration FAQ
 
@@ -57,13 +76,16 @@ A: Yes. `.tflite` remains a first-class supported format in the new testing grou
 A: Metrics (Precision, Recall, F1) are now part of the model metadata. When you upload a model, you should include the metrics calculated during your external training session. These will be displayed in the Playground UI for audit and comparison.
 
 **Q: Is `.pth` (PyTorch) fully supported?**
-A: Yes, `.pth` is now a curated format alongside the legacy TensorFlow/Keras formats.
+A: Yes, `.pth` and `.pt` are curated formats alongside TensorFlow/Keras exports. Use `export_format: "pytorch"` (or accepted aliases) and upload runnable artifacts.
+
+**Q: How do I verify a model is actually runnable after upload?**
+A: Use the Model Library `Runtime Check` action (or call `GET /playground/models/{model_id}/runtime-check`). It validates model load + dry-run inference.
 
 ## 5. Deprecated Endpoints Reference
 
 | Category | Endpoints | Status | Alternative |
 | :--- | :--- | :--- | :--- |
-| **Training Runs** | `/training/run`, `/training/trigger` | Deprecated | External training + Playground Upload |
+| **Training Runs** | `/training/run`, `/training/trigger` | Deprecated / disabled by default flag | External training + Playground Upload |
 | **Late Fusion** | `/training/late-fusion/run` | Deprecated | External fusion + Playground Upload |
 | **Metrics** | `/training/metrics/latest` | Deprecated | Metadata metrics in Upload package |
 | **Analysis** | `/training/analyze-confusion-matrix` | Deprecated | External evaluation scripts |
