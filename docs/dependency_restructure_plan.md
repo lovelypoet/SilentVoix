@@ -36,6 +36,7 @@ Expected total with both ML runtimes enabled: roughly 3.0 to 6.2 GB.
   - `silentvoix-ml-tensorflow:latest` = 3.16 GB
 - Approx stack subtotal (without DB volume growth): ~5.4 GB plus frontend/database overhead.
 - Current result is within the original 6 GB expectation, with TensorFlow image as the biggest optimization target.
+- `worker-library` service scaffold added (health + registry reconcile loop).
 
 ## Scope Rules
 In scope:
@@ -123,6 +124,13 @@ Out of scope for this phase:
 2. Create service folders and Dockerfiles: `backend-api`, `ml-tensorflow`, `ml-pytorch`, `worker-library`.
 3. Move heavy ML deps out of current backend requirements into runtime-specific requirements.
 4. Add compose profiles and run first end-to-end smoke test.
+
+## Run Profiles (Current)
+- `tf`: runs tensorflow runtime service.
+- `torch`: runs pytorch runtime service.
+- `worker`: runs model-library reconcile worker.
+- `runtime-split`: runs both runtimes plus worker.
+- `full`: same as runtime-split (for now).
 
 ## Decision
 This dependency restructure is now the active priority phase.

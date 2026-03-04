@@ -63,3 +63,22 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+
+  worker-library:
+    profiles: ["worker", "runtime-split", "full"]
+    build: ./worker-library
+    ports:
+      - "8093:8093"
+    environment:
+      - MODEL_LIBRARY_DIR=/app/AI/model_library
+      - WORKER_RECONCILE_INTERVAL_SEC=300
+      - WORKER_RECONCILE_PRUNE_MISSING=false
+      - WORKER_RECONCILE_APPLY_ON_STARTUP=true
+    volumes:
+      - ./backend/AI/model_library:/app/AI/model_library
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8093/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

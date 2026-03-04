@@ -69,9 +69,26 @@ def _load_registry() -> Dict[str, Any]:
         if "active_model_id" not in data:
             data["active_model_id"] = None
         changed = False
+        root = _models_root().resolve()
         for entry in data["models"]:
             if not isinstance(entry, dict):
                 continue
+            model_id = str(entry.get("id") or "").strip()
+            if model_id:
+                model_dir = root / model_id
+                model_file_name = str(entry.get("model_file_name") or "").strip()
+                current_model_path = str(entry.get("model_path") or "").strip()
+                current_model_suffix = Path(current_model_path).suffix.lower()
+                file_name_suffix = Path(model_file_name).suffix.lower()
+                suffix = file_name_suffix or current_model_suffix or ".bin"
+                normalized_model_path = model_dir / f"model{suffix}"
+                normalized_metadata_path = model_dir / "metadata.json"
+                if str(entry.get("model_path") or "") != str(normalized_model_path):
+                    entry["model_path"] = str(normalized_model_path)
+                    changed = True
+                if str(entry.get("metadata_path") or "") != str(normalized_metadata_path):
+                    entry["metadata_path"] = str(normalized_metadata_path)
+                    changed = True
             metadata = entry.get("metadata")
             if not isinstance(metadata, dict):
                 continue
