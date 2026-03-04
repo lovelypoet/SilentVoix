@@ -2,9 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
-import OverlayPanel from 'primevue/overlaypanel'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
 import api from '../services/api'
 const toast = useToast()
 const route = useRoute()
@@ -24,8 +24,6 @@ const compatibilityByName = ref({})
 const checkingByName = ref({})
 const archivingByName = ref({})
 const deletingByName = ref({})
-const actionPanelRef = ref(null)
-const actionMenuFile = ref(null)
 
 const previewData = ref(null)
 const previewLoading = ref(false)
@@ -327,10 +325,45 @@ const confirmDialogSubmit = async () => {
   }
 }
 
-const openActionMenu = (event, file) => {
-  actionMenuFile.value = file
-  actionPanelRef.value?.toggle(event)
+const checkCompatibilityFromMenu = async (name, close) => {
+  await checkCompatibility(name)
+  close()
 }
+
+const previewFromMenu = async (name, close) => {
+  await openPreview(name)
+  close()
+}
+
+const statsFromMenu = async (name, close) => {
+  await openStats(name)
+  close()
+}
+
+const downloadFromMenu = async (name, close) => {
+  await downloadFile(name)
+  close()
+}
+
+const useFromMenu = async (name, close) => {
+  await useDataset(name)
+  close()
+}
+
+const archiveConfirmFromMenu = (name, close) => {
+  openArchiveConfirm(name)
+  close()
+}
+
+const deleteConfirmFromMenu = (name, close) => {
+  openDeleteConfirm(name)
+  close()
+}
+
+const menuItemClass = 'w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50'
+const menuAccentClass = 'w-full text-left px-3 py-2 text-sm text-cyan-300 hover:bg-slate-800 disabled:opacity-50'
+const menuWarningClass = 'w-full text-left px-3 py-2 text-sm text-amber-300 hover:bg-slate-800 disabled:opacity-50'
+const menuDangerClass = 'w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50'
 
 onMounted(() => {
   const queryPipeline = String(route.query?.pipeline || '').toLowerCase()
@@ -469,76 +502,62 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
                 <span v-else class="text-xs text-slate-500">Not checked</span>
               </td>
               <td class="py-2 pr-3">
-                <div class="inline-block text-left">
-                  <button
-                    class="h-8 w-8 rounded border border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
-                    @click.stop="openActionMenu($event, file)"
-                  >
-                    ...
-                  </button>
-                </div>
+                <BaseEllipsisMenu>
+                  <template #menu="{ close }">
+                    <button
+                      :class="menuItemClass"
+                      :disabled="checkingByName[file.name]"
+                      @click="checkCompatibilityFromMenu(file.name, close)"
+                    >
+                      {{ checkingByName[file.name] ? 'Testing...' : 'Test Check' }}
+                    </button>
+                    <button
+                      :class="menuItemClass"
+                      @click="previewFromMenu(file.name, close)"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      :class="menuItemClass"
+                      @click="statsFromMenu(file.name, close)"
+                    >
+                      Stats
+                    </button>
+                    <button
+                      :class="menuItemClass"
+                      @click="downloadFromMenu(file.name, close)"
+                    >
+                      Download
+                    </button>
+                    <button
+                      :class="menuAccentClass"
+                      :disabled="selectingByName[file.name]"
+                      @click="useFromMenu(file.name, close)"
+                    >
+                      {{ selectingByName[file.name] ? 'Selecting...' : 'Use' }}
+                    </button>
+                    <button
+                      :class="menuWarningClass"
+                      :disabled="file.scope === 'archive' || archivingByName[file.name]"
+                      @click="archiveConfirmFromMenu(file.name, close)"
+                    >
+                      {{ file.scope === 'archive' ? 'Archived' : (archivingByName[file.name] ? 'Archiving...' : 'Archive') }}
+                    </button>
+                    <button
+                      :class="menuDangerClass"
+                      :disabled="deletingByName[file.name]"
+                      @click="deleteConfirmFromMenu(file.name, close)"
+                    >
+                      {{ deletingByName[file.name] ? 'Deleting...' : 'Delete' }}
+                    </button>
+                  </template>
+                </BaseEllipsisMenu>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
     </BaseCard>
-
-    <OverlayPanel
-      ref="actionPanelRef"
-      :dismissable="true"
-      :show-close-icon="false"
-      class="!bg-slate-950 !border !border-slate-700 !text-slate-100 !shadow-2xl"
-    >
-      <div v-if="actionMenuFile" class="w-44 py-1">
-        <button
-          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
-          :disabled="checkingByName[actionMenuFile.name]"
-          @click="actionPanelRef?.hide(); checkCompatibility(actionMenuFile.name)"
-        >
-          {{ checkingByName[actionMenuFile.name] ? 'Testing...' : 'Test Check' }}
-        </button>
-        <button
-          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
-          @click="actionPanelRef?.hide(); openPreview(actionMenuFile.name)"
-        >
-          Preview
-        </button>
-        <button
-          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
-          @click="actionPanelRef?.hide(); openStats(actionMenuFile.name)"
-        >
-          Stats
-        </button>
-        <button
-          class="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
-          @click="actionPanelRef?.hide(); downloadFile(actionMenuFile.name)"
-        >
-          Download
-        </button>
-        <button
-          class="w-full px-3 py-2 text-left text-xs text-cyan-300 hover:bg-slate-800 disabled:opacity-50"
-          :disabled="selectingByName[actionMenuFile.name]"
-          @click="actionPanelRef?.hide(); useDataset(actionMenuFile.name)"
-        >
-          {{ selectingByName[actionMenuFile.name] ? 'Selecting...' : 'Use' }}
-        </button>
-        <button
-          class="w-full px-3 py-2 text-left text-xs text-amber-300 hover:bg-slate-800 disabled:opacity-50"
-          :disabled="actionMenuFile.scope === 'archive' || archivingByName[actionMenuFile.name]"
-          @click="actionPanelRef?.hide(); openArchiveConfirm(actionMenuFile.name)"
-        >
-          {{ actionMenuFile.scope === 'archive' ? 'Archived' : (archivingByName[actionMenuFile.name] ? 'Archiving...' : 'Archive') }}
-        </button>
-        <button
-          class="w-full px-3 py-2 text-left text-xs text-rose-300 hover:bg-slate-800 disabled:opacity-50"
-          :disabled="deletingByName[actionMenuFile.name]"
-          @click="actionPanelRef?.hide(); openDeleteConfirm(actionMenuFile.name)"
-        >
-          {{ deletingByName[actionMenuFile.name] ? 'Deleting...' : 'Delete' }}
-        </button>
-      </div>
-    </OverlayPanel>
 
     <div v-if="previewModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closePreviewModal">
       <div class="w-full max-w-5xl rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">

@@ -56,6 +56,22 @@ def _extract_torch_output(raw: Any) -> Any:
     return raw
 
 
+def _looks_like_state_dict(obj: Any) -> bool:
+    if not isinstance(obj, dict) or not obj:
+        return False
+    tensor_like_count = 0
+    for key, value in obj.items():
+        if not isinstance(key, str):
+            continue
+        if key == "state_dict" and isinstance(value, dict):
+            return True
+        if ".weight" in key or ".bias" in key:
+            tensor_like_count += 1
+            if tensor_like_count >= 2:
+                return True
+    return False
+
+
 def load_runtime(model_path: str, export_format: str) -> Dict[str, Any]:
     normalized = normalize_export_format(export_format)
     path = Path(model_path).resolve()
@@ -91,6 +107,15 @@ def load_runtime(model_path: str, export_format: str) -> Dict[str, Any]:
             model = torch.jit.load(str(path), map_location="cpu")
         except Exception:
             model = torch.load(str(path), map_location="cpu")
+
+        if _looks_like_state_dict(model):
+            raise ValueError(
+                "PyTorch checkpoint appears to be a state_dict-only artifact. "
+                "Export a callable model (TorchScript or full nn.Module) for playground inference."
+            )
+
+        if isinstance(model, dict) and "model" in model and callable(model["model"]):
+            model = model["model"]
 
         if hasattr(model, "eval"):
             model.eval()

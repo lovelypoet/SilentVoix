@@ -225,6 +225,7 @@ export default {
     listModels: () => api.get('/playground/models'),
     getActiveModel: () => api.get('/playground/models/active'),
     activateModel: (modelId) => api.post(`/playground/models/${modelId}/activate`),
+    runtimeCheckModel: (modelId) => api.get(`/playground/models/${modelId}/runtime-check`),
     deleteModel: (modelId) => api.delete(`/playground/models/${modelId}`),
     downloadModelArtifact: (modelId, kind = 'model') =>
       api.get(`/playground/models/${modelId}/download?kind=${kind}`, { responseType: 'blob' }),

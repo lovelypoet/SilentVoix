@@ -297,6 +297,32 @@ async def download_playground_model_artifact(
     return FileResponse(path=str(file_path), media_type=media_type, filename=file_path.name)
 
 
+@router.get("/models/{model_id}/runtime-check")
+async def runtime_check_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
+    registry = _load_registry()
+    entry = _get_model_entry(registry, model_id)
+    expected_dim = int(entry.get("input_dim") or 0)
+    if expected_dim <= 0:
+        raise HTTPException(status_code=400, detail="Invalid model input dimension")
+
+    runtime = _load_model_runtime(entry)
+    probe = np.zeros((expected_dim,), dtype=np.float32)
+    probs = _predict_with_runtime(runtime, probe)
+    probs = np.asarray(probs, dtype=np.float32).reshape(-1)
+    if probs.size == 0:
+        raise HTTPException(status_code=500, detail="Model runtime-check returned empty output")
+
+    return {
+        "status": "success",
+        "model_id": model_id,
+        "model_name": entry.get("display_name"),
+        "export_format": str(entry.get("metadata", {}).get("export_format", "")),
+        "input_dim": expected_dim,
+        "output_dim": int(probs.shape[0]),
+        "message": "Runtime load and dry-run inference succeeded",
+    }
+
+
 @router.delete("/models/{model_id}")
 async def delete_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
     registry = _load_registry()

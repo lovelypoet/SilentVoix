@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
 import api from '../services/api'
 
 const models = ref([])
@@ -9,6 +10,7 @@ const activeModelId = ref(null)
 const isLoading = ref(false)
 const error = ref('')
 const actionLoading = ref({})
+const runtimeCheckState = ref({})
 const deleteArmedModelId = ref(null)
 const searchQuery = ref('')
 const familyFilter = ref('all')
@@ -106,6 +108,12 @@ const setActionLoading = (modelId, loading) => {
 }
 
 const isActionLoading = (modelId) => Boolean(actionLoading.value?.[modelId])
+const runtimeCheckFor = (modelId) => runtimeCheckState.value?.[modelId] || null
+const runtimeStatusFor = (modelId) => {
+  const check = runtimeCheckFor(modelId)
+  if (!check) return 'untested'
+  return check.ok ? 'pass' : 'fail'
+}
 
 const isActive = (modelId) => activeModelId.value === modelId
 
@@ -131,6 +139,32 @@ const activateModel = async (modelId) => {
     activeModelId.value = res?.active_model_id || modelId
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Failed to activate model.'
+  } finally {
+    setActionLoading(modelId, false)
+  }
+}
+
+const runtimeCheckModel = async (modelId) => {
+  setActionLoading(modelId, true)
+  error.value = ''
+  runtimeCheckState.value = { ...runtimeCheckState.value, [modelId]: null }
+  try {
+    const res = await api.playground.runtimeCheckModel(modelId)
+    runtimeCheckState.value = {
+      ...runtimeCheckState.value,
+      [modelId]: {
+        ok: true,
+        message: `OK: in ${res?.input_dim ?? '--'} -> out ${res?.output_dim ?? '--'}`
+      }
+    }
+  } catch (e) {
+    runtimeCheckState.value = {
+      ...runtimeCheckState.value,
+      [modelId]: {
+        ok: false,
+        message: e?.response?.data?.detail || 'Runtime check failed.'
+      }
+    }
   } finally {
     setActionLoading(modelId, false)
   }
@@ -183,6 +217,36 @@ const deleteModel = async (modelId) => {
 
 const goToPage = (value) => {
   currentPage.value = Math.min(Math.max(1, value), totalPages.value)
+}
+
+const activateFromMenu = async (modelId, close) => {
+  await activateModel(modelId)
+  close()
+}
+
+const downloadFromMenu = async (model, kind, close) => {
+  await downloadArtifact(model, kind)
+  close()
+}
+
+const runtimeCheckFromMenu = async (modelId, close) => {
+  await runtimeCheckModel(modelId)
+  close()
+}
+
+const requestDeleteFromMenu = (modelId, close) => {
+  requestDelete(modelId)
+  close()
+}
+
+const deleteFromMenu = async (modelId, close) => {
+  await deleteModel(modelId)
+  close()
+}
+
+const cancelDeleteFromMenu = (close) => {
+  cancelDelete()
+  close()
 }
 
 watch([searchQuery, familyFilter, formatFilter, statusFilter, sortKey, sortDir, pageSize], () => {
@@ -298,15 +362,16 @@ onMounted(() => {
               <th class="py-2 pr-3">P / R / F1</th>
               <th class="py-2 pr-3">Created</th>
               <th class="py-2 pr-3">Status</th>
+              <th class="py-2 pr-3">Runtime</th>
               <th class="py-2 pr-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="8" class="py-4 text-slate-400">Loading models...</td>
+              <td colspan="9" class="py-4 text-slate-400">Loading models...</td>
             </tr>
             <tr v-else-if="sortedModels.length === 0">
-              <td colspan="8" class="py-4 text-slate-400">No models found. Upload one in Realtime AI Playground.</td>
+              <td colspan="9" class="py-4 text-slate-400">No models found. Upload one in Realtime AI Playground.</td>
             </tr>
             <tr v-for="model in pagedModels" :key="model.id" class="border-b border-slate-900/70">
               <td class="py-2 pr-3 text-slate-200">
@@ -329,44 +394,89 @@ onMounted(() => {
                 </span>
               </td>
               <td class="py-2 pr-3">
-                <div class="flex flex-wrap gap-2">
-                  <BaseBtn variant="secondary" class="!px-3 !py-1.5 text-xs" :disabled="isActionLoading(model.id) || isActive(model.id)" @click="activateModel(model.id)">
-                    Activate
-                  </BaseBtn>
-                  <BaseBtn variant="secondary" class="!px-3 !py-1.5 text-xs" :disabled="isActionLoading(model.id)" @click="downloadArtifact(model, 'model')">
-                    Download Model
-                  </BaseBtn>
-                  <BaseBtn variant="secondary" class="!px-3 !py-1.5 text-xs" :disabled="isActionLoading(model.id)" @click="downloadArtifact(model, 'metadata')">
-                    Download Metadata
-                  </BaseBtn>
-                  <BaseBtn
-                    v-if="deleteArmedModelId !== model.id"
-                    variant="danger"
-                    class="!px-3 !py-1.5 text-xs"
-                    :disabled="isActionLoading(model.id)"
-                    @click="requestDelete(model.id)"
-                  >
-                    Delete
-                  </BaseBtn>
-                  <BaseBtn
-                    v-else
-                    variant="danger"
-                    class="!px-3 !py-1.5 text-xs"
-                    :disabled="isActionLoading(model.id)"
-                    @click="deleteModel(model.id)"
-                  >
-                    Confirm Delete
-                  </BaseBtn>
-                  <BaseBtn
-                    v-if="deleteArmedModelId === model.id"
-                    variant="secondary"
-                    class="!px-3 !py-1.5 text-xs"
-                    :disabled="isActionLoading(model.id)"
-                    @click="cancelDelete"
-                  >
-                    Cancel
-                  </BaseBtn>
-                </div>
+                <span
+                  class="px-2 py-1 rounded text-xs font-semibold"
+                  :class="
+                    runtimeStatusFor(model.id) === 'pass'
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : runtimeStatusFor(model.id) === 'fail'
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-slate-700/40 text-slate-300'
+                  "
+                >
+                  {{
+                    runtimeStatusFor(model.id) === 'pass'
+                      ? 'Pass'
+                      : runtimeStatusFor(model.id) === 'fail'
+                        ? 'Fail'
+                        : 'Untested'
+                  }}
+                </span>
+              </td>
+              <td class="py-2 pr-3">
+                <BaseEllipsisMenu :disabled="isActionLoading(model.id)">
+                  <template #menu="{ close }">
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                      :disabled="isActionLoading(model.id) || isActive(model.id)"
+                      @click="activateFromMenu(model.id, close)"
+                    >
+                      Activate
+                    </button>
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                      :disabled="isActionLoading(model.id)"
+                      @click="downloadFromMenu(model, 'model', close)"
+                    >
+                      Download Model
+                    </button>
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                      :disabled="isActionLoading(model.id)"
+                      @click="downloadFromMenu(model, 'metadata', close)"
+                    >
+                      Download Metadata
+                    </button>
+                    <button
+                      class="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                      :disabled="isActionLoading(model.id)"
+                      @click="runtimeCheckFromMenu(model.id, close)"
+                    >
+                      Runtime Check
+                    </button>
+                    <button
+                      v-if="deleteArmedModelId !== model.id"
+                      class="w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                      :disabled="isActionLoading(model.id)"
+                      @click="requestDeleteFromMenu(model.id, close)"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      v-else
+                      class="w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                      :disabled="isActionLoading(model.id)"
+                      @click="deleteFromMenu(model.id, close)"
+                    >
+                      Confirm Delete
+                    </button>
+                    <button
+                      v-if="deleteArmedModelId === model.id"
+                      class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                      :disabled="isActionLoading(model.id)"
+                      @click="cancelDeleteFromMenu(close)"
+                    >
+                      Cancel
+                    </button>
+                  </template>
+                </BaseEllipsisMenu>
+                <p
+                  v-if="runtimeCheckFor(model.id)"
+                  class="text-xs mt-2"
+                  :class="runtimeCheckFor(model.id)?.ok ? 'text-emerald-300' : 'text-amber-300'"
+                >
+                  {{ runtimeCheckFor(model.id)?.message }}
+                </p>
               </td>
             </tr>
           </tbody>
