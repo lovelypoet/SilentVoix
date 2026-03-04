@@ -31,6 +31,11 @@ services:
       - TTS_PROVIDER=gtts
       - BACKEND_BASE_URL=http://localhost:8080
       - SERIAL_PORT_SINGLE=/dev/ttyACM0
+      - USE_RUNTIME_SERVICES=${USE_RUNTIME_SERVICES:-false}
+      - ML_TENSORFLOW_URL=${ML_TENSORFLOW_URL:-http://ml-tensorflow:8091}
+      - ML_PYTORCH_URL=${ML_PYTORCH_URL:-http://ml-pytorch:8092}
+      - USE_WORKER_LIBRARY=${USE_WORKER_LIBRARY:-false}
+      - WORKER_LIBRARY_URL=${WORKER_LIBRARY_URL:-http://worker-library:8093}
     volumes:
       - /dev:/dev
       - ./backend/data:/app/data

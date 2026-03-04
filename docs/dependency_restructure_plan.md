@@ -37,6 +37,7 @@ Expected total with both ML runtimes enabled: roughly 3.0 to 6.2 GB.
 - Approx stack subtotal (without DB volume growth): ~5.4 GB plus frontend/database overhead.
 - Current result is within the original 6 GB expectation, with TensorFlow image as the biggest optimization target.
 - `worker-library` service scaffold added (health + registry reconcile loop).
+- Backend now triggers non-blocking worker reconcile calls on model upload/activate/delete when `USE_WORKER_LIBRARY=true`.
 
 ## Scope Rules
 In scope:

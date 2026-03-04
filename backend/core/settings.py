@@ -130,6 +130,8 @@ class Settings(BaseSettings):
     USE_RUNTIME_SERVICES: bool = Field(False, env="USE_RUNTIME_SERVICES")
     ML_TENSORFLOW_URL: str = Field("http://ml-tensorflow:8091", env="ML_TENSORFLOW_URL")
     ML_PYTORCH_URL: str = Field("http://ml-pytorch:8092", env="ML_PYTORCH_URL")
+    USE_WORKER_LIBRARY: bool = Field(False, env="USE_WORKER_LIBRARY")
+    WORKER_LIBRARY_URL: str = Field("http://worker-library:8093", env="WORKER_LIBRARY_URL")
     
     @validator("CORS_ORIGINS", pre=True)
     def parse_cors_origins(cls, v):

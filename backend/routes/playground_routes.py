@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import threading
 from datetime import datetime, timezone
@@ -26,6 +27,7 @@ from core.settings import settings
 from routes.auth_routes import role_or_internal_dep
 
 router = APIRouter(prefix="/playground", tags=["Realtime AI Playground"])
+logger = logging.getLogger("signglove.playground")
 
 ALLOWED_MODEL_EXTENSIONS = SUPPORTED_MODEL_EXTENSIONS
 ALLOWED_EXPORT_FORMATS = SUPPORTED_EXPORT_FORMATS
@@ -222,6 +224,26 @@ def _entry_modality(entry: Dict[str, Any]) -> str:
 
 def _uses_runtime_services() -> bool:
     return bool(settings.USE_RUNTIME_SERVICES)
+
+
+def _uses_worker_library() -> bool:
+    return bool(settings.USE_WORKER_LIBRARY)
+
+
+def _trigger_worker_reconcile(reason: str) -> None:
+    if not _uses_worker_library():
+        return
+    base = str(settings.WORKER_LIBRARY_URL).rstrip("/")
+    url = f"{base}/v1/reconcile"
+    payload = {"apply": True, "prune_missing": False, "activate_fallback": True}
+    try:
+        resp = httpx.post(url, json=payload, timeout=2.5)
+        if resp.status_code >= 400:
+            logger.warning("Worker reconcile returned HTTP %s after %s", resp.status_code, reason)
+            return
+        logger.info("Worker reconcile triggered after %s", reason)
+    except Exception as exc:
+        logger.warning("Worker reconcile request failed after %s: %s", reason, exc)
 
 
 def _runtime_service_url(export_format: str) -> str:
@@ -498,6 +520,7 @@ async def upload_playground_model(
     _save_registry(registry)
     with MODEL_CACHE_LOCK:
         MODEL_CACHE.pop(model_id, None)
+    _trigger_worker_reconcile("model upload")
 
     return {
         "status": "success",
@@ -536,6 +559,7 @@ async def activate_playground_model(model_id: str, _user=Depends(role_or_interna
     registry["active_model_id"] = model_id
     target["runtime_status"] = _compute_runtime_status(target)
     _save_registry(registry)
+    _trigger_worker_reconcile("model activate")
     return {
         "status": "success",
         "active_model_id": model_id,
@@ -607,6 +631,7 @@ async def delete_playground_model(model_id: str, _user=Depends(role_or_internal_
 
     with MODEL_CACHE_LOCK:
         MODEL_CACHE.pop(model_id, None)
+    _trigger_worker_reconcile("model delete")
 
     return {
         "status": "success",

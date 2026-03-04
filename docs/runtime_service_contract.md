@@ -10,6 +10,7 @@ This contract keeps frontend behavior stable while allowing backend runtime spli
 ## Service Roles
 - `backend-api`: source of truth for registry/activation/auth; dispatches inference calls.
 - runtime service: loads model artifact, validates runtime, executes inference.
+- `worker-library`: reconciles model-library registry consistency in background and on demand.
 
 ## Transport
 - Protocol: HTTP/JSON
@@ -133,6 +134,20 @@ Error example `400`:
 }
 ```
 
+### 4) Worker library endpoints
+- `GET /health`
+- `GET /v1/reconcile` (preview only)
+- `POST /v1/reconcile` (apply mode)
+
+`POST /v1/reconcile` request:
+```json
+{
+  "apply": true,
+  "prune_missing": false,
+  "activate_fallback": true
+}
+```
+
 ## Error Contract
 All runtime errors must return:
 ```json
@@ -194,4 +209,3 @@ All runtime errors must return:
 - async queue inference
 - autoscaling policies
 - GPU runtime split
-
