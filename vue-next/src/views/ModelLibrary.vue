@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
+import { useToast } from 'primevue/usetoast'
 import api from '../services/api'
 
 const models = ref([])
@@ -12,6 +13,7 @@ const error = ref('')
 const actionLoading = ref({})
 const runtimeCheckState = ref({})
 const deleteArmedModelId = ref(null)
+const toast = useToast()
 const searchQuery = ref('')
 const familyFilter = ref('all')
 const formatFilter = ref('all')
@@ -136,6 +138,17 @@ const hydrateRuntimeChecks = (rows) => {
   runtimeCheckState.value = next
 }
 
+const showRuntimeStatusToast = (model) => {
+  const check = runtimeCheckFor(model.id)
+  if (!check) {
+    toast.add({ severity: 'warn', summary: 'Untested Model', detail: 'This model has not been evaluated by the runtime check yet. Run it from the actions menu.', life: 4000 })
+  } else if (check.ok) {
+    toast.add({ severity: 'success', summary: 'Runtime Check Passed', detail: check.message, life: 4000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Runtime Check Failed', detail: check.message, life: 6000 })
+  }
+}
+
 const isActive = (modelId) => activeModelId.value === modelId
 
 const fetchModels = async () => {
@@ -180,14 +193,17 @@ const runtimeCheckModel = async (modelId) => {
         message: `OK: in ${res?.input_dim ?? '--'} -> out ${res?.output_dim ?? '--'}`
       }
     }
+    toast.add({ severity: 'success', summary: 'Runtime Check Passed', detail: `Checked successfully: in ${res?.input_dim ?? '--'} -> out ${res?.output_dim ?? '--'}`, life: 3000 })
   } catch (e) {
+    const errDetail = e?.response?.data?.detail || 'Runtime check failed.'
     runtimeCheckState.value = {
       ...runtimeCheckState.value,
       [modelId]: {
         ok: false,
-        message: e?.response?.data?.detail || 'Runtime check failed.'
+        message: errDetail
       }
     }
+    toast.add({ severity: 'error', summary: 'Runtime Check Failed', detail: errDetail, life: 5000 })
   } finally {
     setActionLoading(modelId, false)
   }
@@ -231,8 +247,10 @@ const deleteModel = async (modelId) => {
     models.value = models.value.filter((m) => m.id !== modelId)
     activeModelId.value = res?.active_model_id || null
     deleteArmedModelId.value = null
+    toast.add({ severity: 'info', summary: 'Deleted', detail: 'Model deleted successfully.', life: 3000 })
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Failed to delete model.'
+    toast.add({ severity: 'error', summary: 'Delete Failed', detail: error.value, life: 4000 })
   } finally {
     setActionLoading(modelId, false)
   }
@@ -416,25 +434,22 @@ onMounted(() => {
                   {{ isActive(model.id) ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td class="py-2 pr-3">
-                <span
-                  class="px-2 py-1 rounded text-xs font-semibold"
-                  :class="
-                    runtimeStatusFor(model.id) === 'pass'
-                      ? 'bg-emerald-500/20 text-emerald-300'
-                      : runtimeStatusFor(model.id) === 'fail'
-                        ? 'bg-amber-500/20 text-amber-300'
-                        : 'bg-slate-700/40 text-slate-300'
-                  "
-                >
-                  {{
-                    runtimeStatusFor(model.id) === 'pass'
-                      ? 'Pass'
-                      : runtimeStatusFor(model.id) === 'fail'
-                        ? 'Fail'
-                        : 'Untested'
-                  }}
-                </span>
+              <td class="py-2 pr-3 align-middle">
+                <div class="flex items-center justify-center">
+                  <button
+                    type="button"
+                    class="w-3.5 h-3.5 rounded-full shrink-0 transition-colors shadow-sm outline-none ring-2 ring-transparent focus-visible:ring-slate-400"
+                    :class="
+                      runtimeStatusFor(model.id) === 'pass'
+                        ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
+                        : runtimeStatusFor(model.id) === 'fail'
+                          ? 'bg-rose-500 hover:bg-rose-400 shadow-rose-500/20'
+                          : 'bg-amber-400 hover:bg-amber-300 shadow-amber-400/20'
+                    "
+                    title="Click to view runtime status details"
+                    @click="showRuntimeStatusToast(model)"
+                  ></button>
+                </div>
               </td>
               <td class="py-2 pr-3">
                 <BaseEllipsisMenu :disabled="isActionLoading(model.id)">
@@ -493,13 +508,6 @@ onMounted(() => {
                     </button>
                   </template>
                 </BaseEllipsisMenu>
-                <p
-                  v-if="runtimeCheckFor(model.id)"
-                  class="text-xs mt-2"
-                  :class="runtimeCheckFor(model.id)?.ok ? 'text-emerald-300' : 'text-amber-300'"
-                >
-                  {{ runtimeCheckFor(model.id)?.message }}
-                </p>
               </td>
             </tr>
           </tbody>

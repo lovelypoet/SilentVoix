@@ -23,6 +23,11 @@ import argparse
 from pathlib import Path
 from typing import Dict, Iterable, List, Set, Tuple
 
+try:
+    from serial.tools import list_ports
+except Exception:  # pragma: no cover - optional dependency in some envs
+    list_ports = None
+
 IGNORED_DIRS = {
     ".git",
     ".venv",
@@ -31,6 +36,43 @@ IGNORED_DIRS = {
     "__pycache__",
     ".pytest_cache",
 }
+
+
+def detect_serial_ports() -> List[str]:
+    if list_ports is None:
+        return []
+    return [port.device for port in list_ports.comports()]
+
+
+def upsert_env_values(env_file: str, updates: Dict[str, str]) -> Dict[str, str]:
+    path = Path(env_file)
+    if path.exists():
+        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    else:
+        lines = []
+
+    changed_keys: Set[str] = set()
+    out_lines: List[str] = []
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            out_lines.append(raw_line)
+            continue
+        key, _value = line.split("=", 1)
+        key = key.strip()
+        if key in updates:
+            out_lines.append(f"{key}={updates[key]}\n")
+            changed_keys.add(key)
+        else:
+            out_lines.append(raw_line)
+
+    for key, value in updates.items():
+        if key not in changed_keys and all(not l.startswith(f"{key}=") for l in out_lines):
+            out_lines.append(f"{key}={value}\n")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(out_lines), encoding="utf-8")
+    return updates
 
 
 def parse_env_pairs(text: str) -> Dict[str, str]:

@@ -24,6 +24,8 @@ class RuntimePayload(BaseModel):
     input_dim: int
     labels: List[str]
     modality: Optional[str] = None
+    is_state_dict: bool = False
+    has_model_class: bool = False
 
 
 class PredictPayload(RuntimePayload):
@@ -55,7 +57,12 @@ def _load_cached_runtime(payload: RuntimePayload) -> Dict[str, object]:
         if cached and cached.get("mtime") == mtime:
             return cached
 
-    runtime = load_runtime(str(model_path), payload.export_format)
+    runtime = load_runtime(
+        str(model_path), 
+        payload.export_format, 
+        is_state_dict=payload.is_state_dict, 
+        has_model_class=payload.has_model_class
+    )
     runtime["mtime"] = mtime
 
     with _CACHE_LOCK:

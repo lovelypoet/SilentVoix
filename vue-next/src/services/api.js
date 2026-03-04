@@ -214,10 +214,16 @@ export default {
 
   // ===================== Realtime AI Playground API =====================
   playground: {
-    uploadModel: (modelFile, metadataFile) => {
+    uploadModel: (modelFile, metadataFile, modelClassFile = null, isStateDict = false) => {
       const formData = new FormData();
       formData.append('model_file', modelFile);
       formData.append('metadata_file', metadataFile);
+      if (isStateDict) {
+        formData.append('is_state_dict', 'true');
+      }
+      if (modelClassFile) {
+        formData.append('model_class_file', modelClassFile);
+      }
       return api.post('/playground/models/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });

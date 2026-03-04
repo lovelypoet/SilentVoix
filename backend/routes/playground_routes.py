@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import httpx
 import numpy as np
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -274,6 +274,8 @@ def _runtime_payload(entry: Dict[str, Any], input_vector: Optional[np.ndarray] =
         "input_dim": int(entry.get("input_dim") or 0),
         "labels": [str(v) for v in (metadata.get("labels") or [])],
         "modality": _entry_modality(entry) or None,
+        "is_state_dict": bool(metadata.get("is_state_dict", False)),
+        "has_model_class": bool(metadata.get("has_model_class", False)),
     }
     if input_vector is not None:
         payload["input_vector"] = [float(v) for v in input_vector.tolist()]
@@ -341,8 +343,15 @@ def _load_model_runtime(model_entry: Dict[str, Any]) -> Dict[str, Any]:
             return cached
 
     export_format = str(model_entry["metadata"]["export_format"]).lower()
+    is_state_dict = bool(model_entry["metadata"].get("is_state_dict", False))
+    has_model_class = bool(model_entry["metadata"].get("has_model_class", False))
     try:
-        runtime: Dict[str, Any] = load_runtime(str(model_path), export_format)
+        runtime: Dict[str, Any] = load_runtime(
+            str(model_path), 
+            export_format,
+            is_state_dict=is_state_dict,
+            has_model_class=has_model_class
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -465,6 +474,8 @@ def _compute_runtime_status(entry: Dict[str, Any]) -> Dict[str, Any]:
 async def upload_playground_model(
     model_file: UploadFile = File(...),
     metadata_file: UploadFile = File(...),
+    model_class_file: Optional[UploadFile] = File(None),
+    is_state_dict: str = Form("false"),
     _user=Depends(role_or_internal_dep("editor")),
 ):
     model_name = Path(model_file.filename or "").name
@@ -492,6 +503,10 @@ async def upload_playground_model(
         if isinstance(metadata["input_spec"], dict):
             metadata["input_spec"]["modality"] = modality
 
+    is_state_dict_bool = str(is_state_dict).lower() == "true"
+    metadata["is_state_dict"] = is_state_dict_bool
+    metadata["has_model_class"] = model_class_file is not None
+
     model_id = str(uuid4())
     model_dir = _models_root() / model_id
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -499,6 +514,12 @@ async def upload_playground_model(
     saved_metadata_path = model_dir / "metadata.json"
     saved_model_path.write_bytes(model_bytes)
     saved_metadata_path.write_bytes(metadata_bytes)
+    
+    saved_model_class_path = None
+    if model_class_file:
+        model_class_bytes = await model_class_file.read()
+        saved_model_class_path = model_dir / "model.py"
+        saved_model_class_path.write_bytes(model_class_bytes)
 
     now = datetime.now(timezone.utc).isoformat()
     entry = {
@@ -512,6 +533,9 @@ async def upload_playground_model(
         "input_dim": input_dim,
         "created_at": now,
     }
+    if saved_model_class_path:
+        entry["model_class_path"] = str(saved_model_class_path)
+
     entry["runtime_status"] = _compute_runtime_status(entry)
 
     registry = _load_registry()

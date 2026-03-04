@@ -10,6 +10,8 @@ const router = useRouter()
 
 const modelFile = ref(null)
 const metadataFile = ref(null)
+const modelClassFile = ref(null)
+const isStateDict = ref(false)
 const metadata = ref(null)
 const validationErrors = ref([])
 const uploadMessage = ref('')
@@ -138,6 +140,11 @@ const onPickModelFile = (event) => {
   modelFile.value = file || null
 }
 
+const onPickModelClassFile = (event) => {
+  const file = event?.target?.files?.[0]
+  modelClassFile.value = file || null
+}
+
 const onPickMetadataFile = async (event) => {
   const file = event?.target?.files?.[0]
   metadataFile.value = file || null
@@ -184,9 +191,13 @@ const uploadAndActivateModel = async () => {
     uploadError.value = 'Fix metadata validation errors before upload.'
     return
   }
+  if (isStateDict.value && !modelClassFile.value) {
+    uploadError.value = 'Model class file (.py) is required for state_dict models.'
+    return
+  }
   isUploading.value = true
   try {
-    const res = await api.playground.uploadModel(modelFile.value, metadataFile.value)
+    const res = await api.playground.uploadModel(modelFile.value, metadataFile.value, modelClassFile.value, isStateDict.value)
     activeModel.value = res?.model || null
     uploadMessage.value = res?.message || 'Model uploaded.'
   } catch (e) {
@@ -452,6 +463,19 @@ onMounted(() => {
           Metadata JSON (required)
           <input type="file" accept=".json,application/json" class="mt-1 block w-full text-sm text-slate-300" @change="onPickMetadataFile" />
         </label>
+        <div class="md:col-span-2 pt-2 border-t border-slate-800 flex flex-col gap-3">
+          <label class="text-sm text-slate-300 flex items-center gap-2">
+            <input type="checkbox" v-model="isStateDict" class="rounded border-slate-700 bg-slate-800 text-teal-400 focus:ring-teal-500" />
+            This PyTorch model is a state_dict
+          </label>
+          <div v-if="isStateDict" class="transition-all bg-slate-900/50 p-3 rounded border border-slate-800">
+            <label class="text-sm text-slate-300">
+              Model Class Definition (.py file)
+              <span class="block text-xs text-slate-500 mt-1 mb-2">Required for backend runtime to instantiate the model before loading weights.</span>
+              <input type="file" accept=".py" class="mt-1 block w-full text-sm text-slate-300" @change="onPickModelClassFile" />
+            </label>
+          </div>
+        </div>
       </div>
 
       <p v-if="uploadMessage" class="mt-3 text-sm" :class="validationErrors.length ? 'text-amber-300' : 'text-emerald-300'">{{ uploadMessage }}</p>
@@ -531,7 +555,7 @@ onMounted(() => {
         </p>
       </div>
 
-      <p class="mt-3 text-xs text-amber-300">
+      <p class="mt-3 text-xs text-slate-500 flex justify-end">
         Supported inference adapters in this phase: exported `.tflite`, `.keras`, `.h5`, `.pth`, `.pt` with valid metadata contract.
       </p>
     </BaseCard>

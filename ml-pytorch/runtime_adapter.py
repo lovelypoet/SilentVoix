@@ -72,7 +72,7 @@ def _looks_like_state_dict(obj: Any) -> bool:
     return False
 
 
-def load_runtime(model_path: str, export_format: str) -> Dict[str, Any]:
+def load_runtime(model_path: str, export_format: str, is_state_dict: bool = False, has_model_class: bool = False) -> Dict[str, Any]:
     normalized = normalize_export_format(export_format)
     path = Path(model_path).resolve()
     if not path.exists():
@@ -103,19 +103,59 @@ def load_runtime(model_path: str, export_format: str) -> Dict[str, Any]:
 
         runtime["torch"] = torch
         model: Any = None
-        try:
-            model = torch.jit.load(str(path), map_location="cpu")
-        except Exception:
-            model = torch.load(str(path), map_location="cpu")
+        
+        if is_state_dict:
+            import importlib.util
+            import sys
+            import torch.nn as nn
+            
+            if not has_model_class:
+                raise ValueError("Model is defined as state_dict but no model class file (model.py) was provided.")
+            
+            model_class_path = path.parent / "model.py"
+            if not model_class_path.exists():
+                raise FileNotFoundError(f"Model class file not found at {model_class_path}")
+            
+            spec = importlib.util.spec_from_file_location("dynamic_model", str(model_class_path))
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["dynamic_model"] = mod
+            spec.loader.exec_module(mod)
+            
+            # Find the first nn.Module class in the loaded module
+            model_class = None
+            for name, obj in mod.__dict__.items():
+                if isinstance(obj, type) and issubclass(obj, nn.Module) and obj is not nn.Module:
+                    model_class = obj
+                    break
+            
+            if not model_class:
+                raise ValueError("Could not find any class inheriting from nn.Module in the provided model class file.")
+            
+            model_instance = model_class()
+            try:
+                state_dict = torch.load(str(path), map_location="cpu", weights_only=True)
+            except Exception:
+                state_dict = torch.load(str(path), map_location="cpu")
+            model_instance.load_state_dict(state_dict)
+            model = model_instance
+        else:
+            try:
+                model = torch.jit.load(str(path), map_location="cpu")
+            except Exception:
+                try:
+                    model = torch.load(str(path), map_location="cpu", weights_only=False)
+                except Exception:
+                    model = torch.load(str(path), map_location="cpu")
 
-        if _looks_like_state_dict(model):
-            raise ValueError(
-                "PyTorch checkpoint appears to be a state_dict-only artifact. "
-                "Export a callable model (TorchScript or full nn.Module) for playground inference."
-            )
+            if _looks_like_state_dict(model):
+                raise ValueError(
+                    "PyTorch checkpoint appears to be a state_dict-only artifact. "
+                    "Export a callable model (TorchScript or full nn.Module) for playground inference, "
+                    "or check 'state_dict' during upload and provide the Python model class definition."
+                )
 
-        if isinstance(model, dict) and "model" in model and callable(model["model"]):
-            model = model["model"]
+            if isinstance(model, dict) and "model" in model and callable(model["model"]):
+                model = model["model"]
 
         if hasattr(model, "eval"):
             model.eval()
