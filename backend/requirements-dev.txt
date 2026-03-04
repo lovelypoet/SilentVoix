@@ -1,6 +1,12 @@
 # Development dependencies (optional)
 # Install with: pip install -r requirements-dev.txt
 
+# Testing
+pytest==8.2.0
+pytest-asyncio==0.24.0
+pytest-cov==5.0.0
+pytest-mock==3.14.0
+
 # Linting and code quality
 flake8==6.1.0
 black==23.12.1

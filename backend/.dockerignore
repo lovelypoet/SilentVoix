@@ -10,6 +10,10 @@ checkpoints/
 .env
 .venv/
 venv/
+venv
+AI/model_library/
+AI/results/
+tts_cache/
 *.log
 *.db
 node_modules/

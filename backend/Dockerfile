@@ -1,22 +1,17 @@
-# Enhanced Backend Dockerfile for Sign Glove
 FROM python:3.11.6-slim
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libssl-dev \
-    libffi-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     ca-certificates \
     curl \
-    build-essential \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
@@ -25,8 +20,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt
 
 # Copy application code
 COPY . .
