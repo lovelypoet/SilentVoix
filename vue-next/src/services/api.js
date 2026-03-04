@@ -55,29 +55,8 @@ export default {
     update: (sessionId, label) => api.put(`/gestures/${sessionId}?label=${label}`),
   },
 
-  // ===================== Training API =====================
+  // ===================== Training API (Deprecated — lateFusion only) =====================
   training: {
-    getResults: () => api.get('/training/'),
-    getLatestResult: () => api.get('/training/latest'),
-    getMetrics: () => api.get('/training/metrics/latest'),
-    trigger: (dualHand = false) => api.post(`/training/trigger?dual_hand=${dualHand}`),
-    run: (file, dualHand = false) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      return api.post(`/training/run?dual_hand=${dualHand}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-    },
-    // Dual Hand
-    triggerDual: () => api.post('/training/dual-hand/trigger'),
-    runDual: (file) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      return api.post('/training/dual-hand/run', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-    },
-    getDualData: () => api.get('/training/dual-hand/data'),
     getDataInfo: () => api.get('/training/data/info'),
     lateFusion: {
       run: (mode = 'single', gloveWeight = 0.8) =>
@@ -91,9 +70,6 @@ export default {
       downloadLatestArtifact: (mode = 'single', artifact = 'report') =>
         api.get(`/training/late-fusion/latest/artifact?mode=${mode}&artifact=${artifact}`, { responseType: 'blob' })
     },
-    // Conversion
-    convertToDual: (sessionId) => api.post(`/training/convert-to-dual-hand/${sessionId}`),
-    checkConversion: (sessionId) => api.get(`/training/conversion-status/${sessionId}`),
   },
 
   // ===================== Audio API =====================
