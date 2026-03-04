@@ -4,6 +4,8 @@ Centralized error handling and logging system.
 import logging
 import traceback
 import uuid
+import time
+from collections import deque
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from fastapi import HTTPException, Request
@@ -189,9 +191,15 @@ class PerformanceMonitor:
     def __init__(self):
         self.request_times: Dict[str, list] = {}
         self.error_counts: Dict[str, int] = {}
+        # Rolling request telemetry used by monitoring dashboards.
+        self.request_events = deque(maxlen=5000)
     
     def record_request_time(self, path: str, method: str, duration: float):
         """Record request duration."""
+        self.record_request(path, method, duration, status_code=200)
+
+    def record_request(self, path: str, method: str, duration: float, status_code: int):
+        """Record request duration with status code and timestamp."""
         key = f"{method} {path}"
         if key not in self.request_times:
             self.request_times[key] = []
@@ -200,6 +208,17 @@ class PerformanceMonitor:
         # Keep only last 1000 requests
         if len(self.request_times[key]) > 1000:
             self.request_times[key] = self.request_times[key][-1000:]
+
+        if status_code >= 500:
+            self.error_counts[key] = self.error_counts.get(key, 0) + 1
+
+        self.request_events.append({
+            "timestamp": time.time(),
+            "path": path,
+            "method": method,
+            "duration_ms": float(duration) * 1000.0,
+            "status_code": int(status_code),
+        })
     
     def record_error(self, path: str, method: str):
         """Record error occurrence."""
@@ -222,15 +241,38 @@ class PerformanceMonitor:
         
         return stats
 
+    def get_window_stats(self, window_seconds: int = 300, exclude_paths: Optional[set] = None) -> Dict[str, Any]:
+        """Get recent request stats for a fixed time window."""
+        now_ts = time.time()
+        cutoff = now_ts - max(1, int(window_seconds))
+        excluded = exclude_paths or set()
+
+        recent = [
+            event for event in self.request_events
+            if event.get("timestamp", 0) >= cutoff and event.get("path") not in excluded
+        ]
+        durations_ms = [float(event.get("duration_ms", 0.0)) for event in recent]
+        request_count = len(recent)
+        error_count = sum(1 for event in recent if int(event.get("status_code", 0)) >= 500)
+
+        return {
+            "window_seconds": int(window_seconds),
+            "request_count": request_count,
+            "error_count": error_count,
+            "error_rate_pct": (float(error_count) / request_count * 100.0) if request_count else 0.0,
+            "durations_ms": durations_ms,
+        }
+
 # Global performance monitor
 performance_monitor = PerformanceMonitor()
 
-def log_request_performance(request: Request, duration: float):
+def log_request_performance(request: Request, duration: float, status_code: int = 200):
     """Log request performance metrics."""
-    performance_monitor.record_request_time(
+    performance_monitor.record_request(
         request.url.path,
         request.method,
-        duration
+        duration,
+        status_code=status_code,
     )
     
     # Log slow requests

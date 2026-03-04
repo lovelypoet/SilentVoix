@@ -170,6 +170,12 @@ export default {
     }
   },
 
+  // ===================== Dashboard API =====================
+  dashboard: {
+    legacy: () => api.get('/dashboard'),
+    monitoring: () => api.get('/dashboard/monitoring'),
+  },
+
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');

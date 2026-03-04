@@ -25,7 +25,7 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         duration = time.time() - start_time
         
         # Log performance metrics
-        log_request_performance(request, duration)
+        log_request_performance(request, duration, status_code=response.status_code)
         
         # Add performance headers
         response.headers["X-Response-Time"] = f"{duration:.3f}s"
