@@ -36,9 +36,6 @@ watch(
         <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Training
         </RouterLink>
-        <RouterLink v-if="canAccessExtendedPages" to="/sensor-training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
-          Sensor Training
-        </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Gesture Library
         </RouterLink>
@@ -83,9 +80,6 @@ watch(
         </RouterLink>
         <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Training
-        </RouterLink>
-        <RouterLink v-if="canAccessExtendedPages" to="/sensor-training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
-          Sensor Training
         </RouterLink>
         <RouterLink to="/library" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Gesture Library

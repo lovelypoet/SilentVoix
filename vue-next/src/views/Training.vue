@@ -189,6 +189,18 @@ const trainingCards = computed(() => {
 
   if (canAccessFusionWorkspace.value) {
     cards.splice(1, 0, {
+      id: 'sensor-training',
+      icon: '⬢',
+      title: 'Sensor Training',
+      description: 'Open glove-only capture and training workflows for sensor datasets.',
+      buttonLabel: 'Open Sensor Training',
+      buttonVariant: 'primary',
+      disabled: false,
+      locked: false,
+      onClick: startSensorTraining
+    })
+
+    cards.splice(2, 0, {
       id: 'fusion-workspace',
       icon: '◆',
       title: 'Fusion Workspace',
@@ -221,6 +233,10 @@ const startTraining = async () => {
 
 const startFusionWorkspace = () => {
   router.push('/fusion')
+}
+
+const startSensorTraining = () => {
+  router.push('/sensor-training')
 }
 
 const startRealtimePlayground = () => {
