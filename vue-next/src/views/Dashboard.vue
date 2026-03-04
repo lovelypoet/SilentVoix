@@ -94,11 +94,11 @@ onUnmounted(() => {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <BaseCard class="soft-card">
         <div class="text-slate-300 text-sm mb-2">Today’s Goal</div>
-        <div class="text-2xl font-bold text-white mb-2">3 gestures, 5 minutes</div>
+        <div class="text-2xl font-bold text-white mb-2">6 gestures, 12 minutes</div>
         <div class="progress-track">
-          <div class="progress-fill" style="width: 0%;"></div>
+          <div class="progress-fill" style="width: 58%;"></div>
         </div>
-        <div class="text-xs text-slate-400 mt-2">Let’s get your first session in.</div>
+        <div class="text-xs text-slate-400 mt-2">7 minutes completed so far today.</div>
       </BaseCard>
 
       <BaseCard class="soft-card">
@@ -112,8 +112,8 @@ onUnmounted(() => {
 
       <BaseCard class="soft-card">
         <div class="text-slate-300 text-sm mb-2">Streak Status</div>
-        <div class="text-2xl font-bold text-white mb-2">No streak yet</div>
-        <div class="text-slate-400 text-sm">Complete 1 session to begin tracking.</div>
+        <div class="text-2xl font-bold text-white mb-2">5-day streak</div>
+        <div class="text-slate-400 text-sm">Keep it up. You are one day from your best streak.</div>
       </BaseCard>
     </div>
 
@@ -121,26 +121,26 @@ onUnmounted(() => {
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <BaseCard class="soft-card">
         <div class="text-slate-400 text-sm mb-1">Total Training Time</div>
-        <div class="text-3xl font-bold text-white">--</div>
+        <div class="text-3xl font-bold text-white">18h 40m</div>
         <div class="text-teal-300 text-sm mt-2 flex items-center gap-1">
-          <span>0h</span>
+          <span>2h 10m</span>
           <span class="text-slate-500">this week</span>
         </div>
       </BaseCard>
 
       <BaseCard class="soft-card">
         <div class="text-slate-400 text-sm mb-1">Gestures Learned</div>
-        <div class="text-3xl font-bold text-white">0</div>
+        <div class="text-3xl font-bold text-white">27</div>
         <div class="text-teal-300 text-sm mt-2 flex items-center gap-1">
-          <span>Level 0</span>
-          <span class="text-slate-500">Novice</span>
+          <span>Level 4</span>
+          <span class="text-slate-500">Intermediate</span>
         </div>
       </BaseCard>
 
       <BaseCard class="soft-card">
         <div class="text-slate-400 text-sm mb-1">Accuracy Streak</div>
-        <div class="text-3xl font-bold text-white">--%</div>
-        <div class="text-slate-500 text-sm mt-2">No sessions yet</div>
+        <div class="text-3xl font-bold text-white">91.8%</div>
+        <div class="text-slate-500 text-sm mt-2">Last 8 sessions above 88%</div>
       </BaseCard>
     </div>
 
@@ -150,8 +150,23 @@ onUnmounted(() => {
       <button class="text-sm text-slate-400 hover:text-white transition-colors">View all</button>
     </div>
     <div class="grid grid-cols-1 gap-4">
-      <BaseCard class="p-8 text-center text-slate-400 soft-card">
-        No recent activity yet. Your first session will appear here.
+      <BaseCard class="soft-card">
+        <div class="flex items-center justify-between text-sm">
+          <div>
+            <p class="text-slate-200 font-medium">Evening practice completed</p>
+            <p class="text-slate-400">9 gestures reviewed, 93% average accuracy</p>
+          </div>
+          <p class="text-slate-500">2h ago</p>
+        </div>
+      </BaseCard>
+      <BaseCard class="soft-card">
+        <div class="flex items-center justify-between text-sm">
+          <div>
+            <p class="text-slate-200 font-medium">Warm-up session</p>
+            <p class="text-slate-400">Finger mobility + 3 quick recognition drills</p>
+          </div>
+          <p class="text-slate-500">Yesterday</p>
+        </div>
       </BaseCard>
     </div>
   </div>
