@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import numpy as np
 import pytest
 from fastapi import HTTPException
+
+_TEST_ROOT = Path(__file__).resolve().parents[1]
+os.environ["DEBUG"] = "false"
+os.environ["MODEL_LIBRARY_DIR"] = str(_TEST_ROOT / "AI" / "model_library")
 
 from AI.runtime_adapter import normalize_export_format, validate_export_and_extension
 from routes.playground_routes import (

@@ -97,3 +97,56 @@ jobs:
           LINTER_RULES_PATH: /
           FILTER_REGEX_INCLUDE: .*vue-next/src/.* 
           FILTER_REGEX_EXCLUDE: .*vue-next/tests/.* #  Exclude tests
+
+  backend-runtime-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install smoke script deps
+        run: python -m pip install --upgrade pip requests
+
+      - name: Start runtime-split stack
+        run: |
+          USE_RUNTIME_SERVICES=true USE_WORKER_LIBRARY=true \
+          docker compose -f docker-compose.dev.yml --profile runtime-split up -d --build
+
+      - name: Wait for backend and runtime services
+        run: |
+          set -euo pipefail
+          for url in \
+            "http://localhost:8000/health" \
+            "http://localhost:8091/health" \
+            "http://localhost:8092/health" \
+            "http://localhost:8093/health"
+          do
+            echo "Waiting for ${url}"
+            for i in {1..60}; do
+              if curl -fsS "$url" >/dev/null; then
+                echo "Healthy: ${url}"
+                break
+              fi
+              if [ "$i" -eq 60 ]; then
+                echo "Timed out waiting for ${url}" >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+
+      - name: Run playground runtime smoke test
+        run: python backend/scripts/smoke_playground_runtime.py --base-url http://localhost:8000
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.dev.yml --profile runtime-split logs --no-color
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f docker-compose.dev.yml --profile runtime-split down -v --remove-orphans

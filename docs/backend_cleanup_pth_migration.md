@@ -9,7 +9,7 @@
 ## Implementation Status (as of 2026-03-04)
 - Completed:
   - Feature flags added: `TRAINING_FEATURES_ENABLED` and `ML_RUNTIME`.
-  - Training router mount is now conditional in backend startup (`TRAINING_FEATURES_ENABLED=false` disables `/training/*` mount).
+  - Legacy `/training/*` router surface is removed from active backend route mounts.
   - Multi-format runtime adapter implemented for `.tflite`, `.keras`, `.h5`, `.pth`, `.pt`.
   - Playground model runtime-check endpoint implemented: `GET /playground/models/{model_id}/runtime-check`.
   - Model library storage centralized at `backend/AI/model_library` (with registry + per-model folders).
@@ -19,9 +19,22 @@
 - Verified by manual run:
   - After rebuilding/rerunning the image, uploaded/imported model is visible and loaded in web UI.
 - Still pending:
-  - Full retirement/removal of legacy training code paths and docs.
+  - Full retirement/removal of remaining training-oriented code references and docs.
   - Full runtime unification for non-playground legacy prediction endpoints.
-  - End-to-end automated tests for each supported runtime format.
+  - End-to-end Docker smoke/contract coverage across runtime services.
+
+## System Audit Checklist (2026-03-05)
+- [x] Runtime split service folders exist: `backend`, `ml-tensorflow`, `ml-pytorch`, `worker-library`.
+- [x] Runtime service contract doc exists and is aligned: `docs/runtime_service_contract.md`.
+- [x] Backend API has split dependencies (`backend/requirements-api.txt` excludes TensorFlow/PyTorch).
+- [x] Compose runtime profiles exist (`tf`, `torch`, `worker`, `runtime-split`, `full`).
+- [x] `docker-compose.dev.yml` default boot now works cleanly with `mongo + backend + frontend`.
+- [x] Runtime-split profile boots and service health endpoints respond (`8091`, `8092`, `8093`).
+- [x] Runtime contract unit tests pass locally (`backend/tests/test_runtime_contracts.py`).
+- [x] Local scripted E2E smoke exists for `upload -> activate -> runtime-check -> predict` (`backend/scripts/smoke_playground_runtime.py`).
+- [x] Playground upload/activate/predict smoke test is automated in CI (`.github/workflows/test.yml` -> `backend-runtime-smoke` job).
+- [ ] Legacy training-oriented admin cleanup endpoints are still present under `/admin/*`.
+- [ ] Root backend settings/config still include legacy TFLite/training-era defaults that should be simplified.
 
 ## Product Scope Decision
 - New scope:
@@ -50,7 +63,7 @@
 ## Current Legacy Surface (Observed)
 - TensorFlow training script writes `.tflite` artifacts (`train_dual_hand_model.py`).
 - Inference script initializes `tf.lite.Interpreter` (`gesture_model_inference.py`).
-- Training routes are still active (`/training/run`, `/training/trigger`, dual-hand, late-fusion).
+- Legacy `/training/*` API routes are removed from active backend route mounts.
 - Playground runtime now supports `.tflite`, `.keras`, `.h5`, `.pth`, `.pt`.
 
 ## Deprecation Matrix (Scope Change)
@@ -80,7 +93,7 @@ Acceptance criteria:
 - Training run endpoints are blocked or clearly marked deprecated.
 - App boots with either inference runtime value during transition.
 - No direct TensorFlow imports outside the legacy adapter.
-Status: In progress (feature flags and conditional training router mount are implemented).
+Status: Completed (training routes removed from active mount; runtime flags retained for transition safety).
 
 ### Phase 2: Introduce Torch Runtime
 - Add a new inference module (example: `backend/AI/torch_inference.py`) that:
@@ -105,7 +118,7 @@ Status: In progress (runtime adapter + playground `.pth` path + runtime-check en
 Acceptance criteria:
 - `docker compose -f docker-compose.dev.yml up backend` runs cleanly.
 - No TensorFlow import errors and no unresolved torch libs.
-Status: In progress (`torch` dependency added; final cleanup/removal of TensorFlow not done yet).
+Status: In progress (`requirements-api.txt` split is active; compose defaults are now stable; final legacy dependency cleanup remains).
 
 ### Phase 4: Remove Training Surface
 - Remove training endpoints and their service wiring from runtime.
@@ -181,6 +194,13 @@ Why this helps:
 - These files are runtime artifacts and should be gitignored (not versioned as source code).
 
 ## Testing Procedure
+0. Automated local smoke (recommended)
+   - Ensure runtime services are enabled:
+     - `USE_RUNTIME_SERVICES=true USE_WORKER_LIBRARY=true docker compose -f docker-compose.dev.yml --profile runtime-split up -d`
+   - Run:
+     - `cd backend && ./venv/bin/python scripts/smoke_playground_runtime.py --base-url http://localhost:8000`
+   - Expected result: script prints `Smoke test passed` and removes uploaded test model unless `--keep-model` is provided.
+
 1. Pre-check configuration
    - Set `ML_RUNTIME=tflite`, then `ML_RUNTIME=torch` in `.env` (one at a time).
    - Confirm model/env vars point to valid artifacts (`.tflite` for legacy, `.pth` for torch path).
@@ -241,14 +261,14 @@ The following table tracks the status of key API paths during the migration from
 
 | API Path | Method | Status | Notes |
 | :--- | :--- | :--- | :--- |
-| `/training/run` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
-| `/training/trigger` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
-| `/training/dual-hand/run` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
-| `/training/late-fusion/run` | `POST` | **Deprecated** | Use Playground Model Upload instead. |
-| `/training/metrics/latest` | `GET` | **Deprecated** | Metrics should be provided in uploaded metadata. |
-| `/training/visualizations/*` | `GET` | **Deprecated** | Visualizations are tied to legacy training. |
-| `/training/data/info` | `GET` | **Deprecated** | Data collection remains active for external training. |
-| `/training/late-fusion/predict` | `POST` | **Active** | Remains active for inference testing. |
+| `/training/run` | `POST` | **Removed** | Use Playground Model Upload instead. |
+| `/training/trigger` | `POST` | **Removed** | Use Playground Model Upload instead. |
+| `/training/dual-hand/run` | `POST` | **Removed** | Use Playground Model Upload instead. |
+| `/training/late-fusion/run` | `POST` | **Removed** | Use Playground Model Upload instead. |
+| `/training/metrics/latest` | `GET` | **Removed** | Metrics should be provided in uploaded metadata. |
+| `/training/visualizations/*` | `GET` | **Removed** | Visualizations are tied to legacy training. |
+| `/training/data/info` | `GET` | **Removed** | Data collection remains active for external training. |
+| `/training/late-fusion/predict` | `POST` | **Removed** | Use playground inference endpoints instead. |
 | `/playground/models/upload` | `POST` | **Active** | Primary entry point for new models. |
 | `/playground/models` | `GET` | **Active** | List and manage uploaded models. |
 | `/playground/models/{id}/activate` | `POST` | **Active** | Set the current model for inference. |

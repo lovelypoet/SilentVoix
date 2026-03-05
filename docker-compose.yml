@@ -21,12 +21,30 @@ services:
       - "c 166:* rmw"
       - "c 188:* rmw"
     environment:
-    - MONGO_URI=mongodb+srv://namanh14122005:test123@signglove-cluster.2fgsv8h.mongodb.net/sign_glove?retryWrites=true&w=majority
-    - DB_NAME=sign_glove
-    - TTS_PROVIDER=gtts
-    - BACKEND_BASE_URL=http://localhost:8080
-    - SERIAL_PORT_SINGLE=/dev/ttyACM0
+      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017}
+      - DB_NAME=${DB_NAME:-sign_glove}
+      - TTS_PROVIDER=gtts
+      - BACKEND_BASE_URL=http://localhost:8080
+      - SERIAL_PORT_SINGLE=/dev/ttyACM0
+    depends_on:
+      mongo:
+        condition: service_healthy
     volumes:
       - /dev:/dev
       - ./backend/data:/app/data
-      
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  mongo_data:
