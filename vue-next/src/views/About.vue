@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 
-const teamPhotoUrl = `/pics/${encodeURIComponent('Ảnh nhóm V hand .webp')}`
+const teamPhotoUrl = '/pics/team-upscaled.webp'
 const activeMemberId = ref(null)
 const memberKey = (member) => member.id || member.name
 
@@ -108,11 +108,11 @@ const supportMembers = computed(() => members.filter((member) => member.category
             Hover a marker on the team photo to spotlight the corresponding member card.
           </p>
         </div>
-        <div class="relative group">
+        <div class="relative group about-photo-shell">
           <img
             :src="teamPhotoUrl"
             alt="SilentVoix team"
-            class="w-full h-64 lg:h-full object-cover"
+            class="about-photo-image"
             loading="lazy"
           />
           <button
@@ -240,6 +240,22 @@ const supportMembers = computed(() => members.filter((member) => member.category
   background: linear-gradient(130deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.7));
 }
 
+.about-photo-shell {
+  width: min(100%, 34rem);
+  aspect-ratio: 4 / 3;
+  margin: 1rem auto 1.25rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.about-photo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .member-card {
   border: 1px solid rgba(148, 163, 184, 0.2);
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.45));
@@ -303,6 +319,11 @@ const supportMembers = computed(() => members.filter((member) => member.category
 }
 
 @media (max-width: 768px) {
+  .about-photo-shell {
+    width: min(100%, 30rem);
+    margin-bottom: 1rem;
+  }
+
   .member-card-active,
   .member-card-dim {
     transform: none;

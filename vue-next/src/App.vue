@@ -7,12 +7,14 @@ import { useAuthStore } from './stores/auth' // Import useAuthStore
 const route = useRoute()
 const authStore = useAuthStore()
 const isMobileNavOpen = ref(false)
+const frameExcludedRoutes = new Set(['profile', 'training'])
 const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
 const canAccessAdminPages = computed(() => authStore.user?.role === 'admin')
 const isFullscreenLayout = computed(() => {
   if (route.meta.layout === 'empty' || route.meta.layout === 'fullscreen') return true
   return route.name === 'training' && route.query.trainingSession === '1'
 })
+const useContentFrame = computed(() => !isFullscreenLayout.value && !frameExcludedRoutes.has(String(route.name || '')))
 
 watch(
   () => route.fullPath,
@@ -123,7 +125,13 @@ watch(
         </button>
         <div class="text-sm text-slate-400">Menu</div>
       </div>
-      <RouterView />
+      <div
+        v-if="useContentFrame"
+        class="content-frame"
+      >
+        <RouterView />
+      </div>
+      <RouterView v-else />
     </main>
   </div>
 </template>
@@ -163,6 +171,35 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .nav-active {
     animation: none;
+  }
+}
+
+.content-frame {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-radius: 18px;
+  border: 1px solid rgba(45, 212, 191, 0.25);
+  background:
+    linear-gradient(180deg, rgba(45, 212, 191, 0.08), rgba(15, 23, 42, 0.0) 18%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(2, 6, 23, 0.95));
+  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .content-frame {
+    margin-top: 1rem;
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content-frame {
+    margin-top: 1.5rem;
+    margin-left: 1.5rem;
+    width: calc(100% - 1.5rem);
+    max-width: none;
+    padding: 1.5rem;
   }
 }
 </style>
