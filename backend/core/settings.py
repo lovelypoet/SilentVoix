@@ -3,7 +3,7 @@ Centralized settings for the sign glove system.
 Loads all configuration from environment variables or defaults.
 """
 from pydantic_settings import BaseSettings
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from typing import List, Dict, Any, Optional, ClassVar
 import os
 from pathlib import Path
@@ -23,18 +23,18 @@ class Settings(BaseSettings):
     )
     
     # Environment
-    ENVIRONMENT: str = Field("development", env="ENVIRONMENT")
-    DEBUG: bool = Field(False, env="DEBUG")
+    ENVIRONMENT: str = Field("development")
+    DEBUG: bool = Field(False)
     
     # Security
-    JWT_SECRET_KEY: str = Field("your-secret-key-change-in-production", env="JWT_SECRET_KEY")
-    JWT_ALGORITHM: str = Field("HS256", env="JWT_ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, env="ACCESS_TOKEN_EXPIRE_MINUTES")
-    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(7, env="REFRESH_TOKEN_EXPIRE_DAYS")
+    JWT_SECRET_KEY: str = Field("your-secret-key-change-in-production")
+    JWT_ALGORITHM: str = Field("HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(7)
     
     # Database
-    MONGO_URI: str = Field("mongodb://localhost:27017", env="MONGO_URI")
-    DB_NAME: str = Field("signglove", env="DB_NAME")
+    MONGO_URI: str = Field("mongodb://localhost:27017")
+    DB_NAME: str = Field("signglove")
     TEST_DB_NAME: str = "test_signglove"
     # Legacy duplicates removed (ENVIRONMENT/SECRET_KEY/ALGORITHM/ACCESS_TOKEN_EXPIRE_MINUTES)
 
@@ -48,24 +48,24 @@ class Settings(BaseSettings):
     GESTURE_DATA_PATH: str = os.path.join(DATA_DIR, 'gesture_data.csv')
     MODEL_LIBRARY_DIR: str = os.path.join(AI_DIR, 'model_library')
     # Legacy local fallback artifacts (kept only for non-runtime-split local mode).
-    LEGACY_TFLITE_MODEL_PATH: str = Field(os.path.join(AI_DIR, 'gesture_model.tflite'), env="LEGACY_TFLITE_MODEL_PATH")
-    LEGACY_TRAINING_METRICS_PATH: str = Field(os.path.join(AI_DIR, 'training_metrics.json'), env="LEGACY_TRAINING_METRICS_PATH")
+    LEGACY_TFLITE_MODEL_PATH: str = Field(os.path.join(AI_DIR, 'gesture_model.tflite'))
+    LEGACY_TRAINING_METRICS_PATH: str = Field(os.path.join(AI_DIR, 'training_metrics.json'))
     
     # CORS
-    CORS_ORIGINS: List[str] = Field(["http://localhost:5173"], env="CORS_ORIGINS")
+    CORS_ORIGINS: List[str] = Field(["http://localhost:5173"])
 
     # Backend base URL for internal calls and clients
-    BACKEND_BASE_URL: str = Field("http://localhost:8000", env="BACKEND_BASE_URL")
+    BACKEND_BASE_URL: str = Field("http://localhost:8000")
 
     # TTS config
-    TTS_ENABLED: bool = Field(True, env="TTS_ENABLED")
-    TTS_PROVIDER: str = Field("pyttsx3", env="TTS_PROVIDER")
-    TTS_VOICE: str = Field("ur-IN-SalmanNeural", env="TTS_VOICE")
-    TTS_RATE: int = Field(150, env="TTS_RATE")
-    TTS_VOLUME: float = Field(2.0, env="TTS_VOLUME")
-    TTS_CACHE_ENABLED: bool = Field(True, env="TTS_CACHE_ENABLED")
-    TTS_CACHE_DIR: str = Field("tts_cache", env="TTS_CACHE_DIR")
-    TTS_FILTER_IDLE_GESTURES: bool = Field(True, env="TTS_FILTER_IDLE_GESTURES")
+    TTS_ENABLED: bool = Field(True)
+    TTS_PROVIDER: str = Field("pyttsx3")
+    TTS_VOICE: str = Field("ur-IN-SalmanNeural")
+    TTS_RATE: int = Field(150)
+    TTS_VOLUME: float = Field(2.0)
+    TTS_CACHE_ENABLED: bool = Field(True)
+    TTS_CACHE_DIR: str = Field("tts_cache")
+    TTS_FILTER_IDLE_GESTURES: bool = Field(True)
     
     # Class variable for TTS configuration
     TTS_CONFIG: ClassVar[Dict[str, Any]] = {
@@ -76,12 +76,12 @@ class Settings(BaseSettings):
     }
 
     # ESP32 config
-    ESP32_IP: str = Field("192.168.1.123", env="ESP32_IP")
+    ESP32_IP: str = Field("192.168.1.123")
 
     # Serial ports (optional UI status checks)
-    SERIAL_PORT_SINGLE: str = Field("COM6", env="SERIAL_PORT_SINGLE")
-    SERIAL_PORT_LEFT: str = Field("COM5", env="SERIAL_PORT_LEFT")
-    SERIAL_PORT_RIGHT: str = Field("COM6", env="SERIAL_PORT_RIGHT")
+    SERIAL_PORT_SINGLE: str = Field("COM6")
+    SERIAL_PORT_LEFT: str = Field("COM5")
+    SERIAL_PORT_RIGHT: str = Field("COM6")
     
     # Sensor/processing constants
     FLEX_SENSORS: int = 5
@@ -100,10 +100,10 @@ class Settings(BaseSettings):
     }
     
     # Performance and monitoring
-    LOG_LEVEL: str = Field("INFO", env="LOG_LEVEL")
-    LOG_FILE: str = Field("logs/app.log", env="LOG_FILE")
-    MAX_REQUEST_SIZE: int = Field(10 * 1024 * 1024, env="MAX_REQUEST_SIZE")  # 10MB
-    RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(60, env="RATE_LIMIT_REQUESTS_PER_MINUTE")
+    LOG_LEVEL: str = Field("INFO")
+    LOG_FILE: str = Field("logs/app.log")
+    MAX_REQUEST_SIZE: int = Field(10 * 1024 * 1024)  # 10MB
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(60)
     
     # API configuration
     API_V1_STR: str = "/api/v1"
@@ -111,55 +111,58 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     
     # File upload settings
-    UPLOAD_DIR: str = Field("uploads", env="UPLOAD_DIR")
-    MAX_FILE_SIZE: int = Field(50 * 1024 * 1024, env="MAX_FILE_SIZE")  # 50MB
-    ALLOWED_FILE_TYPES: List[str] = Field([".csv", ".json", ".txt"], env="ALLOWED_FILE_TYPES")
+    UPLOAD_DIR: str = Field("uploads")
+    MAX_FILE_SIZE: int = Field(50 * 1024 * 1024)  # 50MB
+    ALLOWED_FILE_TYPES: List[str] = Field([".csv", ".json", ".txt"])
 
     # Runtime flags
-    RUNTIME_PREFLIGHT_ON_STARTUP: bool = Field(True, env="RUNTIME_PREFLIGHT_ON_STARTUP")
-    USE_RUNTIME_SERVICES: bool = Field(False, env="USE_RUNTIME_SERVICES")
-    ML_TENSORFLOW_URL: str = Field("http://ml-tensorflow:8091", env="ML_TENSORFLOW_URL")
-    ML_PYTORCH_URL: str = Field("http://ml-pytorch:8092", env="ML_PYTORCH_URL")
-    USE_WORKER_LIBRARY: bool = Field(False, env="USE_WORKER_LIBRARY")
-    WORKER_LIBRARY_URL: str = Field("http://worker-library:8093", env="WORKER_LIBRARY_URL")
+    RUNTIME_PREFLIGHT_ON_STARTUP: bool = Field(True)
+    USE_RUNTIME_SERVICES: bool = Field(False)
+    ML_TENSORFLOW_URL: str = Field("http://ml-tensorflow:8091")
+    ML_PYTORCH_URL: str = Field("http://ml-pytorch:8092")
+    USE_WORKER_LIBRARY: bool = Field(False)
+    WORKER_LIBRARY_URL: str = Field("http://worker-library:8093")
 
     # Monitoring thresholds (dashboard alerts)
-    MONITORING_WINDOW_SECONDS: int = Field(300, env="MONITORING_WINDOW_SECONDS")
-    MONITORING_CACHE_TTL_SECONDS: int = Field(15, env="MONITORING_CACHE_TTL_SECONDS")
-    MONITORING_RUNTIME_HEALTH_TIMEOUT_SECONDS: float = Field(1.5, env="MONITORING_RUNTIME_HEALTH_TIMEOUT_SECONDS")
-    MONITORING_WARN_ERROR_RATE_5M_PCT: float = Field(2.0, env="MONITORING_WARN_ERROR_RATE_5M_PCT")
-    MONITORING_CRIT_ERROR_RATE_5M_PCT: float = Field(5.0, env="MONITORING_CRIT_ERROR_RATE_5M_PCT")
-    MONITORING_WARN_LATENCY_P95_MS: float = Field(500.0, env="MONITORING_WARN_LATENCY_P95_MS")
-    MONITORING_CRIT_LATENCY_P95_MS: float = Field(1000.0, env="MONITORING_CRIT_LATENCY_P95_MS")
-    MONITORING_WARN_DROP_RATE: float = Field(0.02, env="MONITORING_WARN_DROP_RATE")
-    MONITORING_WARN_MISSING_RATIO: float = Field(0.01, env="MONITORING_WARN_MISSING_RATIO")
-    MONITORING_WARN_DRIFT_SCORE: float = Field(0.75, env="MONITORING_WARN_DRIFT_SCORE")
+    MONITORING_WINDOW_SECONDS: int = Field(300)
+    MONITORING_CACHE_TTL_SECONDS: int = Field(15)
+    MONITORING_RUNTIME_HEALTH_TIMEOUT_SECONDS: float = Field(1.5)
+    MONITORING_WARN_ERROR_RATE_5M_PCT: float = Field(2.0)
+    MONITORING_CRIT_ERROR_RATE_5M_PCT: float = Field(5.0)
+    MONITORING_WARN_LATENCY_P95_MS: float = Field(500.0)
+    MONITORING_CRIT_LATENCY_P95_MS: float = Field(1000.0)
+    MONITORING_WARN_DROP_RATE: float = Field(0.02)
+    MONITORING_WARN_MISSING_RATIO: float = Field(0.01)
+    MONITORING_WARN_DRIFT_SCORE: float = Field(0.75)
     
-    @validator("CORS_ORIGINS", pre=True)
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
     def parse_cors_origins(cls, v):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",")]
         return v
     
-    @validator("ALLOWED_FILE_TYPES", pre=True)
+    @field_validator("ALLOWED_FILE_TYPES", mode="before")
+    @classmethod
     def parse_allowed_file_types(cls, v):
         if isinstance(v, str):
             return [file_type.strip() for file_type in v.split(",")]
         return v
     
-    @validator("JWT_SECRET_KEY")
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
     def validate_jwt_secret_key(cls, v):
         if v == "your-secret-key-change-in-production" and os.getenv("ENVIRONMENT") == "production":
             raise ValueError("JWT_SECRET_KEY must be set in production")
         return v
 
     # Auth/JWT settings
-    SECRET_KEY: str = Field("change-me-in-prod", env="SECRET_KEY")
-    COOKIE_SECURE: bool = Field(False, env="COOKIE_SECURE")
+    SECRET_KEY: str = Field("change-me-in-prod")
+    COOKIE_SECURE: bool = Field(False)
 
     # Optional default editor seed
-    DEFAULT_EDITOR_EMAIL: Optional[str] = Field(None, env="DEFAULT_EDITOR_EMAIL")
-    DEFAULT_EDITOR_PASSWORD: Optional[str] = Field(None, env="DEFAULT_EDITOR_PASSWORD")
+    DEFAULT_EDITOR_EMAIL: Optional[str] = Field(None)
+    DEFAULT_EDITOR_PASSWORD: Optional[str] = Field(None)
 
     def is_testing(self) -> bool:
         """Return True when running in tests or CI to disable background loops."""
