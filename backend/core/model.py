@@ -33,12 +33,12 @@ def load_model():
         if tf is None:
             logger.info("Skipping local TFLite model load; will forward to ml-tensorflow service")
             return None
-        if not os.path.exists(settings.MODEL_PATH):
-            logger.error(f"Model file not found at: {settings.MODEL_PATH}")
+        if not os.path.exists(settings.LEGACY_TFLITE_MODEL_PATH):
+            logger.error(f"Legacy TFLite fallback model not found at: {settings.LEGACY_TFLITE_MODEL_PATH}")
             return None
-        interpreter = tf.lite.Interpreter(model_path=settings.MODEL_PATH)
+        interpreter = tf.lite.Interpreter(model_path=settings.LEGACY_TFLITE_MODEL_PATH)
         interpreter.allocate_tensors()
-        logger.info(f"TFLite model loaded successfully from: {settings.MODEL_PATH}")
+        logger.info(f"Legacy TFLite fallback loaded successfully from: {settings.LEGACY_TFLITE_MODEL_PATH}")
         return interpreter
     except Exception as e:
         logger.error(f"Error loading TFLite model: {e}")

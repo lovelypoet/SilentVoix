@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Security
     JWT_SECRET_KEY: str = Field("your-secret-key-change-in-production", env="JWT_SECRET_KEY")
     JWT_ALGORITHM: str = Field("HS256", env="JWT_ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(7, env="REFRESH_TOKEN_EXPIRE_DAYS")
     
     # Database
@@ -46,15 +46,10 @@ class Settings(BaseSettings):
     RAW_DATA_PATH: str = os.path.join(DATA_DIR, 'raw_data.csv')
     CLEAN_DATA_PATH: str = os.path.join(DATA_DIR, 'clean_data.csv')
     GESTURE_DATA_PATH: str = os.path.join(DATA_DIR, 'gesture_data.csv')
-    RAW_DUALHAND_DATA_PATH: str = os.path.join(DATA_DIR, 'raw_dualhand_data.csv')
-    GESTURE_DUALHAND_DATA_PATH: str = os.path.join(DATA_DIR, 'gesture_dualhand.csv')
-    MODEL_PATH: str = os.path.join(AI_DIR, 'gesture_model.tflite')
-    MODEL_DUAL_PATH: str = os.path.join(AI_DIR, 'gesture_model_dual.tflite')
-    SCALER_PATH: str = os.path.join(AI_DIR, 'scaler.pkl')
-    ENCODER_PATH: str = os.path.join(AI_DIR, 'label_encoder.pkl')
-    METRICS_PATH: str = os.path.join(AI_DIR, 'training_metrics.json')
-    RESULTS_DIR: str = os.path.join(AI_DIR, 'results')
     MODEL_LIBRARY_DIR: str = os.path.join(AI_DIR, 'model_library')
+    # Legacy local fallback artifacts (kept only for non-runtime-split local mode).
+    LEGACY_TFLITE_MODEL_PATH: str = Field(os.path.join(AI_DIR, 'gesture_model.tflite'), env="LEGACY_TFLITE_MODEL_PATH")
+    LEGACY_TRAINING_METRICS_PATH: str = Field(os.path.join(AI_DIR, 'training_metrics.json'), env="LEGACY_TRAINING_METRICS_PATH")
     
     # CORS
     CORS_ORIGINS: List[str] = Field(["http://localhost:5173"], env="CORS_ORIGINS")
@@ -62,9 +57,6 @@ class Settings(BaseSettings):
     # Backend base URL for internal calls and clients
     BACKEND_BASE_URL: str = Field("http://localhost:8000", env="BACKEND_BASE_URL")
 
-    # Training logs
-    TRAINING_LOG_PATH: str = Field(os.path.join("logs", "training.log"), env="TRAINING_LOG_PATH")
-    
     # TTS config
     TTS_ENABLED: bool = Field(True, env="TTS_ENABLED")
     TTS_PROVIDER: str = Field("pyttsx3", env="TTS_PROVIDER")
@@ -123,9 +115,7 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = Field(50 * 1024 * 1024, env="MAX_FILE_SIZE")  # 50MB
     ALLOWED_FILE_TYPES: List[str] = Field([".csv", ".json", ".txt"], env="ALLOWED_FILE_TYPES")
 
-    # Feature flags
-    TRAINING_FEATURES_ENABLED: bool = Field(False, env="TRAINING_FEATURES_ENABLED")
-    ML_RUNTIME: str = Field("tflite", env="ML_RUNTIME")
+    # Runtime flags
     RUNTIME_PREFLIGHT_ON_STARTUP: bool = Field(True, env="RUNTIME_PREFLIGHT_ON_STARTUP")
     USE_RUNTIME_SERVICES: bool = Field(False, env="USE_RUNTIME_SERVICES")
     ML_TENSORFLOW_URL: str = Field("http://ml-tensorflow:8091", env="ML_TENSORFLOW_URL")
@@ -165,8 +155,6 @@ class Settings(BaseSettings):
 
     # Auth/JWT settings
     SECRET_KEY: str = Field("change-me-in-prod", env="SECRET_KEY")
-    JWT_ALGORITHM: str = Field("HS256", env="JWT_ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     COOKIE_SECURE: bool = Field(False, env="COOKIE_SECURE")
 
     # Optional default editor seed
@@ -189,7 +177,6 @@ def ensure_directories():
     directories = [
         settings.DATA_DIR,
         settings.AI_DIR,
-        settings.RESULTS_DIR,
         settings.MODEL_LIBRARY_DIR,
         os.path.dirname(settings.LOG_FILE),
         settings.UPLOAD_DIR,

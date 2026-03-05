@@ -34,7 +34,7 @@
 - [x] Local scripted E2E smoke exists for `upload -> activate -> runtime-check -> predict` (`backend/scripts/smoke_playground_runtime.py`).
 - [x] Playground upload/activate/predict smoke test is automated in CI (`.github/workflows/test.yml` -> `backend-runtime-smoke` job).
 - [x] Legacy training-oriented admin cleanup endpoints were removed from `/admin/*` (`training-results`, `model-files`, `training-visualizations`, `all-training-data`).
-- [ ] Root backend settings/config still include legacy TFLite/training-era defaults that should be simplified.
+- [x] Root backend settings/config simplified to runtime-first defaults; legacy local fallback settings are explicit (`LEGACY_TFLITE_MODEL_PATH`, `LEGACY_TRAINING_METRICS_PATH`).
 
 ## Product Scope Decision
 - New scope:

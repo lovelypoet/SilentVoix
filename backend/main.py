@@ -41,9 +41,9 @@ async def lifespan(app: FastAPI):
     await ensure_default_editor()
     logging.info("Indexes created. App is starting...")
     logging.info(
-        "Runtime flags | ML_RUNTIME=%s TRAINING_FEATURES_ENABLED=%s RUNTIME_PREFLIGHT_ON_STARTUP=%s MODEL_LIBRARY_DIR=%s",
-        settings.ML_RUNTIME,
-        settings.TRAINING_FEATURES_ENABLED,
+        "Runtime flags | USE_RUNTIME_SERVICES=%s USE_WORKER_LIBRARY=%s RUNTIME_PREFLIGHT_ON_STARTUP=%s MODEL_LIBRARY_DIR=%s",
+        settings.USE_RUNTIME_SERVICES,
+        settings.USE_WORKER_LIBRARY,
         settings.RUNTIME_PREFLIGHT_ON_STARTUP,
         settings.MODEL_LIBRARY_DIR,
     )
@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
     if model is None:
         logging.info("Local TFLite model is not loaded; predictions will be forwarded to ml-tensorflow service.")
     else:
-        logging.info(f"Local TFLite model loaded successfully from: {settings.MODEL_PATH}")
+        logging.info(f"Legacy local TFLite fallback loaded successfully from: {settings.LEGACY_TFLITE_MODEL_PATH}")
 
     yield
     client.close()

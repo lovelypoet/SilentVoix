@@ -115,7 +115,6 @@ def _worker_library_preflight() -> Dict[str, Any]:
 
 def run_runtime_preflight() -> Dict[str, Any]:
     return {
-        "ml_runtime": settings.ML_RUNTIME,
         "use_runtime_services": settings.USE_RUNTIME_SERVICES,
         "ml_tensorflow_url": settings.ML_TENSORFLOW_URL,
         "ml_pytorch_url": settings.ML_PYTORCH_URL,
@@ -123,7 +122,6 @@ def run_runtime_preflight() -> Dict[str, Any]:
         "worker_library_url": settings.WORKER_LIBRARY_URL,
         "runtime_services": _runtime_services_preflight(),
         "worker_library": _worker_library_preflight(),
-        "training_features_enabled": settings.TRAINING_FEATURES_ENABLED,
         "tensorflow": _import_version("tensorflow"),
         "torch": _import_version("torch"),
         "model_library": _read_registry(),
