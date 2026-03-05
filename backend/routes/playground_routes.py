@@ -38,11 +38,13 @@ REMOTE_MODEL_LIBRARY_ROOT = Path("/shared/model_library")
 
 
 class PlaygroundPredictRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     cv_values: List[float]
     model_id: Optional[str] = None
 
 
 class PlaygroundSensorPredictRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     sensor_values: List[float]
     model_id: Optional[str] = None
 
@@ -472,13 +474,13 @@ def _compute_runtime_status(entry: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.post("/models/upload")
 async def upload_playground_model(
-    model_file: UploadFile = File(...),
+    artifact_file: UploadFile = File(..., alias="model_file"),
     metadata_file: UploadFile = File(...),
-    model_class_file: Optional[UploadFile] = File(None),
+    class_file: Optional[UploadFile] = File(None, alias="model_class_file"),
     is_state_dict: str = Form("false"),
     _user=Depends(role_or_internal_dep("editor")),
 ):
-    model_name = Path(model_file.filename or "").name
+    model_name = Path(artifact_file.filename or "").name
     metadata_name = Path(metadata_file.filename or "").name
     if not model_name:
         raise HTTPException(status_code=400, detail="model_file is required")
@@ -486,7 +488,7 @@ async def upload_playground_model(
         raise HTTPException(status_code=400, detail="metadata_file must be a .json file")
 
     suffix = Path(model_name).suffix.lower()
-    model_bytes = await model_file.read()
+    model_bytes = await artifact_file.read()
     metadata_bytes = await metadata_file.read()
     if not model_bytes:
         raise HTTPException(status_code=400, detail="Uploaded model file is empty")
@@ -505,7 +507,7 @@ async def upload_playground_model(
 
     is_state_dict_bool = str(is_state_dict).lower() == "true"
     metadata["is_state_dict"] = is_state_dict_bool
-    metadata["has_model_class"] = model_class_file is not None
+    metadata["has_model_class"] = class_file is not None
 
     model_id = str(uuid4())
     model_dir = _models_root() / model_id
@@ -516,8 +518,8 @@ async def upload_playground_model(
     saved_metadata_path.write_bytes(metadata_bytes)
     
     saved_model_class_path = None
-    if model_class_file:
-        model_class_bytes = await model_class_file.read()
+    if class_file:
+        model_class_bytes = await class_file.read()
         saved_model_class_path = model_dir / "model.py"
         saved_model_class_path.write_bytes(model_class_bytes)
 

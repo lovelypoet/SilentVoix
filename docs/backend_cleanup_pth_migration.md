@@ -8,7 +8,7 @@
 
 ## Implementation Status (as of 2026-03-05)
 - Completed:
-  - Feature flags added: `TRAINING_FEATURES_ENABLED` and `ML_RUNTIME`.
+  - Runtime split flags are active (`USE_RUNTIME_SERVICES`, `USE_WORKER_LIBRARY`) with explicit legacy fallback paths.
   - Legacy `/training/*` router surface is removed from active backend route mounts.
   - Multi-format runtime adapter implemented for `.tflite`, `.keras`, `.h5`, `.pth`, `.pt`.
   - Playground model runtime-check endpoint implemented: `GET /playground/models/{model_id}/runtime-check`.
@@ -84,8 +84,7 @@
 
 ### Phase 1: Freeze Legacy Training Features
 - Mark training routes as deprecated in docs and route descriptions.
-- Add `TRAINING_FEATURES_ENABLED=false` guard to block new training runs immediately.
-- Add a feature flag, e.g. `ML_RUNTIME=tflite|torch` (default `tflite` for first rollout).
+- Ensure legacy training API routes stay removed from active mounts.
 - Route all model-load calls through one runtime selector module.
 - Keep legacy inference reachable only behind explicit flag during transition.
 
@@ -142,8 +141,8 @@ Acceptance criteria:
 Status: Pending.
 
 ## Recommended Task Order
-1. Freeze/deprecate training features behind `TRAINING_FEATURES_ENABLED=false`.
-2. Create runtime selector + `ML_RUNTIME` flag.
+1. Freeze/deprecate training features by keeping `/training/*` removed.
+2. Keep runtime dispatch by model `export_format` (`tflite|keras|h5 -> ml-tensorflow`, `pytorch -> ml-pytorch`).
 3. Land `.pth` loader/inference in playground flow.
 4. Add smoke tests for upload/activate/predict/store.
 5. Switch default runtime to `torch` and remove TensorFlow deps.
@@ -202,8 +201,15 @@ Why this helps:
    - Expected result: script prints `Smoke test passed` and removes uploaded test model unless `--keep-model` is provided.
 
 1. Pre-check configuration
-   - Set `ML_RUNTIME=tflite`, then `ML_RUNTIME=torch` in `.env` (one at a time).
-   - Confirm model/env vars point to valid artifacts (`.tflite` for legacy, `.pth` for torch path).
+   - Set runtime split flags for service-dispatch mode:
+     - `USE_RUNTIME_SERVICES=true`
+     - `USE_WORKER_LIBRARY=true` (optional but recommended)
+   - Confirm runtime URLs are reachable:
+     - `ML_TENSORFLOW_URL`
+     - `ML_PYTORCH_URL`
+   - If testing local fallback mode, confirm legacy paths exist:
+     - `LEGACY_TFLITE_MODEL_PATH`
+     - `LEGACY_TRAINING_METRICS_PATH`
    - Expected result: backend has all required env vars and valid model file paths.
 
 2. Build and start backend in Docker
@@ -217,9 +223,9 @@ Why this helps:
    - Expected result: HTTP `200` and healthy status payload.
 
 4. Runtime selector validation
-   - With `ML_RUNTIME=tflite`, call one prediction endpoint.
-   - With `ML_RUNTIME=torch`, call the same endpoint using identical input.
-   - Expected result: both paths return the same response schema (label/confidence keys unchanged).
+   - Activate one TensorFlow-family model (`.tflite/.keras/.h5`) and run prediction.
+   - Activate one PyTorch model (`.pth/.pt`) and run prediction.
+   - Expected result: both routes return the same response schema (label/confidence keys unchanged).
 
 5. Playground upload/store/activate test
    - Upload exported model + metadata.
@@ -246,11 +252,11 @@ Why this helps:
    - Expected result: backend still boots and playground predicts with torch-only environment.
 
 10. Failure and rollback rule
-   - If torch runtime fails to load model or breaks response contract, switch `ML_RUNTIME=tflite` immediately.
+   - If runtime service path fails, temporarily switch to local fallback mode (`USE_RUNTIME_SERVICES=false`) for emergency continuity.
    - Open a fix task with failing request payload + logs attached.
 
 Pass criteria:
-- All steps above succeed with `ML_RUNTIME=torch`.
+- All steps above succeed with runtime services enabled (`USE_RUNTIME_SERVICES=true`) and both TF/PyTorch models.
 - No TensorFlow import dependency remains in active runtime.
 - Playground prediction contract remains backward compatible.
 - Training endpoints are no longer active in production runtime.

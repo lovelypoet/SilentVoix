@@ -42,8 +42,11 @@ Expected total with both ML runtimes enabled: roughly 3.0 to 6.2 GB.
 - End-to-end runtime smoke is automated:
   - local script: `backend/scripts/smoke_playground_runtime.py`
   - CI job: `.github/workflows/test.yml` -> `backend-runtime-smoke`
+  - failed CI runs now upload compose logs as artifact (`backend-runtime-smoke-logs`)
 - Runtime contract unit tests pass locally:
   - `backend/tests/test_runtime_contracts.py` (19 passing tests)
+- Pydantic settings migration to v2 style completed in `backend/core/settings.py` (legacy deprecation warnings reduced).
+- Playground upload request model naming updated to avoid `model_*` namespace warnings in tests.
 
 ## Scope Rules
 In scope:
@@ -127,9 +130,8 @@ Out of scope for this phase:
   - Control: warm model caches in runtime services and timeout strategy.
 
 ## Immediate Next Actions
-1. Simplify legacy TFLite/training-era defaults in backend settings where no longer required.
-2. Add image-size verification checks into CI or release checklist.
-3. Add CI artifacts for runtime smoke logs for faster failure triage.
+1. Add image-size verification checks into CI or release checklist.
+2. Track runtime-smoke log artifacts and add triage guidance in docs/PR template.
 
 ## Run Profiles (Current)
 - `tf`: runs tensorflow runtime service.

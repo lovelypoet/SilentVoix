@@ -145,7 +145,17 @@ jobs:
 
       - name: Dump compose logs on failure
         if: failure()
-        run: docker compose -f docker-compose.dev.yml --profile runtime-split logs --no-color
+        run: |
+          mkdir -p artifacts
+          docker compose -f docker-compose.dev.yml --profile runtime-split logs --no-color | tee artifacts/backend-runtime-smoke.log
+
+      - name: Upload runtime smoke logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-runtime-smoke-logs
+          path: artifacts/backend-runtime-smoke.log
+          retention-days: 14
 
       - name: Tear down stack
         if: always()
