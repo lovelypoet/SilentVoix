@@ -29,15 +29,21 @@ This restructure is the correct next step before adding more runtime features.
 
 Expected total with both ML runtimes enabled: roughly 3.0 to 6.2 GB.
 
-## Progress Snapshot (2026-03-04)
-- Built images after runtime split scaffold:
-  - `silentvoix-backend:api-only` = 829 MB
-  - `silentvoix-ml-pytorch:latest` = 1.45 GB
-  - `silentvoix-ml-tensorflow:latest` = 3.16 GB
-- Approx stack subtotal (without DB volume growth): ~5.4 GB plus frontend/database overhead.
-- Current result is within the original 6 GB expectation, with TensorFlow image as the biggest optimization target.
-- `worker-library` service scaffold added (health + registry reconcile loop).
-- Backend now triggers non-blocking worker reconcile calls on model upload/activate/delete when `USE_WORKER_LIBRARY=true`.
+## Progress Snapshot (2026-03-05)
+- Runtime split services are present and health-checked:
+  - `ml-tensorflow` (`:8091/health`)
+  - `ml-pytorch` (`:8092/health`)
+  - `worker-library` (`:8093/health`)
+- Backend API image uses `requirements-api.txt` in compose dev flow (no TensorFlow/PyTorch in API dependency set).
+- Compose startup smoothing completed:
+  - `docker-compose.dev.yml` now boots `mongo + backend + frontend` by default.
+  - Backend waits for Mongo health before startup.
+  - Runtime-split services remain profile-gated (`runtime-split`, `full`, `tf`, `torch`, `worker`).
+- End-to-end runtime smoke is automated:
+  - local script: `backend/scripts/smoke_playground_runtime.py`
+  - CI job: `.github/workflows/test.yml` -> `backend-runtime-smoke`
+- Runtime contract unit tests pass locally:
+  - `backend/tests/test_runtime_contracts.py` (19 passing tests)
 
 ## Scope Rules
 In scope:
@@ -121,10 +127,9 @@ Out of scope for this phase:
   - Control: warm model caches in runtime services and timeout strategy.
 
 ## Immediate Next Actions
-1. Create `docs/runtime_service_contract.md` with request/response payloads.
-2. Create service folders and Dockerfiles: `backend-api`, `ml-tensorflow`, `ml-pytorch`, `worker-library`.
-3. Move heavy ML deps out of current backend requirements into runtime-specific requirements.
-4. Add compose profiles and run first end-to-end smoke test.
+1. Simplify legacy TFLite/training-era defaults in backend settings where no longer required.
+2. Add image-size verification checks into CI or release checklist.
+3. Add CI artifacts for runtime smoke logs for faster failure triage.
 
 ## Run Profiles (Current)
 - `tf`: runs tensorflow runtime service.

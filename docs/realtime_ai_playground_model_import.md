@@ -86,7 +86,10 @@ If metadata is missing or invalid, upload is rejected.
   - export callable artifacts (TorchScript or callable module artifact)
 
 ## Latest Validation Note
-- Manual validation confirmed that after image rebuild/rerun, the model appears loaded in web Model Library.
+- Validation is now scriptable:
+  - Local smoke script: `backend/scripts/smoke_playground_runtime.py`
+  - CI smoke automation: `.github/workflows/test.yml` (`backend-runtime-smoke` job)
+  - Flow covered: upload -> activate -> runtime-check -> predict
 
 ## Security and Role Scope
 - Upload/replace model: admin/editor only.

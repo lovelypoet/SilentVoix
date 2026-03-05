@@ -6,7 +6,7 @@
 - Prepare a clean backend runtime for PyTorch `.pth` model upload, storage, activation, and inference.
 - Keep inference API behavior stable during migration.
 
-## Implementation Status (as of 2026-03-04)
+## Implementation Status (as of 2026-03-05)
 - Completed:
   - Feature flags added: `TRAINING_FEATURES_ENABLED` and `ML_RUNTIME`.
   - Legacy `/training/*` router surface is removed from active backend route mounts.
@@ -33,7 +33,7 @@
 - [x] Runtime contract unit tests pass locally (`backend/tests/test_runtime_contracts.py`).
 - [x] Local scripted E2E smoke exists for `upload -> activate -> runtime-check -> predict` (`backend/scripts/smoke_playground_runtime.py`).
 - [x] Playground upload/activate/predict smoke test is automated in CI (`.github/workflows/test.yml` -> `backend-runtime-smoke` job).
-- [ ] Legacy training-oriented admin cleanup endpoints are still present under `/admin/*`.
+- [x] Legacy training-oriented admin cleanup endpoints were removed from `/admin/*` (`training-results`, `model-files`, `training-visualizations`, `all-training-data`).
 - [ ] Root backend settings/config still include legacy TFLite/training-era defaults that should be simplified.
 
 ## Product Scope Decision
@@ -53,7 +53,7 @@
   - `backend/AI/gesture_model_inference.py` (deprecation/removal)
   - `backend/core/model.py` and runtime selection for `.pth`
   - `backend/routes/playground_routes.py` runtime extension to support `.pth`
-  - `backend/routes/training_routes.py` deprecation/removal
+  - legacy training API surface deprecation/removal
   - backend dependency cleanup (`requirements*.txt`, Docker image setup)
   - docs rewrite to reflect testing-ground product
 - Out of scope:
