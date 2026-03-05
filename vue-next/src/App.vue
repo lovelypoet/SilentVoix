@@ -27,6 +27,18 @@ watch(
 <template>
   <div class="min-h-screen bg-slate-950 text-slate-200 flex app-bg">
     <Toast /> <!-- Add Toast component here -->
+    <svg
+      aria-hidden="true"
+      width="0"
+      height="0"
+      class="absolute pointer-events-none"
+      focusable="false"
+    >
+      <filter id="frosted" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.015 0.04" numOctaves="1" seed="7" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
     <!-- Sidebar (Hidden on login) -->
     <aside v-if="!isFullscreenLayout" class="hidden lg:flex w-52 p-5 flex-col sticky top-0 h-screen shrink-0">
       <RouterLink to="/" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
@@ -181,9 +193,18 @@ body {
   border: 1px solid rgba(45, 212, 191, 0.25);
   background:
     linear-gradient(180deg, rgba(45, 212, 191, 0.08), rgba(15, 23, 42, 0.0) 18%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(2, 6, 23, 0.95));
+    linear-gradient(180deg, rgba(15, 23, 42, 0.62), rgba(2, 6, 23, 0.85));
   box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
   padding: 1rem;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+@supports (backdrop-filter: url(#frosted)) or (-webkit-backdrop-filter: url(#frosted)) {
+  .content-frame {
+    backdrop-filter: url(#frosted) blur(12px) saturate(130%);
+    -webkit-backdrop-filter: url(#frosted) blur(12px) saturate(130%);
+  }
 }
 
 @media (min-width: 640px) {
