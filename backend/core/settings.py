@@ -161,8 +161,13 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = Field(False)
 
     # Optional default editor seed
-    DEFAULT_EDITOR_EMAIL: Optional[str] = Field(None)
-    DEFAULT_EDITOR_PASSWORD: Optional[str] = Field(None)
+    AUTO_SEED_DEFAULT_USERS: bool = Field(True)
+    DEFAULT_ADMIN_EMAIL: Optional[str] = Field("admin@signglove.com")
+    DEFAULT_ADMIN_PASSWORD: Optional[str] = Field("admin123")
+    DEFAULT_EDITOR_EMAIL: Optional[str] = Field("editor@signglove.com")
+    DEFAULT_EDITOR_PASSWORD: Optional[str] = Field("editor123")
+    DEFAULT_GUEST_EMAIL: Optional[str] = Field("user@signglove.com")
+    DEFAULT_GUEST_PASSWORD: Optional[str] = Field("user123")
 
     def is_testing(self) -> bool:
         """Return True when running in tests or CI to disable background loops."""

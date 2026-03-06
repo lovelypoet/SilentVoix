@@ -95,6 +95,27 @@ async def ensure_default_editor():
         if not existing:
             await create_user(settings.DEFAULT_EDITOR_EMAIL, settings.DEFAULT_EDITOR_PASSWORD, role="editor")
 
+async def ensure_default_users():
+    """
+    Seed default users once in development-like environments.
+    Uses existence checks by email, so it is safe to call repeatedly.
+    """
+    if not settings.AUTO_SEED_DEFAULT_USERS:
+        return
+
+    default_users = [
+        (settings.DEFAULT_ADMIN_EMAIL, settings.DEFAULT_ADMIN_PASSWORD, "admin"),
+        (settings.DEFAULT_EDITOR_EMAIL, settings.DEFAULT_EDITOR_PASSWORD, "editor"),
+        (settings.DEFAULT_GUEST_EMAIL, settings.DEFAULT_GUEST_PASSWORD, "guest"),
+    ]
+
+    for email, password, role in default_users:
+        if not email or not password:
+            continue
+        existing = await users_collection.find_one({"email": email})
+        if not existing:
+            await create_user(email, password, role=role)
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
@@ -154,7 +175,7 @@ def role_or_internal(min_role: Literal["guest", "editor", "admin"]):
 
 @router.post("/login")
 async def login(data: LoginRequest, response: Response):
-    await ensure_default_editor()
+    await ensure_default_users()
     user = await get_user_by_email(data.email)
     if not user or not pwd_context.verify(data.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -173,7 +194,7 @@ async def login(data: LoginRequest, response: Response):
 
 @router.post("/register")
 async def register(data: RegisterRequest):
-    await ensure_default_editor()
+    await ensure_default_users()
 
     if len(data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")

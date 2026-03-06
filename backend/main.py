@@ -25,7 +25,7 @@ from contextlib import asynccontextmanager
 import logging
 import asyncio
 import os
-from routes.auth_routes import ensure_default_editor
+from routes.auth_routes import ensure_default_users
 
 # Improved logging configuration
 logging.basicConfig(
@@ -38,7 +38,7 @@ logger = logging.getLogger("signglove")
 async def lifespan(app: FastAPI):
     await test_connection() 
     await create_indexes()
-    await ensure_default_editor()
+    await ensure_default_users()
     logging.info("Indexes created. App is starting...")
     logging.info(
         "Runtime flags | USE_RUNTIME_SERVICES=%s USE_WORKER_LIBRARY=%s RUNTIME_PREFLIGHT_ON_STARTUP=%s MODEL_LIBRARY_DIR=%s",
