@@ -87,6 +87,14 @@ const members = [
 
 const mainMembers = computed(() => members.filter((member) => member.category === 'Main Member'))
 const supportMembers = computed(() => members.filter((member) => member.category !== 'Main Member'))
+const supervisors = [
+  {
+    name: 'PhD Kieu Quoc Viet',
+    role: 'Supervisor',
+    department: 'Information and Communication Technology (ICT)',
+    category: 'Supervisor',
+  },
+]
 </script>
 
 <template>
@@ -118,40 +126,12 @@ const supportMembers = computed(() => members.filter((member) => member.category
           <button
             type="button"
             class="member-marker"
-            :class="activeMemberId === 'nguyen-duc-anh' ? 'marker-active' : ''"
-            :style="{ left: '15%', top: '36%' }"
-            aria-label="Highlight Nguyễn Đức Anh (C)"
-            @mouseenter="activeMemberId = 'nguyen-duc-anh'"
+            :class="activeMemberId === 'nguyen-duc-duong' ? 'marker-active' : ''"
+            :style="{ left: '19%', top: '22%' }"
+            aria-label="Highlight Nguyễn Đức Dương"
+            @mouseenter="activeMemberId = 'nguyen-duc-duong'"
             @mouseleave="activeMemberId = null"
-            @focus="activeMemberId = 'nguyen-duc-anh'"
-            @blur="activeMemberId = null"
-          >
-            <span class="marker-pulse"></span>
-          </button>
-
-          <button
-            type="button"
-            class="member-marker"
-            :class="activeMemberId === 'do-hung-anh' ? 'marker-active' : ''"
-            :style="{ left: '30%', top: '33%' }"
-            aria-label="Highlight Đỗ Hùng Anh"
-            @mouseenter="activeMemberId = 'do-hung-anh'"
-            @mouseleave="activeMemberId = null"
-            @focus="activeMemberId = 'do-hung-anh'"
-            @blur="activeMemberId = null"
-          >
-            <span class="marker-pulse"></span>
-          </button>
-
-          <button
-            type="button"
-            class="member-marker"
-            :class="activeMemberId === 'do-tran-nam-anh' ? 'marker-active' : ''"
-            :style="{ left: '46%', top: '30%' }"
-            aria-label="Highlight Đỗ Trần Nam Anh"
-            @mouseenter="activeMemberId = 'do-tran-nam-anh'"
-            @mouseleave="activeMemberId = null"
-            @focus="activeMemberId = 'do-tran-nam-anh'"
+            @focus="activeMemberId = 'nguyen-duc-duong'"
             @blur="activeMemberId = null"
           >
             <span class="marker-pulse"></span>
@@ -161,7 +141,7 @@ const supportMembers = computed(() => members.filter((member) => member.category
             type="button"
             class="member-marker"
             :class="activeMemberId === 'le-huu-phuc-minh' ? 'marker-active' : ''"
-            :style="{ left: '63%', top: '30%' }"
+            :style="{ left: '37%', top: '17%' }"
             aria-label="Highlight Lê Hữu Phúc Minh"
             @mouseenter="activeMemberId = 'le-huu-phuc-minh'"
             @mouseleave="activeMemberId = null"
@@ -174,12 +154,40 @@ const supportMembers = computed(() => members.filter((member) => member.category
           <button
             type="button"
             class="member-marker"
-            :class="activeMemberId === 'nguyen-duc-duong' ? 'marker-active' : ''"
-            :style="{ left: '79%', top: '35%' }"
-            aria-label="Highlight Nguyễn Đức Dương"
-            @mouseenter="activeMemberId = 'nguyen-duc-duong'"
+            :class="activeMemberId === 'nguyen-duc-anh' ? 'marker-active' : ''"
+            :style="{ left: '51%', top: '30%' }"
+            aria-label="Highlight Nguyễn Đức Anh"
+            @mouseenter="activeMemberId = 'nguyen-duc-anh'"
             @mouseleave="activeMemberId = null"
-            @focus="activeMemberId = 'nguyen-duc-duong'"
+            @focus="activeMemberId = 'nguyen-duc-anh'"
+            @blur="activeMemberId = null"
+          >
+            <span class="marker-pulse"></span>
+          </button>
+
+          <button
+            type="button"
+            class="member-marker"
+            :class="activeMemberId === 'do-tran-nam-anh' ? 'marker-active' : ''"
+            :style="{ left: '63%', top: '27%' }"
+            aria-label="Highlight Đỗ Trần Nam Anh"
+            @mouseenter="activeMemberId = 'do-tran-nam-anh'"
+            @mouseleave="activeMemberId = null"
+            @focus="activeMemberId = 'do-tran-nam-anh'"
+            @blur="activeMemberId = null"
+          >
+            <span class="marker-pulse"></span>
+          </button>
+
+          <button
+            type="button"
+            class="member-marker"
+            :class="activeMemberId === 'do-hung-anh' ? 'marker-active' : ''"
+            :style="{ left: '75%', top: '30%' }"
+            aria-label="Highlight Đỗ Hùng Anh"
+            @mouseenter="activeMemberId = 'do-hung-anh'"
+            @mouseleave="activeMemberId = null"
+            @focus="activeMemberId = 'do-hung-anh'"
             @blur="activeMemberId = null"
           >
             <span class="marker-pulse"></span>
@@ -215,6 +223,28 @@ const supportMembers = computed(() => members.filter((member) => member.category
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in supportMembers"
+          :key="memberKey(member)"
+          class="member-card transition-all duration-200"
+          :class="{
+            'member-card-active': activeMemberId === memberKey(member),
+            'member-card-dim': activeMemberId && activeMemberId !== memberKey(member)
+          }"
+          @mouseenter="activeMemberId = memberKey(member)"
+          @mouseleave="activeMemberId = null"
+        >
+          <div class="text-xs uppercase tracking-wider text-cyan-300/80">{{ member.category }}</div>
+          <h3 class="text-xl font-bold text-white mt-2">{{ member.name }}</h3>
+          <p class="text-slate-200 mt-2">{{ member.role }}</p>
+          <p class="text-sm text-slate-400 mt-1">{{ member.department }}</p>
+        </BaseCard>
+      </div>
+    </div>
+
+    <div class="space-y-3">
+      <h3 class="text-xl font-bold text-white text-center">Supervisor</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <BaseCard
+          v-for="member in supervisors"
           :key="memberKey(member)"
           class="member-card transition-all duration-200"
           :class="{
