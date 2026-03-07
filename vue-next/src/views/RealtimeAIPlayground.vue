@@ -301,33 +301,6 @@ const flattenHand63 = (hand) => {
   return values
 }
 
-const wristCenterHandBlock = (vector, startIndex = 0) => {
-  const anchorX = Number(vector[startIndex] ?? 0)
-  const anchorY = Number(vector[startIndex + 1] ?? 0)
-  const anchorZ = Number(vector[startIndex + 2] ?? 0)
-  for (let i = 0; i < 21; i += 1) {
-    const offset = startIndex + i * 3
-    vector[offset] = Number(vector[offset] ?? 0) - anchorX
-    vector[offset + 1] = Number(vector[offset + 1] ?? 0) - anchorY
-    vector[offset + 2] = Number(vector[offset + 2] ?? 0) - anchorZ
-  }
-}
-
-const applyCvPreprocessProfile = (values) => {
-  const next = Array.isArray(values) ? values.map((v) => Number(v ?? 0)) : []
-  if (!next.length) return next
-  if (!cvPreprocessProfile.value.includes('wrist_center')) {
-    return next
-  }
-  if (next.length >= 63) {
-    wristCenterHandBlock(next, 0)
-  }
-  if (next.length >= 126) {
-    wristCenterHandBlock(next, 63)
-  }
-  return next
-}
-
 const buildCvFeatureVector = (results, featureDim) => {
   const dim = Number(featureDim || modelInputDim.value)
   const { left, right, first } = pickHands(results)
@@ -342,60 +315,19 @@ const buildCvFeatureVector = (results, featureDim) => {
   return [...base, ...Array.from({ length: dim - 63 }, () => 0)]
 }
 
-const interpolateFrameSequence = (frames, targetFrames, featureDim) => {
-  const target = Math.max(1, Number(targetFrames || 1))
-  const features = Math.max(1, Number(featureDim || 1))
-  if (!Array.isArray(frames) || frames.length === 0) {
-    return Array.from({ length: target }, () => Array.from({ length: features }, () => 0))
-  }
-  if (frames.length === target) return frames
-  if (frames.length === 1) {
-    return Array.from({ length: target }, () => [...frames[0]])
-  }
-
-  const out = []
-  const maxIndex = frames.length - 1
-  for (let i = 0; i < target; i += 1) {
-    const t = (i * maxIndex) / Math.max(1, target - 1)
-    const leftIdx = Math.floor(t)
-    const rightIdx = Math.min(maxIndex, Math.ceil(t))
-    const alpha = t - leftIdx
-    const left = frames[leftIdx]
-    const right = frames[rightIdx]
-    const row = []
-    for (let j = 0; j < features; j += 1) {
-      const lv = Number(left?.[j] ?? 0)
-      const rv = Number(right?.[j] ?? lv)
-      row.push(lv + (rv - lv) * alpha)
-    }
-    out.push(row)
-  }
-  return out
-}
-
 const buildCvPayloadForModel = (results) => {
   const featureDim = cvFeatureDim.value
-  const frameVector = applyCvPreprocessProfile(buildCvFeatureVector(results, featureDim))
+  const frameVector = buildCvFeatureVector(results, featureDim)
   const maxBuffer = Math.max(cvSequenceLength.value, 120)
   cvFrameBuffer.value = [...cvFrameBuffer.value, frameVector].slice(-maxBuffer)
 
   if (!cvUsesSequence.value) {
-    if (modelInputDim.value === frameVector.length) return frameVector
-    if (modelInputDim.value < frameVector.length) return frameVector.slice(0, modelInputDim.value)
-    return [...frameVector, ...Array.from({ length: modelInputDim.value - frameVector.length }, () => 0)]
+    return { cv_values: frameVector }
   }
 
-  const sequence = interpolateFrameSequence(cvFrameBuffer.value, cvSequenceLength.value, featureDim)
-  const flattened = sequence.flat()
-  if (cvCanFlattenSequence.value) {
-    return flattened
-  }
-  if (modelInputDim.value === featureDim) {
-    return sequence[sequence.length - 1]
-  }
-  if (modelInputDim.value < flattened.length) return flattened.slice(0, modelInputDim.value)
-  return [...flattened, ...Array.from({ length: modelInputDim.value - flattened.length }, () => 0)]
+  return { sequence: cvFrameBuffer.value }
 }
+
 
 const drawBoundingBoxes = (results) => {
   const canvas = bboxCanvasEl.value
@@ -445,8 +377,9 @@ const predictFromResults = async (results) => {
   lastPredictTs = now
   isPredictingFrame = true
   try {
-    const cvValues = buildCvPayloadForModel(results)
-    const res = await api.playground.predictCv(cvValues, activeModel.value.id)
+    const payload = buildCvPayloadForModel(results)
+    payload.model_id = activeModel.value.id
+    const res = await api.playground.predictCv(payload)
     const pred = res?.prediction
     if (pred) {
       prediction.value = {
@@ -497,7 +430,7 @@ const predictFromLatestSensor = async () => {
       }
       return
     }
-    const res = await api.playground.predictSensor(normalized, activeModel.value.id)
+    const res = await api.playground.predictSensor({ sensor_values: normalized, model_id: activeModel.value.id })
     const pred = res?.prediction
     if (pred) {
       prediction.value = {
@@ -566,7 +499,10 @@ const startLive = async () => {
   liveStatus.value = 'Requesting camera...'
   try {
     stopLive()
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    })
     mediaStream.value = stream
     await startHandTracking(videoEl.value, landmarkCanvasEl.value, stream)
     onFrame((results) => {

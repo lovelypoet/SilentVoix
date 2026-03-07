@@ -8,20 +8,20 @@ import {
 export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   // MediaPipe
   let landmarker = null
-  
+
   // DOM
   let videoEl = null
   let canvasEl = null
   let ctx = null
-  
+
   // RAW (unmirrored) canvas for MediaPipe
   let rawCanvas = null
   let rawCtx = null
-  
+
   // Loop
   let rafId = null
   let running = false
-  
+
   // ---------------------------
   // TIME-GATED CAPTURE @ 30 FPS
   // ---------------------------
@@ -30,12 +30,12 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   let lastCaptureTime = 0
   let capturedFrames = [] // Store captured landmark data
   let isRecording = ref(false)
-  
+
   // HOLD-LAST-FRAME (live display)
   const HOLD_LAST_FRAME_MS = 200
   let lastValidResult = null
   let lastValidTime = 0
-  
+
   // Callback for external consumers
   let frameCallback = null
 
@@ -49,7 +49,7 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     landmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath:
-          'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/0/hand_landmarker.task',
         delegate: 'GPU'
       },
       runningMode: 'VIDEO',
@@ -63,31 +63,31 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   // ---------------------------
   const loop = () => {
     if (!running || !landmarker) return
-    
+
     if (!videoEl || videoEl.videoWidth === 0 || videoEl.videoHeight === 0) {
       rafId = requestAnimationFrame(loop)
       return
     }
 
     const now = performance.now()
-    
+
     // TIME-GATED CAPTURE: Only detect at 30 FPS
     const timeSinceLastCapture = now - lastCaptureTime
     let currentResult = null
-    
+
     if (timeSinceLastCapture >= FRAME_INTERVAL) {
       // ---- FEED RAW FRAME TO MEDIAPIPE (NO MIRROR) ----
       rawCtx.setTransform(1, 0, 0, 1, 0, 0)
       rawCtx.drawImage(videoEl, 0, 0)
-      
+
       const results = landmarker.detectForVideo(rawCanvas, now)
-      
+
       if (results && results.landmarks && results.landmarks.length > 0) {
         currentResult = results
         lastValidResult = results // Update hold-last-frame
         lastValidTime = now
       }
-      
+
       lastCaptureTime = now
 
       // CAPTURE DATA if recording (store empty frame when no detection)
@@ -105,17 +105,17 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
         frameCallback(currentResult)
       }
     }
-    
+
     // ---- DRAW UI CANVAS (MIRRORED IF NEEDED) ----
     // Always draw at display refresh rate, using held frame (short timeout)
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
     ctx.save()
-    
+
     if (mirrorCameraRef?.value) {
       ctx.translate(canvasEl.width, 0)
       ctx.scale(-1, 1)
     }
-    
+
     const displayResult =
       currentResult ||
       (now - lastValidTime <= HOLD_LAST_FRAME_MS ? lastValidResult : null)
@@ -141,7 +141,7 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
         )
       }
     }
-    
+
     ctx.restore()
     rafId = requestAnimationFrame(loop)
   }
@@ -173,13 +173,13 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
 
     // CSV Header
     let csv = 'timestamp,hand_index,handedness,landmark_index,x,y,z\n'
-    
+
     frames.forEach(frame => {
       const { timestamp, landmarks, handedness } = frame
-      
+
       landmarks.forEach((handLandmarks, handIdx) => {
         const handLabel = handedness?.[handIdx]?.[0]?.categoryName || 'Unknown'
-        
+
         handLandmarks.forEach((landmark, lmIdx) => {
           csv += `${timestamp},${handIdx},${handLabel},${lmIdx},${landmark.x},${landmark.y},${landmark.z}\n`
         })
@@ -194,7 +194,7 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
     a.download = `hand_tracking_${Date.now()}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    
+
     console.log('[HandTracking] CSV saved')
   }
 
@@ -206,21 +206,21 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
 
     const targetInterval = 1000 / targetFps
     const interpolated = []
-    
+
     for (let i = 0; i < frames.length - 1; i++) {
       const curr = frames[i]
       const next = frames[i + 1]
       const timeDiff = next.timestamp - curr.timestamp
       const steps = Math.ceil(timeDiff / targetInterval)
-      
+
       for (let step = 0; step < steps; step++) {
         const t = step / steps // interpolation factor [0, 1)
         const interpTime = curr.timestamp + (timeDiff * t)
-        
+
         // Linear interpolation of landmarks
         const interpLandmarks = curr.landmarks.map((handLandmarks, handIdx) => {
           if (!next.landmarks[handIdx]) return handLandmarks
-          
+
           return handLandmarks.map((lm, lmIdx) => {
             const nextLm = next.landmarks[handIdx][lmIdx]
             return {
@@ -231,7 +231,7 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
             }
           })
         })
-        
+
         interpolated.push({
           timestamp: interpTime,
           landmarks: interpLandmarks,
@@ -240,10 +240,10 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
         })
       }
     }
-    
+
     // Add last frame
     interpolated.push(frames[frames.length - 1])
-    
+
     console.log(`[HandTracking] Interpolated ${frames.length} → ${interpolated.length} frames (${targetFps} FPS)`)
     return interpolated
   }
@@ -253,30 +253,30 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
   // ---------------------------
   const startHandTracking = async (video, canvas, mediaStream) => {
     stopHandTracking()
-    
+
     videoEl = video
     canvasEl = canvas
     ctx = canvasEl.getContext('2d')
-    
+
     await createLandmarker()
-    
+
     videoEl.srcObject = mediaStream
     await new Promise((resolve) => {
       if (videoEl.readyState >= 2) resolve()
       else videoEl.onloadedmetadata = () => resolve()
     })
     await videoEl.play()
-    
+
     // UI canvas
     canvasEl.width = videoEl.videoWidth
     canvasEl.height = videoEl.videoHeight
-    
+
     // RAW canvas (UNMIRRORED)
     rawCanvas = document.createElement('canvas')
     rawCtx = rawCanvas.getContext('2d')
     rawCanvas.width = videoEl.videoWidth
     rawCanvas.height = videoEl.videoHeight
-    
+
     running = true
     lastCaptureTime = performance.now()
     loop()

@@ -21,7 +21,8 @@ logger = logging.getLogger("signglove.playground")
 
 class PlaygroundPredictRequest(BaseModel):
     model_config = {"protected_namespaces": ()}
-    cv_values: List[float]
+    cv_values: Optional[List[float]] = None
+    sequence: Optional[List[List[float]]] = None
     model_id: Optional[str] = None
 
 
@@ -338,7 +339,15 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
 
     expected_dim = int(model_entry.get("input_dim") or 0)
     try:
-        vector = playground_service.coerce_input_vector(req.cv_values, expected_dim, "cv_values")
+        if req.sequence is not None:
+            vector = playground_service.preprocess_cv_sequence(req.sequence, model_entry.get("metadata", {}))
+            # Verify the preprocessed vector matches expected_dim
+            if vector.shape[0] != expected_dim:
+                raise ValueError(f"Preprocessed sequence length mismatch: expected {expected_dim}, got {vector.shape[0]}")
+        elif req.cv_values is not None:
+            vector = playground_service.coerce_input_vector(req.cv_values, expected_dim, "cv_values")
+        else:
+            raise HTTPException(status_code=400, detail="Either 'cv_values' or 'sequence' must be provided.")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

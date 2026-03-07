@@ -211,6 +211,78 @@ class PlaygroundService:
             raise ValueError(f"{field_name} contains non-finite values")
         return vector
 
+    def _wrist_center_v1(self, vector: np.ndarray, start_idx: int = 0) -> None:
+        if vector.size < start_idx + 3:
+            return
+        anchor_x = float(vector[start_idx])
+        anchor_y = float(vector[start_idx + 1])
+        anchor_z = float(vector[start_idx + 2])
+        # 21 landmarks, 3 coordinates each
+        for i in range(21):
+            offset = start_idx + i * 3
+            if offset + 2 < vector.size:
+                vector[offset] -= anchor_x
+                vector[offset + 1] -= anchor_y
+                vector[offset + 2] -= anchor_z
+
+    def _linear_temporal_interpolate(self, frames: List[np.ndarray], target_len: int, feature_dim: int) -> np.ndarray:
+        if not frames:
+            return np.zeros((target_len, feature_dim), dtype=np.float32)
+        
+        source_len = len(frames)
+        if source_len == target_len:
+            return np.stack(frames)
+        
+        if source_len == 1:
+            return np.tile(frames[0], (target_len, 1))
+
+        out = np.zeros((target_len, feature_dim), dtype=np.float32)
+        max_idx = source_len - 1
+        for i in range(target_len):
+            t = (i * max_idx) / max(1, target_len - 1)
+            left_idx = int(np.floor(t))
+            right_idx = min(max_idx, int(np.ceil(t)))
+            alpha = t - left_idx
+            
+            left = frames[left_idx]
+            right = frames[right_idx]
+            out[i] = left + (right - left) * alpha
+            
+        return out
+
+    def preprocess_cv_sequence(self, frames: List[List[float]], metadata: Dict[str, Any]) -> np.ndarray:
+        input_spec = metadata.get("input_spec", {})
+        preprocess_profile = str(input_spec.get("preprocess_profile") or "").lower()
+        sequence_length = int(input_spec.get("sequence_length") or 1)
+        feature_dim = int(input_spec.get("feature_dim") or 63)
+        
+        # 1. Convert to numpy frames
+        np_frames = [np.asarray(f, dtype=np.float32) for f in frames if len(f) >= feature_dim]
+        
+        # 2. Apply normalization (centering)
+        if "wrist_center" in preprocess_profile:
+            for f in np_frames:
+                if f.size >= 63:
+                    self._wrist_center_v1(f, 0)
+                if f.size >= 126:
+                    self._wrist_center_v1(f, 63)
+
+        # 3. Interpolate
+        if sequence_length > 1:
+            # Temporal model
+            sequence = self._linear_temporal_interpolate(np_frames, sequence_length, feature_dim)
+            return sequence.reshape(-1)
+        else:
+            # Single frame model (return last frame)
+            if not np_frames:
+                return np.zeros(feature_dim, dtype=np.float32)
+            last = np_frames[-1]
+            if last.size > feature_dim:
+                return last[:feature_dim]
+            elif last.size < feature_dim:
+                return np.pad(last, (0, feature_dim - last.size))
+            return last
+
     def normalize_probs(self, probs: np.ndarray) -> np.ndarray:
         work = np.asarray(probs, dtype=np.float32).reshape(-1)
         if work.size == 0:
