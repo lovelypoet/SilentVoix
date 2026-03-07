@@ -192,6 +192,7 @@ class PlaygroundService:
         )
         runtime["mtime"] = model_mtime
         runtime["export_format"] = normalize_export_format(export_format)
+        runtime["metadata"] = model_entry.get("metadata", {})
 
         with self._cache_lock:
             self._model_cache[model_id] = runtime

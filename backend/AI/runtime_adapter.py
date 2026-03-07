@@ -169,13 +169,20 @@ def load_runtime(model_path: str, export_format: str, is_state_dict: bool = Fals
 
 def predict(runtime: Dict[str, Any], cv_values: np.ndarray) -> np.ndarray:
     export_format = normalize_export_format(runtime.get("export_format", ""))
+    metadata = runtime.get("metadata", {})
+    input_spec = metadata.get("input_spec", {})
+    seq_len = input_spec.get("sequence_length")
+    feat_dim = input_spec.get("feature_dim")
 
     if export_format == "tflite":
         interpreter = runtime["interpreter"]
         input_details = runtime["input_details"][0]
         output_details = runtime["output_details"][0]
         input_dtype = input_details.get("dtype", np.float32)
-        feed = cv_values.reshape(1, -1).astype(input_dtype)
+        if seq_len and feat_dim:
+            feed = cv_values.reshape(1, seq_len, feat_dim).astype(input_dtype)
+        else:
+            feed = cv_values.reshape(1, -1).astype(input_dtype)
         interpreter.set_tensor(input_details["index"], feed)
         interpreter.invoke()
         output = interpreter.get_tensor(output_details["index"])
@@ -183,13 +190,20 @@ def predict(runtime: Dict[str, Any], cv_values: np.ndarray) -> np.ndarray:
 
     if export_format in {"keras", "h5"}:
         model = runtime["model"]
-        raw = model.predict(cv_values.reshape(1, -1), verbose=0)
+        if seq_len and feat_dim:
+            feed = cv_values.reshape(1, seq_len, feat_dim)
+        else:
+            feed = cv_values.reshape(1, -1)
+        raw = model.predict(feed, verbose=0)
         return _normalize_output(np.asarray(raw))
 
     if export_format == "pytorch":
         torch = runtime["torch"]
         model = runtime["model"]
-        feed = torch.from_numpy(cv_values.astype(np.float32)).reshape(1, -1)
+        if seq_len and feat_dim:
+            feed = torch.from_numpy(cv_values.astype(np.float32)).reshape(1, seq_len, feat_dim)
+        else:
+            feed = torch.from_numpy(cv_values.astype(np.float32)).reshape(1, -1)
         with torch.no_grad():
             raw = model(feed)
         extracted = _extract_torch_output(raw)
