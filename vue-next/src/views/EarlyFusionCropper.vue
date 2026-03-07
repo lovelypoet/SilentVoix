@@ -1,17 +1,25 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
+import api from '../services/api'
 
 const router = useRouter()
 
 const selectedFile = ref(null)
+const rawCsvText = ref('')
 const header = ref([])
 const rows = ref([])
 const parseError = ref('')
 const loadStatus = ref('')
+const analysisLoading = ref(false)
+const analysisError = ref('')
+const analysisJob = ref(null)
+const processedCsvText = ref('')
+const processedRowsPreview = ref([])
+const workerMetadata = ref(null)
 
 const trimStartMs = ref('')
 const trimEndMs = ref('')
@@ -138,7 +146,11 @@ const suggestedExportName = computed(() => {
   return `${base}_${label}.csv`
 })
 
-const metadataPayload = computed(() => ({
+const validationSummary = computed(() => workerMetadata.value?.validation || null)
+const effectiveProcessedStats = computed(() => workerMetadata.value?.processed_summary || filteredStats.value)
+const effectiveSourceStats = computed(() => workerMetadata.value?.source_summary || sourceStats.value)
+const effectivePreviewRows = computed(() => processedRowsPreview.value.length ? processedRowsPreview.value : filteredRows.value.slice(0, 20))
+const metadataPayload = computed(() => workerMetadata.value || ({
   source_file: selectedFile.value?.name || null,
   schema_id: inferredSchemaId.value,
   timestamp_column: timestampColumn.value || null,
@@ -153,6 +165,14 @@ const metadataPayload = computed(() => ({
   processed_summary: filteredStats.value,
   notes: exportNotes.value || ''
 }))
+
+function clearAnalysisResult() {
+  analysisError.value = ''
+  analysisJob.value = null
+  processedCsvText.value = ''
+  processedRowsPreview.value = []
+  workerMetadata.value = null
+}
 
 function parseCsv(text) {
   const result = []
@@ -244,8 +264,10 @@ async function handleFileChange(event) {
   selectedFile.value = file || null
   parseError.value = ''
   loadStatus.value = ''
+  rawCsvText.value = ''
   header.value = []
   rows.value = []
+  clearAnalysisResult()
 
   if (!file) return
 
@@ -265,6 +287,7 @@ async function handleFileChange(event) {
       return record
     })
 
+    rawCsvText.value = text
     header.value = parsedHeader
     rows.value = dataRows
     exportLabel.value = exportLabel.value || 'processed'
@@ -275,7 +298,39 @@ async function handleFileChange(event) {
   }
 }
 
+async function runWorkerAnalysis() {
+  if (!selectedFile.value || !rawCsvText.value) return
+  analysisLoading.value = true
+  analysisError.value = ''
+  try {
+    const result = await api.fusionPreprocess.analyzeCsv({
+      source_file: selectedFile.value.name,
+      csv_text: rawCsvText.value,
+      options: {
+        trim_start_ms: trimStartMs.value === '' ? null : Number(trimStartMs.value),
+        trim_end_ms: trimEndMs.value === '' ? null : Number(trimEndMs.value),
+        max_abs_sensor_delta_ms: maxDeltaMs.value === '' ? null : Number(maxDeltaMs.value),
+        require_sensor_match: requireSensorMatch.value,
+        export_label: exportLabel.value || 'processed',
+        notes: exportNotes.value || ''
+      }
+    })
+    analysisJob.value = result
+    processedCsvText.value = result?.result?.processed_csv_text || ''
+    processedRowsPreview.value = Array.isArray(result?.result?.processed_rows_preview) ? result.result.processed_rows_preview : []
+    workerMetadata.value = result?.result?.metadata || null
+  } catch (error) {
+    analysisError.value = error?.response?.data?.detail || 'Fusion preprocess worker analysis failed.'
+  } finally {
+    analysisLoading.value = false
+  }
+}
+
 function exportProcessedCsv() {
+  if (processedCsvText.value) {
+    downloadBlob(suggestedExportName.value, processedCsvText.value, 'text/csv')
+    return
+  }
   if (!header.value.length || !filteredRows.value.length) return
   const csvRows = [
     header.value.map(csvEscape).join(','),
@@ -294,6 +349,7 @@ function exportMetadata() {
 
 function resetAll() {
   selectedFile.value = null
+  rawCsvText.value = ''
   header.value = []
   rows.value = []
   parseError.value = ''
@@ -304,11 +360,16 @@ function resetAll() {
   requireSensorMatch.value = true
   exportLabel.value = ''
   exportNotes.value = ''
+  clearAnalysisResult()
 }
 
 function goBack() {
   router.push({ path: '/fusion', query: { tab: 'early' } })
 }
+
+watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, exportLabel], () => {
+  if (analysisJob.value) clearAnalysisResult()
+})
 </script>
 
 <template>
@@ -341,6 +402,7 @@ function goBack() {
           />
           <p v-if="loadStatus" class="text-sm text-emerald-300">{{ loadStatus }}</p>
           <p v-if="parseError" class="text-sm text-rose-300">{{ parseError }}</p>
+          <p v-if="analysisError" class="text-sm text-rose-300">{{ analysisError }}</p>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
@@ -354,7 +416,7 @@ function goBack() {
           </div>
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Raw Rows</p>
-            <p class="mt-2 text-lg font-semibold text-white">{{ sourceStats.rowCount }}</p>
+            <p class="mt-2 text-lg font-semibold text-white">{{ effectiveSourceStats.row_count ?? sourceStats.rowCount }}</p>
           </div>
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Delta Warnings</p>
@@ -392,6 +454,15 @@ function goBack() {
         </div>
 
         <BaseInput v-model="exportNotes" label="Processing Notes" placeholder="Optional notes about sync quality, rejection reasons, or review decisions" />
+
+        <div class="flex flex-wrap gap-3">
+          <BaseBtn variant="primary" :disabled="!selectedFile || analysisLoading" @click="runWorkerAnalysis">
+            {{ analysisLoading ? 'Analyzing...' : 'Run Worker Validation' }}
+          </BaseBtn>
+          <span v-if="analysisJob?.job_id" class="rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2 text-sm text-slate-300">
+            Job: {{ analysisJob.job_id }}
+          </span>
+        </div>
       </div>
     </BaseCard>
 
@@ -400,38 +471,63 @@ function goBack() {
         <div class="space-y-4">
           <div>
             <p class="text-sm uppercase tracking-[0.2em] text-teal-300">Processed Summary</p>
-            <p class="text-sm text-slate-400 mt-1">Use this as the acceptance gate before sending the dataset to CSV Library or external training.</p>
+            <p class="text-sm text-slate-400 mt-1">Use this as the acceptance gate before sending the dataset to CSV Library or external training. Worker-backed validation is authoritative when present.</p>
+          </div>
+
+          <div
+            v-if="validationSummary"
+            class="rounded-xl border px-4 py-4"
+            :class="{
+              'border-emerald-500/30 bg-emerald-500/10': validationSummary.status === 'pass',
+              'border-amber-500/30 bg-amber-500/10': validationSummary.status === 'warning',
+              'border-rose-500/30 bg-rose-500/10': validationSummary.status === 'reject'
+            }"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Validation</p>
+                <p class="mt-2 text-lg font-semibold text-white">{{ validationSummary.status }}</p>
+              </div>
+              <div class="text-sm text-slate-200">
+                offset: {{ formatMs(validationSummary.offset_ms) }}
+              </div>
+            </div>
+            <p class="mt-3 text-sm text-slate-200">
+              {{ Array.isArray(validationSummary.reasons) ? validationSummary.reasons.join(' | ') : '' }}
+            </p>
           </div>
 
           <div class="grid gap-3 sm:grid-cols-2">
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Kept Rows</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ filteredStats.rowCount }}</p>
+              <p class="mt-2 text-lg font-semibold text-white">{{ effectiveProcessedStats.row_count ?? filteredStats.rowCount }}</p>
             </div>
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Dropped Rows</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ filteredStats.droppedRows }}</p>
+              <p class="mt-2 text-lg font-semibold text-white">{{ effectiveProcessedStats.dropped_rows ?? filteredStats.droppedRows }}</p>
             </div>
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Avg |Delta|</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMs(filteredStats.avgDeltaMs) }}</p>
+              <p class="mt-2 text-lg font-semibold text-white">{{ formatMs(effectiveProcessedStats.avg_abs_sensor_match_delta_ms ?? filteredStats.avgDeltaMs) }}</p>
             </div>
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Max |Delta|</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMs(filteredStats.maxDeltaMs) }}</p>
+              <p class="mt-2 text-lg font-semibold text-white">{{ formatMs(effectiveProcessedStats.max_abs_sensor_match_delta_ms ?? filteredStats.maxDeltaMs) }}</p>
             </div>
           </div>
 
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
-            <p>Processed window: {{ formatMs(filteredStats.startMs) }} -> {{ formatMs(filteredStats.endMs) }}</p>
+            <p>Processed window: {{ formatMs(effectiveProcessedStats.start_ms ?? filteredStats.startMs) }} -> {{ formatMs(effectiveProcessedStats.end_ms ?? filteredStats.endMs) }}</p>
             <p class="mt-2">Gesture column: <span class="text-white">{{ gestureColumn || '--' }}</span></p>
             <p class="mt-2">Timestamp column: <span class="text-white">{{ timestampColumn || '--' }}</span></p>
             <p class="mt-2">Delta column: <span class="text-white">{{ deltaColumn || '--' }}</span></p>
+            <p v-if="validationSummary" class="mt-2">Sensor match ratio: <span class="text-white">{{ validationSummary.sensor_match_ratio }}</span></p>
+            <p v-if="validationSummary" class="mt-2">Missing frame ratio: <span class="text-white">{{ validationSummary.missing_frame_ratio }}</span></p>
           </div>
 
           <div class="flex flex-wrap gap-3">
-            <BaseBtn variant="primary" :disabled="!filteredRows.length" @click="exportProcessedCsv">Download Processed CSV</BaseBtn>
-            <BaseBtn variant="secondary" :disabled="!filteredRows.length" @click="exportMetadata">Download Metadata</BaseBtn>
+            <BaseBtn variant="primary" :disabled="!(processedCsvText || filteredRows.length)" @click="exportProcessedCsv">Download Processed CSV</BaseBtn>
+            <BaseBtn variant="secondary" :disabled="!(processedCsvText || filteredRows.length)" @click="exportMetadata">Download Metadata</BaseBtn>
             <BaseBtn variant="danger" @click="resetAll">Reset</BaseBtn>
           </div>
         </div>
@@ -444,7 +540,7 @@ function goBack() {
             <p class="text-sm text-slate-400 mt-1">First 12 processed rows after cropping. This is intentionally lightweight; the next step would be a timeline graph.</p>
           </div>
 
-          <div v-if="!filteredRows.length" class="rounded-xl border border-dashed border-slate-800 bg-slate-950/40 p-8 text-center text-slate-500">
+          <div v-if="!effectivePreviewRows.length" class="rounded-xl border border-dashed border-slate-800 bg-slate-950/40 p-8 text-center text-slate-500">
             No processed rows yet. Load a file and adjust crop rules.
           </div>
 
@@ -457,7 +553,7 @@ function goBack() {
               </thead>
               <tbody>
                 <tr
-                  v-for="(row, index) in filteredRows.slice(0, 12)"
+                  v-for="(row, index) in effectivePreviewRows.slice(0, 12)"
                   :key="`row-${index}`"
                   class="border-t border-slate-900 bg-slate-950/30 text-slate-300"
                 >

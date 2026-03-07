@@ -12,6 +12,7 @@ This directory now contains only docs that match the current SilentVoix scope: a
 
 - `dependency_restructure_plan.md`: active runtime-split priority and rollout
 - `backend_cleanup_pth_migration.md`: backend migration status and cleanup order
+- `fusion_preprocessing_worker_plan.md`: gloved-hand fusion preprocessing worker plan
 - `realtime_ai_playground_model_import.md`: model upload and playground import behavior
 - `LIVEWS_SENSOR_SCHEMA.md`: sensor WebSocket payload contract
 

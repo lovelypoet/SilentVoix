@@ -100,6 +100,7 @@ Use `run_dev.sh` for the lightweight local API + frontend flow. Use Docker profi
 - `ml-tensorflow`
 - `ml-pytorch`
 - `worker-library`
+- `worker-fusion-preprocess`
 
 Run:
 
@@ -113,6 +114,7 @@ Service URLs:
 - TensorFlow runtime: `http://localhost:8091/health`
 - PyTorch runtime: `http://localhost:8092/health`
 - Worker library: `http://localhost:8093/health`
+- Fusion preprocess worker: `http://localhost:8094/health`
 
 ## 4. Troubleshooting
 

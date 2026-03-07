@@ -38,6 +38,8 @@ services:
       - ML_PYTORCH_URL=${ML_PYTORCH_URL:-http://ml-pytorch:8092}
       - USE_WORKER_LIBRARY=${USE_WORKER_LIBRARY:-true}
       - WORKER_LIBRARY_URL=${WORKER_LIBRARY_URL:-http://worker-library:8093}
+      - USE_FUSION_PREPROCESS_WORKER=${USE_FUSION_PREPROCESS_WORKER:-true}
+      - FUSION_PREPROCESS_WORKER_URL=${FUSION_PREPROCESS_WORKER_URL:-http://worker-fusion-preprocess:8094}
     depends_on:
       mongo:
         condition: service_healthy
@@ -46,6 +48,8 @@ services:
       ml-pytorch:
         condition: service_healthy
       worker-library:
+        condition: service_healthy
+      worker-fusion-preprocess:
         condition: service_healthy
     volumes:
       - /dev:/dev
@@ -92,6 +96,21 @@ services:
       - ./backend/AI/model_library:/app/AI/model_library
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8093/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  worker-fusion-preprocess:
+    build: ./worker-fusion-preprocess
+    ports:
+      - "8094:8094"
+    environment:
+      - FUSION_PREPROCESS_JOB_DIR=/app/data/fusion_preprocess_jobs
+    volumes:
+      - ./backend/data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8094/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3

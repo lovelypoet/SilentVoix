@@ -122,6 +122,8 @@ class Settings(BaseSettings):
     ML_PYTORCH_URL: str = Field("http://ml-pytorch:8092")
     USE_WORKER_LIBRARY: bool = Field(False)
     WORKER_LIBRARY_URL: str = Field("http://worker-library:8093")
+    USE_FUSION_PREPROCESS_WORKER: bool = Field(False)
+    FUSION_PREPROCESS_WORKER_URL: str = Field("http://worker-fusion-preprocess:8094")
 
     # Monitoring thresholds (dashboard alerts)
     MONITORING_WINDOW_SECONDS: int = Field(300)

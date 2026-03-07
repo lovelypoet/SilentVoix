@@ -140,6 +140,12 @@ export default {
       api.get(`/sync/sensor-window?mode=${mode}&start_ms=${startMs}&end_ms=${endMs}&pad_ms=${padMs}`)
   },
 
+  fusionPreprocess: {
+    health: () => api.get('/fusion-preprocess/health'),
+    analyzeCsv: (payload) => api.post('/fusion-preprocess/jobs/analyze', payload),
+    getJob: (jobId) => api.get(`/fusion-preprocess/jobs/${jobId}`)
+  },
+
   // ===================== Admin CSV Library API =====================
   admin: {
     csvLibrary: {
