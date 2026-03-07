@@ -143,7 +143,8 @@ export default {
   fusionPreprocess: {
     health: () => api.get('/fusion-preprocess/health'),
     analyzeCsv: (payload) => api.post('/fusion-preprocess/jobs/analyze', payload),
-    getJob: (jobId) => api.get(`/fusion-preprocess/jobs/${jobId}`)
+    getJob: (jobId) => api.get(`/fusion-preprocess/jobs/${jobId}`),
+    saveJobOutput: (jobId, payload = {}) => api.post(`/fusion-preprocess/jobs/${jobId}/save`, payload)
   },
 
   // ===================== Admin CSV Library API =====================

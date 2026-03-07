@@ -20,6 +20,9 @@ const analysisJob = ref(null)
 const processedCsvText = ref('')
 const processedRowsPreview = ref([])
 const workerMetadata = ref(null)
+const saveLoading = ref(false)
+const saveError = ref('')
+const saveResult = ref(null)
 
 const trimStartMs = ref('')
 const trimEndMs = ref('')
@@ -172,6 +175,9 @@ function clearAnalysisResult() {
   processedCsvText.value = ''
   processedRowsPreview.value = []
   workerMetadata.value = null
+  saveLoading.value = false
+  saveError.value = ''
+  saveResult.value = null
 }
 
 function parseCsv(text) {
@@ -302,6 +308,8 @@ async function runWorkerAnalysis() {
   if (!selectedFile.value || !rawCsvText.value) return
   analysisLoading.value = true
   analysisError.value = ''
+  saveError.value = ''
+  saveResult.value = null
   try {
     const result = await api.fusionPreprocess.analyzeCsv({
       source_file: selectedFile.value.name,
@@ -323,6 +331,22 @@ async function runWorkerAnalysis() {
     analysisError.value = error?.response?.data?.detail || 'Fusion preprocess worker analysis failed.'
   } finally {
     analysisLoading.value = false
+  }
+}
+
+async function saveToCsvLibrary() {
+  if (!analysisJob.value?.job_id) return
+  saveLoading.value = true
+  saveError.value = ''
+  try {
+    const result = await api.fusionPreprocess.saveJobOutput(analysisJob.value.job_id, {
+      file_name: suggestedExportName.value
+    })
+    saveResult.value = result
+  } catch (error) {
+    saveError.value = error?.response?.data?.detail || 'Failed to save processed dataset to CSV Library.'
+  } finally {
+    saveLoading.value = false
   }
 }
 
@@ -403,6 +427,8 @@ watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, expo
           <p v-if="loadStatus" class="text-sm text-emerald-300">{{ loadStatus }}</p>
           <p v-if="parseError" class="text-sm text-rose-300">{{ parseError }}</p>
           <p v-if="analysisError" class="text-sm text-rose-300">{{ analysisError }}</p>
+          <p v-if="saveError" class="text-sm text-rose-300">{{ saveError }}</p>
+          <p v-if="saveResult?.csv_path" class="text-sm text-emerald-300">Saved to CSV Library: {{ saveResult.csv_path }}</p>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
@@ -528,6 +554,9 @@ watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, expo
           <div class="flex flex-wrap gap-3">
             <BaseBtn variant="primary" :disabled="!(processedCsvText || filteredRows.length)" @click="exportProcessedCsv">Download Processed CSV</BaseBtn>
             <BaseBtn variant="secondary" :disabled="!(processedCsvText || filteredRows.length)" @click="exportMetadata">Download Metadata</BaseBtn>
+            <BaseBtn variant="secondary" :disabled="!analysisJob?.job_id || saveLoading" @click="saveToCsvLibrary">
+              {{ saveLoading ? 'Saving...' : 'Save to CSV Library' }}
+            </BaseBtn>
             <BaseBtn variant="danger" @click="resetAll">Reset</BaseBtn>
           </div>
         </div>

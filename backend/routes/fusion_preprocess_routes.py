@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import httpx
@@ -25,6 +27,10 @@ class FusionAnalyzeRequest(BaseModel):
     source_file: str = Field(..., min_length=1)
     csv_text: str = Field(..., min_length=1)
     options: FusionAnalyzeOptions = Field(default_factory=FusionAnalyzeOptions)
+
+
+class SaveProcessedDatasetRequest(BaseModel):
+    file_name: Optional[str] = None
 
 
 def _worker_enabled() -> bool:
@@ -60,6 +66,54 @@ def _call_worker(method: str, path: str, payload: Dict[str, Any] | None = None) 
     return response.json()
 
 
+def _csv_library_active_root() -> Path:
+    root = Path(settings.DATA_DIR) / "csv_library" / "active"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _safe_output_name(name: str) -> str:
+    value = (name or "").strip().replace("\\", "/")
+    if not value:
+        raise HTTPException(status_code=400, detail="Output filename is required.")
+    candidate = Path(value).name
+    if candidate in {"", ".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid output filename.")
+    if Path(candidate).suffix.lower() != ".csv":
+        candidate = f"{candidate}.csv"
+    return candidate
+
+
+def _default_output_name(job: Dict[str, Any], schema_id: str) -> str:
+    result = job.get("result") or {}
+    metadata = result.get("metadata") or {}
+    source_file = str(metadata.get("source_file") or f"{schema_id}.csv")
+    crop_rules = metadata.get("crop_rules") or {}
+    export_label = str(crop_rules.get("export_label") or "processed").strip().replace(" ", "_")
+    source_stem = Path(source_file).stem.replace(" ", "_")
+    return _safe_output_name(f"{source_stem}_{export_label}.csv")
+
+
+def _health_flags_from_metadata(metadata: Dict[str, Any]) -> list[str]:
+    flags: list[str] = []
+    validation = metadata.get("validation") or {}
+    status = str(validation.get("status") or "").strip().lower()
+    if status:
+        flags.append(f"preprocess_{status}")
+    if not validation.get("cv_spike_detected", False):
+        flags.append("cv_spike_missing")
+    if not validation.get("sensor_spike_detected", False):
+        flags.append("sensor_spike_missing")
+    for reason in validation.get("reasons") or []:
+        if not isinstance(reason, str):
+            continue
+        normalized = reason.strip().lower().replace(" ", "_")
+        normalized = "".join(ch for ch in normalized if ch.isalnum() or ch == "_")
+        if normalized:
+            flags.append(f"validation_{normalized[:80]}")
+    return sorted(set(flags))
+
+
 @router.get("/health")
 def fusion_preprocess_health(_user=Depends(role_or_internal_dep("editor"))) -> Dict[str, Any]:
     return _call_worker("GET", "/health")
@@ -73,3 +127,51 @@ def analyze_fusion_csv(req: FusionAnalyzeRequest, _user=Depends(role_or_internal
 @router.get("/jobs/{job_id}")
 def get_fusion_job(job_id: str, _user=Depends(role_or_internal_dep("editor"))) -> Dict[str, Any]:
     return _call_worker("GET", f"/v1/jobs/{job_id}")
+
+
+@router.post("/jobs/{job_id}/save")
+def save_fusion_job_output(
+    job_id: str,
+    req: SaveProcessedDatasetRequest,
+    _user=Depends(role_or_internal_dep("editor")),
+) -> Dict[str, Any]:
+    job = _call_worker("GET", f"/v1/jobs/{job_id}")
+    if str(job.get("status") or "").lower() != "completed":
+        raise HTTPException(status_code=409, detail="Only completed preprocess jobs can be saved.")
+
+    result = job.get("result") or {}
+    metadata = result.get("metadata") or {}
+    processed_csv_text = str(result.get("processed_csv_text") or "")
+    schema_id = str(metadata.get("schema_id") or "").strip()
+
+    if not processed_csv_text:
+        raise HTTPException(status_code=400, detail="Processed CSV output is empty.")
+    if schema_id not in {"fusion_single", "fusion_dual"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported fusion schema for save: {schema_id or 'unknown'}")
+
+    target_dir = _csv_library_active_root() / schema_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    output_name = _safe_output_name(req.file_name) if req.file_name else _default_output_name(job, schema_id)
+    csv_path = target_dir / output_name
+    csv_path.write_text(processed_csv_text, encoding="utf-8")
+
+    metadata_path = csv_path.with_suffix(".metadata.json")
+    metadata_to_save = {
+        **metadata,
+        "job_id": job_id,
+        "saved_csv_path": str(csv_path),
+        "health_flags": _health_flags_from_metadata(metadata),
+    }
+    metadata_path.write_text(json.dumps(metadata_to_save, ensure_ascii=True, indent=2), encoding="utf-8")
+
+    return {
+        "status": "success",
+        "job_id": job_id,
+        "schema_id": schema_id,
+        "saved_name": output_name,
+        "csv_path": str(csv_path),
+        "metadata_path": str(metadata_path),
+        "health_flags": metadata_to_save["health_flags"],
+        "validation": metadata.get("validation") or {},
+    }
