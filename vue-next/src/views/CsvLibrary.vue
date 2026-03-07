@@ -39,15 +39,58 @@ const confirmFileName = ref('')
 const confirmTypedName = ref('')
 
 const schemaFilter = ref('all')
+const validationFilter = ref('all')
+const sortBy = ref('modified_desc')
 
 const schemaOptions = computed(() => {
   const set = new Set(files.value.map(f => f.schema_id).filter(Boolean))
   return ['all', ...Array.from(set).sort()]
 })
 
+const workerValidationRank = (status = '') => {
+  if (status === 'reject') return 0
+  if (status === 'warning') return 1
+  if (status === 'unreviewed') return 2
+  if (status === 'pass') return 3
+  return 4
+}
+
 const filteredFiles = computed(() => {
-  if (schemaFilter.value === 'all') return files.value
-  return files.value.filter(f => f.schema_id === schemaFilter.value)
+  const filtered = files.value.filter((file) => {
+    const schemaMatch = schemaFilter.value === 'all' || file.schema_id === schemaFilter.value
+    const status = String(file?.worker_validation?.status || 'unreviewed').toLowerCase()
+    const validationMatch = validationFilter.value === 'all' || status === validationFilter.value
+    return schemaMatch && validationMatch
+  })
+
+  const sorted = [...filtered]
+  sorted.sort((a, b) => {
+    const aStatus = String(a?.worker_validation?.status || 'unreviewed').toLowerCase()
+    const bStatus = String(b?.worker_validation?.status || 'unreviewed').toLowerCase()
+    const aModified = new Date(a?.modified_at || 0).getTime()
+    const bModified = new Date(b?.modified_at || 0).getTime()
+    const aOffset = Math.abs(Number(a?.worker_validation?.offset_ms ?? -1))
+    const bOffset = Math.abs(Number(b?.worker_validation?.offset_ms ?? -1))
+
+    if (sortBy.value === 'validation') {
+      const rankDelta = workerValidationRank(aStatus) - workerValidationRank(bStatus)
+      if (rankDelta !== 0) return rankDelta
+      return bModified - aModified
+    }
+
+    if (sortBy.value === 'offset_desc') {
+      if (aOffset !== bOffset) return bOffset - aOffset
+      return bModified - aModified
+    }
+
+    if (sortBy.value === 'modified_asc') {
+      return aModified - bModified
+    }
+
+    return bModified - aModified
+  })
+
+  return sorted
 })
 const activeSelectionKey = computed(() => `${pipeline.value}:${mode.value}`)
 const lateSelectionCvKey = computed(() => `${pipeline.value}:${mode.value}:cv`)
@@ -405,7 +448,7 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
     </div>
 
     <BaseCard>
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
         <label class="text-sm text-slate-300 md:col-span-1">
           Pipeline
           <select v-model="pipeline" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
@@ -426,6 +469,27 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
           Schema
           <select v-model="schemaFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
             <option v-for="item in schemaOptions" :key="item" :value="item">{{ item }}</option>
+          </select>
+        </label>
+
+        <label class="text-sm text-slate-300 md:col-span-1">
+          Validation
+          <select v-model="validationFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+            <option value="all">all</option>
+            <option value="pass">pass</option>
+            <option value="warning">warning</option>
+            <option value="reject">reject</option>
+            <option value="unreviewed">unreviewed</option>
+          </select>
+        </label>
+
+        <label class="text-sm text-slate-300 md:col-span-1">
+          Sort
+          <select v-model="sortBy" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+            <option value="modified_desc">modified: newest</option>
+            <option value="modified_asc">modified: oldest</option>
+            <option value="validation">validation: worst first</option>
+            <option value="offset_desc">offset: largest first</option>
           </select>
         </label>
 

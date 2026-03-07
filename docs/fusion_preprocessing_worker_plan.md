@@ -11,6 +11,7 @@ What exists today:
 - worker validation summary in the cropper
 - save processed fusion CSV into CSV Library
 - CSV Library validation badge sourced from worker sidecar metadata
+- CSV Library filtering and sorting by worker validation state
 
 Current limitation:
 - preprocessing is still CSV-driven in phase 1
@@ -149,6 +150,7 @@ Current implemented flow:
    - download metadata JSON
    - save processed CSV into CSV Library
 6. CSV Library shows worker validation status directly in the file list and stats modal.
+7. Operator can filter and sort datasets by validation state during review.
 
 ## Why OpenCV Belongs Here
 
@@ -276,6 +278,8 @@ Implemented UI surfaces:
 - CSV Library:
   - per-file validation badge
   - worker validation details in stats modal
+  - validation filter (`pass`, `warning`, `reject`, `unreviewed`)
+  - sort controls for newest, oldest, worst validation first, and largest offset first
 
 ## Docker / Deployment Impact
 
@@ -311,11 +315,11 @@ Completed:
    - `reject`
 
 Next:
-1. Add CSV Library filtering/sorting by worker validation status.
-2. Move from CSV-only preprocessing to actual OpenCV frame/video preprocessing.
-3. Persist richer worker job history and artifact lineage.
-4. Add crop/timeline visualization instead of table-only preview.
-5. Add stronger validation thresholds for dual-hand/gloved-hand cases.
+1. Move from CSV-only preprocessing to actual OpenCV frame/video preprocessing.
+2. Persist richer worker job history and artifact lineage.
+3. Add crop/timeline visualization instead of table-only preview.
+4. Add stronger validation thresholds for dual-hand/gloved-hand cases.
+5. Add explicit operator actions such as `approve`, `needs review`, and `reject override`.
 
 ## Summary
 
