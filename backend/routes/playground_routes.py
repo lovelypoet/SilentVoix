@@ -49,6 +49,10 @@ class PlaygroundSensorPredictRequest(BaseModel):
     model_id: Optional[str] = None
 
 
+class PlaygroundModelReorderRequest(BaseModel):
+    model_ids: List[str]
+
+
 def _models_root() -> Path:
     root = Path(settings.MODEL_LIBRARY_DIR)
     root.mkdir(parents=True, exist_ok=True)
@@ -127,6 +131,27 @@ def _get_model_entry(registry: Dict[str, Any], model_id: str) -> Dict[str, Any]:
     if not entry:
         raise HTTPException(status_code=404, detail=f"Model not found: {model_id}")
     return entry
+
+
+def _reorder_registry_models(registry: Dict[str, Any], ordered_ids: List[str]) -> List[Dict[str, Any]]:
+    models = [entry for entry in registry.get("models", []) if isinstance(entry, dict)]
+    by_id = {str(entry.get("id") or ""): entry for entry in models}
+    missing = [model_id for model_id in ordered_ids if model_id not in by_id]
+    if missing:
+        raise HTTPException(status_code=404, detail=f"Model not found: {missing[0]}")
+
+    seen: set[str] = set()
+    deduped_ids: List[str] = []
+    for model_id in ordered_ids:
+        if model_id in seen:
+            continue
+        seen.add(model_id)
+        deduped_ids.append(model_id)
+
+    remaining = [entry for entry in models if str(entry.get("id") or "") not in seen]
+    reordered = [by_id[model_id] for model_id in deduped_ids]
+    registry["models"] = [*reordered, *remaining]
+    return registry["models"]
 
 
 def _safe_model_artifact_path(entry: Dict[str, Any], field_name: str) -> Path:
@@ -559,6 +584,25 @@ async def upload_playground_model(
 @router.get("/models")
 async def list_playground_models(_user=Depends(role_or_internal_dep("editor"))):
     registry = _load_registry()
+    return {
+        "status": "success",
+        "models": registry.get("models", []),
+        "active_model_id": registry.get("active_model_id"),
+    }
+
+
+@router.post("/models/reorder")
+async def reorder_playground_models(
+    req: PlaygroundModelReorderRequest,
+    _user=Depends(role_or_internal_dep("editor")),
+):
+    ordered_ids = [str(model_id).strip() for model_id in req.model_ids if str(model_id).strip()]
+    if not ordered_ids:
+        raise HTTPException(status_code=400, detail="model_ids must contain at least one model id")
+
+    registry = _load_registry()
+    _reorder_registry_models(registry, ordered_ids)
+    _save_registry(registry)
     return {
         "status": "success",
         "models": registry.get("models", []),

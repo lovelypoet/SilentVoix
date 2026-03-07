@@ -45,7 +45,9 @@ const reviewNotes = ref('')
 
 const schemaFilter = ref('all')
 const validationFilter = ref('all')
-const sortBy = ref('modified_desc')
+const sortBy = ref('manual')
+const dragFileName = ref(null)
+const isReordering = ref(false)
 
 const schemaOptions = computed(() => {
   const set = new Set(files.value.map(f => f.schema_id).filter(Boolean))
@@ -67,6 +69,10 @@ const filteredFiles = computed(() => {
     const validationMatch = validationFilter.value === 'all' || status === validationFilter.value
     return schemaMatch && validationMatch
   })
+
+  if (sortBy.value === 'manual') {
+    return filtered
+  }
 
   const sorted = [...filtered]
   sorted.sort((a, b) => {
@@ -97,6 +103,7 @@ const filteredFiles = computed(() => {
 
   return sorted
 })
+const isManualSort = computed(() => sortBy.value === 'manual')
 const activeSelectionKey = computed(() => `${pipeline.value}:${mode.value}`)
 const lateSelectionCvKey = computed(() => `${pipeline.value}:${mode.value}:cv`)
 const lateSelectionSensorKey = computed(() => `${pipeline.value}:${mode.value}:sensor`)
@@ -481,6 +488,65 @@ const reviewFromMenu = (name, decision, close) => {
   close()
 }
 
+const reorderSubset = (allNames, visibleNames, nextVisibleNames) => {
+  const visibleSet = new Set(visibleNames)
+  const queue = [...nextVisibleNames]
+  return allNames.map((name) => (visibleSet.has(name) ? queue.shift() : name))
+}
+
+const persistCsvOrder = async (orderedNames) => {
+  isReordering.value = true
+  error.value = ''
+  try {
+    await api.admin.csvLibrary.reorder(orderedNames)
+  } catch (e) {
+    error.value = e?.response?.data?.detail || 'Failed to reorder CSV files.'
+    await loadFiles()
+  } finally {
+    isReordering.value = false
+  }
+}
+
+const onRowDragStart = (name) => {
+  if (!isManualSort.value || isReordering.value) return
+  dragFileName.value = name
+}
+
+const onRowDragOver = (event, name) => {
+  if (!isManualSort.value || isReordering.value || !dragFileName.value || dragFileName.value === name) return
+  event.preventDefault()
+}
+
+const onRowDrop = async (name) => {
+  if (!isManualSort.value || isReordering.value || !dragFileName.value || dragFileName.value === name) {
+    dragFileName.value = null
+    return
+  }
+
+  const visibleNames = filteredFiles.value.map((file) => file.name)
+  const fromIndex = visibleNames.indexOf(dragFileName.value)
+  const toIndex = visibleNames.indexOf(name)
+  if (fromIndex < 0 || toIndex < 0) {
+    dragFileName.value = null
+    return
+  }
+
+  const nextVisibleNames = [...visibleNames]
+  const [moved] = nextVisibleNames.splice(fromIndex, 1)
+  nextVisibleNames.splice(toIndex, 0, moved)
+
+  const allNames = files.value.map((file) => file.name)
+  const mergedNames = reorderSubset(allNames, visibleNames, nextVisibleNames)
+  const byName = Object.fromEntries(files.value.map((file) => [file.name, file]))
+  files.value = mergedNames.map((fileName) => byName[fileName]).filter(Boolean)
+  dragFileName.value = null
+  await persistCsvOrder(mergedNames)
+}
+
+const onRowDragEnd = () => {
+  dragFileName.value = null
+}
+
 const menuItemClass = 'w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50'
 const menuAccentClass = 'w-full text-left px-3 py-2 text-sm text-cyan-300 hover:bg-slate-800 disabled:opacity-50'
 const menuWarningClass = 'w-full text-left px-3 py-2 text-sm text-amber-300 hover:bg-slate-800 disabled:opacity-50'
@@ -557,6 +623,7 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
         <label class="text-sm text-slate-300 md:col-span-1">
           Sort
           <select v-model="sortBy" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+            <option value="manual">manual order</option>
             <option value="modified_desc">modified: newest</option>
             <option value="modified_asc">modified: oldest</option>
             <option value="validation">validation: worst first</option>
@@ -592,6 +659,9 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
       </div>
 
       <p v-if="error" class="text-red-300 text-sm mt-3">{{ error }}</p>
+      <p class="mt-2 text-xs" :class="isManualSort ? 'text-cyan-300' : 'text-slate-500'">
+        {{ isManualSort ? 'Drag rows to reorder datasets. The saved order persists across sessions.' : 'Switch Sort to manual order to drag and reorder.' }}
+      </p>
     </BaseCard>
 
     <BaseCard>
@@ -617,8 +687,18 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
             <tr v-else-if="filteredFiles.length === 0">
               <td colspan="9" class="py-4 text-slate-400">No CSV files found.</td>
             </tr>
-            <tr v-for="file in filteredFiles" :key="file.name" class="border-b border-slate-900/70">
-              <td class="py-2 pr-3 text-slate-200 font-medium">{{ file.name }}</td>
+            <tr
+              v-for="file in filteredFiles"
+              :key="file.name"
+              class="border-b border-slate-900/70"
+              :class="isManualSort ? 'cursor-grab active:cursor-grabbing' : ''"
+              :draggable="isManualSort && !isReordering"
+              @dragstart="onRowDragStart(file.name)"
+              @dragover="onRowDragOver($event, file.name)"
+              @drop.prevent="onRowDrop(file.name)"
+              @dragend="onRowDragEnd"
+            >
+              <td class="py-2 pr-3 text-slate-200 font-medium">{{ isManualSort ? ':: ' : '' }}{{ file.name }}</td>
               <td class="py-2 pr-3 text-slate-300">{{ file.schema_id }}</td>
               <td class="py-2 pr-3 text-slate-300">{{ file.row_count }}</td>
               <td class="py-2 pr-3 text-slate-300">{{ formatBytes(file.size_bytes) }}</td>

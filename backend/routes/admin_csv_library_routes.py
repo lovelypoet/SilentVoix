@@ -58,6 +58,10 @@ class ReviewCsvRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class CsvOrderRequest(BaseModel):
+    names: List[str]
+
+
 def _safe_csv_name(name: str) -> str:
     value = (name or "").strip().replace("\\", "/")
     if not value:
@@ -80,6 +84,10 @@ def _archive_root() -> Path:
 
 def _selection_store_path() -> Path:
     return Path(settings.DATA_DIR) / "csv_library" / "selected_datasets.json"
+
+
+def _order_store_path() -> Path:
+    return Path(settings.DATA_DIR) / "csv_library" / "order.json"
 
 
 def _legacy_root() -> Path:
@@ -388,6 +396,37 @@ def _save_selection_store(data: Dict[str, Dict[str, Any]]) -> None:
         json.dump(data, f, ensure_ascii=True, indent=2)
     tmp_path.replace(path)
 
+
+def _load_order_store() -> List[str]:
+    path = _order_store_path()
+    if not path.exists():
+        return []
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            return []
+        result: List[str] = []
+        seen: set[str] = set()
+        for item in data:
+            name = str(item or "").strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            result.append(name)
+        return result
+    except Exception:
+        return []
+
+
+def _save_order_store(data: List[str]) -> None:
+    path = _order_store_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(".json.tmp")
+    with tmp_path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=True, indent=2)
+    tmp_path.replace(path)
+
 def _sensor_single_required_columns() -> List[str]:
     return ["timestamp_ms", "f1", "f2", "f3", "f4", "f5", "ax", "ay", "az", "gx", "gy", "gz"]
 
@@ -606,6 +645,40 @@ def _save_sidecar_metadata(csv_path: Path, data: Dict[str, Any]) -> None:
     sidecar.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
 
 
+def _apply_csv_manual_order(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    order = _load_order_store()
+    if not order:
+        return rows
+    position = {name: idx for idx, name in enumerate(order)}
+    return sorted(
+        rows,
+        key=lambda item: (
+            position.get(str(item.get("name") or ""), len(position) + 10_000),
+            str(item.get("schema_id") or ""),
+            str(item.get("modified_at") or ""),
+        ),
+    )
+
+
+def _replace_order_name(old_name: str, new_name: Optional[str] = None) -> None:
+    existing = _load_order_store()
+    if not existing:
+        return
+    next_order: List[str] = []
+    seen: set[str] = set()
+    for name in existing:
+        if name == old_name:
+            if new_name and new_name not in seen:
+                next_order.append(new_name)
+                seen.add(new_name)
+            continue
+        if name in seen:
+            continue
+        next_order.append(name)
+        seen.add(name)
+    _save_order_store(next_order)
+
+
 def _review_decision_flag(decision: str) -> str:
     normalized = decision.strip().lower()
     mapping = {
@@ -647,7 +720,7 @@ async def list_csv_files(
         )
 
     result.sort(key=lambda item: (item.get("schema_id") or "", item.get("modified_at") or ""), reverse=False)
-    return {"status": "success", "files": result}
+    return {"status": "success", "files": _apply_csv_manual_order(result)}
 
 
 @router.get("/compatible")
@@ -690,7 +763,47 @@ async def list_compatible_csv_files(
         "pipeline": pipeline,
         "mode": mode,
         "compatible_schema_ids": sorted(allowed),
-        "files": result,
+        "files": _apply_csv_manual_order(result),
+    }
+
+
+@router.post("/files/reorder")
+async def reorder_csv_files(
+    req: CsvOrderRequest,
+    _user=Depends(role_or_internal_dep("admin")),
+):
+    ordered_names = [_safe_csv_name(name) for name in req.names]
+    if not ordered_names:
+        raise HTTPException(status_code=400, detail="names must contain at least one CSV file")
+
+    known_names = {rel_name for _scope, _path, rel_name in _collect_csv_paths(include_archived=True)}
+    missing = [name for name in ordered_names if name not in known_names]
+    if missing:
+        raise HTTPException(status_code=404, detail=f"CSV file not found: {missing[0]}")
+
+    existing = _load_order_store()
+    seen: set[str] = set()
+    merged: List[str] = []
+    for name in ordered_names:
+        if name in seen:
+            continue
+        seen.add(name)
+        merged.append(name)
+    for name in existing:
+        if name in seen or name not in known_names:
+            continue
+        seen.add(name)
+        merged.append(name)
+    for name in sorted(known_names):
+        if name in seen:
+            continue
+        seen.add(name)
+        merged.append(name)
+
+    _save_order_store(merged)
+    return {
+        "status": "success",
+        "order": merged,
     }
 
 
@@ -966,6 +1079,8 @@ async def archive_csv_file(
         raise HTTPException(status_code=500, detail=f"Failed to archive file '{safe_name}': {exc}")
 
     archived_at = datetime.now(timezone.utc).isoformat()
+    archived_rel_name = str(destination.relative_to(_archive_root())).replace("\\", "/")
+    _replace_order_name(safe_name, archived_rel_name)
     return {
         "status": "success",
         "name": safe_name,
@@ -1007,6 +1122,7 @@ async def delete_csv_file_permanently(
         for key in keys_to_remove:
             store.pop(key, None)
         _save_selection_store(store)
+    _replace_order_name(safe_name, None)
 
     return {
         "status": "success",

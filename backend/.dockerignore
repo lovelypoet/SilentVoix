@@ -12,6 +12,7 @@ checkpoints/
 venv/
 venv
 AI/model_library/
+AI/models/
 AI/results/
 tts_cache/
 *.log

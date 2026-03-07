@@ -18,10 +18,12 @@ const searchQuery = ref('')
 const familyFilter = ref('all')
 const formatFilter = ref('all')
 const statusFilter = ref('all')
-const sortKey = ref('created_at')
+const sortKey = ref('manual')
 const sortDir = ref('desc')
 const pageSize = ref(10)
 const currentPage = ref(1)
+const dragModelId = ref(null)
+const isReordering = ref(false)
 
 const families = computed(() => {
   const values = new Set(models.value.map((m) => m?.metadata?.model_family).filter(Boolean))
@@ -60,7 +62,12 @@ const filteredModels = computed(() => {
   })
 })
 
+const isManualSort = computed(() => sortKey.value === 'manual')
+
 const sortedModels = computed(() => {
+  if (isManualSort.value) {
+    return filteredModels.value
+  }
   const dir = sortDir.value === 'asc' ? 1 : -1
   const withIndex = filteredModels.value.map((model, idx) => ({ model, idx }))
   withIndex.sort((a, b) => {
@@ -260,6 +267,71 @@ const goToPage = (value) => {
   currentPage.value = Math.min(Math.max(1, value), totalPages.value)
 }
 
+const reorderSubset = (allIds, visibleIds, nextVisibleIds) => {
+  const visibleSet = new Set(visibleIds)
+  const queue = [...nextVisibleIds]
+  return allIds.map((id) => (visibleSet.has(id) ? queue.shift() : id))
+}
+
+const persistModelOrder = async (orderedIds) => {
+  isReordering.value = true
+  error.value = ''
+  try {
+    const res = await api.playground.reorderModels(orderedIds)
+    const rows = Array.isArray(res?.models) ? res.models : []
+    if (rows.length) {
+      models.value = rows
+      activeModelId.value = res?.active_model_id || activeModelId.value
+      hydrateRuntimeChecks(rows)
+    }
+  } catch (e) {
+    error.value = e?.response?.data?.detail || 'Failed to reorder models.'
+    await fetchModels()
+  } finally {
+    isReordering.value = false
+  }
+}
+
+const onRowDragStart = (modelId) => {
+  if (!isManualSort.value || isReordering.value) return
+  dragModelId.value = modelId
+}
+
+const onRowDragOver = (event, modelId) => {
+  if (!isManualSort.value || isReordering.value || !dragModelId.value || dragModelId.value === modelId) return
+  event.preventDefault()
+}
+
+const onRowDrop = async (modelId) => {
+  if (!isManualSort.value || isReordering.value || !dragModelId.value || dragModelId.value === modelId) {
+    dragModelId.value = null
+    return
+  }
+
+  const visibleIds = pagedModels.value.map((model) => model.id)
+  const fromIndex = visibleIds.indexOf(dragModelId.value)
+  const toIndex = visibleIds.indexOf(modelId)
+  if (fromIndex < 0 || toIndex < 0) {
+    dragModelId.value = null
+    return
+  }
+
+  const nextVisibleIds = [...visibleIds]
+  const [moved] = nextVisibleIds.splice(fromIndex, 1)
+  nextVisibleIds.splice(toIndex, 0, moved)
+
+  const allIds = models.value.map((model) => model.id)
+  const mergedIds = reorderSubset(allIds, visibleIds, nextVisibleIds)
+  const byId = Object.fromEntries(models.value.map((model) => [model.id, model]))
+  models.value = mergedIds.map((id) => byId[id]).filter(Boolean)
+  dragModelId.value = null
+  await persistModelOrder(mergedIds)
+}
+
+const onRowDragEnd = () => {
+  dragModelId.value = null
+}
+
 const activateFromMenu = async (modelId, close) => {
   await activateModel(modelId)
   close()
@@ -359,6 +431,7 @@ onMounted(() => {
         <label class="block">
           <span class="text-xs text-slate-400">Sort by</span>
           <select v-model="sortKey" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+            <option value="manual">Manual Order</option>
             <option value="created_at">Created Date</option>
             <option value="name">Name</option>
             <option value="family">Family</option>
@@ -371,7 +444,7 @@ onMounted(() => {
         </label>
         <label class="block">
           <span class="text-xs text-slate-400">Direction</span>
-          <select v-model="sortDir" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="sortDir" :disabled="isManualSort" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white disabled:opacity-50">
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
           </select>
@@ -391,6 +464,9 @@ onMounted(() => {
           </p>
         </div>
       </div>
+      <p class="mb-4 text-xs" :class="isManualSort ? 'text-cyan-300' : 'text-slate-500'">
+        {{ isManualSort ? 'Drag rows to reorder models. The saved order is reused across sessions and the playground.' : 'Switch Sort by to Manual Order to drag and reorder.' }}
+      </p>
 
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -414,9 +490,19 @@ onMounted(() => {
             <tr v-else-if="sortedModels.length === 0">
               <td colspan="9" class="py-4 text-slate-400">No models found. Upload one in Realtime AI Playground.</td>
             </tr>
-            <tr v-for="model in pagedModels" :key="model.id" class="border-b border-slate-900/70">
+            <tr
+              v-for="model in pagedModels"
+              :key="model.id"
+              class="border-b border-slate-900/70"
+              :class="isManualSort ? 'cursor-grab active:cursor-grabbing' : ''"
+              :draggable="isManualSort && !isReordering"
+              @dragstart="onRowDragStart(model.id)"
+              @dragover="onRowDragOver($event, model.id)"
+              @drop.prevent="onRowDrop(model.id)"
+              @dragend="onRowDragEnd"
+            >
               <td class="py-2 pr-3 text-slate-200">
-                <p class="font-medium">{{ model.display_name || model.id }}</p>
+                <p class="font-medium">{{ isManualSort ? ':: ' : '' }}{{ model.display_name || model.id }}</p>
                 <p class="text-xs text-slate-500">{{ model.model_file_name }}</p>
               </td>
               <td class="py-2 pr-3 text-slate-300">{{ model.metadata?.model_family || '--' }}</td>

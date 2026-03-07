@@ -18,6 +18,9 @@ const uploadMessage = ref('')
 const uploadError = ref('')
 const isUploading = ref(false)
 const activeModel = ref(null)
+const savedModels = ref([])
+const selectedSavedModelId = ref('')
+const isSwitchingSavedModel = ref(false)
 
 const mirrorCamera = ref(true)
 const showLandmarks = ref(true)
@@ -175,9 +178,25 @@ const loadActiveModel = async () => {
   try {
     const res = await api.playground.getActiveModel()
     activeModel.value = res?.model || null
+    selectedSavedModelId.value = activeModel.value?.id || ''
   } catch {
     activeModel.value = null
+    selectedSavedModelId.value = ''
   }
+}
+
+const loadSavedModels = async () => {
+  try {
+    const res = await api.playground.listModels()
+    const rows = Array.isArray(res?.models) ? res.models : []
+    savedModels.value = rows
+  } catch {
+    savedModels.value = []
+  }
+}
+
+const loadModelContext = async () => {
+  await Promise.all([loadActiveModel(), loadSavedModels()])
 }
 
 const uploadAndActivateModel = async () => {
@@ -203,11 +222,32 @@ const uploadAndActivateModel = async () => {
   try {
     const res = await api.playground.uploadModel(modelFile.value, metadataFile.value, modelClassFile.value, isStateDict.value)
     activeModel.value = res?.model || null
+    selectedSavedModelId.value = activeModel.value?.id || ''
     uploadMessage.value = res?.message || 'Model uploaded.'
+    await loadSavedModels()
   } catch (e) {
     uploadError.value = e?.response?.data?.detail || 'Failed to upload model package.'
   } finally {
     isUploading.value = false
+  }
+}
+
+const activateSavedModel = async () => {
+  uploadError.value = ''
+  uploadMessage.value = ''
+  if (!selectedSavedModelId.value) {
+    uploadError.value = 'Select a saved model first.'
+    return
+  }
+  isSwitchingSavedModel.value = true
+  try {
+    await api.playground.activateModel(selectedSavedModelId.value)
+    await loadModelContext()
+    uploadMessage.value = 'Saved model activated.'
+  } catch (e) {
+    uploadError.value = e?.response?.data?.detail || 'Failed to activate saved model.'
+  } finally {
+    isSwitchingSavedModel.value = false
   }
 }
 
@@ -436,7 +476,7 @@ onUnmounted(() => {
 })
 
 onMounted(() => {
-  void loadActiveModel()
+  void loadModelContext()
 })
 </script>
 
@@ -459,6 +499,20 @@ onMounted(() => {
       <h2 class="text-xl text-white font-semibold">Model Package</h2>
       <p class="text-xs text-slate-400 mt-1">Accepted metadata fields: model_name, model_family, input_spec, labels, export_format, version, precision, recall, f1.</p>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+        <label class="text-sm text-slate-300 md:col-span-2">
+          Reuse Saved Model
+          <div class="mt-1 flex flex-col gap-2 md:flex-row">
+            <select v-model="selectedSavedModelId" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+              <option value="">Select a saved model...</option>
+              <option v-for="model in savedModels" :key="model.id" :value="model.id">
+                {{ model.display_name || model.id }} | {{ model.metadata?.model_family || '--' }} | {{ model.metadata?.export_format || '--' }}
+              </option>
+            </select>
+            <BaseBtn variant="secondary" :disabled="isSwitchingSavedModel || !selectedSavedModelId" @click="activateSavedModel">
+              {{ isSwitchingSavedModel ? 'Activating...' : 'Use Saved Model' }}
+            </BaseBtn>
+          </div>
+        </label>
         <label class="text-sm text-slate-300">
           Exported Model File (required)
           <input type="file" class="mt-1 block w-full text-sm text-slate-300" @change="onPickModelFile" />
@@ -492,7 +546,7 @@ onMounted(() => {
         <BaseBtn variant="primary" :disabled="isUploading" @click="uploadAndActivateModel">
           {{ isUploading ? 'Uploading...' : 'Upload & Activate' }}
         </BaseBtn>
-        <BaseBtn variant="secondary" @click="loadActiveModel">Refresh Active Model</BaseBtn>
+        <BaseBtn variant="secondary" @click="loadModelContext">Refresh Active Model</BaseBtn>
       </div>
 
       <div v-if="modelSummary" class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm">

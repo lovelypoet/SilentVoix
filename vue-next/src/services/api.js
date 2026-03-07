@@ -193,6 +193,8 @@ export default {
         api.get(`/admin/csv-library/files/${name}/compatibility?pipeline=${pipeline}&mode=${mode}`),
       review: (name, decision, notes = '') =>
         api.post(`/admin/csv-library/files/${name}/review`, { decision, notes }),
+      reorder: (names) =>
+        api.post('/admin/csv-library/files/reorder', { names }),
       archive: (name) =>
         api.post(`/admin/csv-library/files/${name}/archive`),
       deletePermanent: (name, confirmName) =>
@@ -244,6 +246,7 @@ export default {
       });
     },
     listModels: () => api.get('/playground/models'),
+    reorderModels: (modelIds) => api.post('/playground/models/reorder', { model_ids: modelIds }),
     getActiveModel: () => api.get('/playground/models/active'),
     activateModel: (modelId) => api.post(`/playground/models/${modelId}/activate`),
     runtimeCheckModel: (modelId) => api.get(`/playground/models/${modelId}/runtime-check`),
