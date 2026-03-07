@@ -309,7 +309,10 @@ const drawBoundingBoxes = (results) => {
   }
 
   hands.forEach((hand) => {
-    const xs = hand.map((p) => Number(p.x) * canvas.width)
+    const xs = hand.map((p) => {
+      const x = Number(p.x) * canvas.width
+      return mirrorCamera.value ? canvas.width - x : x
+    })
     const ys = hand.map((p) => Number(p.y) * canvas.height)
     const minX = Math.max(0, Math.min(...xs))
     const minY = Math.max(0, Math.min(...ys))
