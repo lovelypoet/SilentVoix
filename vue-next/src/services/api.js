@@ -31,7 +31,7 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    const detail = error.response?.data?.detail || error.message;
+    const detail = error.response?.data?.detail || error.response?.data?.message || error.message;
     console.error('API Error:', detail);
     return Promise.reject(error);
   }

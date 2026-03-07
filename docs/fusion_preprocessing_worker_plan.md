@@ -10,6 +10,7 @@ What exists today:
 - early-fusion cropper integration with worker-backed analysis
 - worker validation summary in the cropper
 - optional video upload from the cropper for OpenCV motion analysis
+- capture flow now exports and retains a native CSV + raw capture video pair for the latest take
 - save processed fusion CSV into CSV Library
 - CSV Library validation badge sourced from worker sidecar metadata
 - CSV Library filtering and sorting by worker validation state
@@ -17,8 +18,8 @@ What exists today:
 - operator review notes and review history stored in worker sidecar metadata
 
 Current limitation:
-- OpenCV is now used for uploaded capture video motion analysis, but the pipeline still depends on the operator providing the matching video file manually
-- preprocessing is still driven by CSV export plus optional video, not by native capture artifacts/job queue ingestion
+- OpenCV is now used for uploaded capture video motion analysis, and the latest capture can be handed into the cropper automatically within the same browser session
+- native capture artifacts are only retained in the current browser session, not persisted as first-class backend-managed artifacts
 - persistence is local file storage, not a queued job system with retries/history UI
 
 ## Problem
@@ -143,22 +144,24 @@ Phase 1 implementation scope:
 
 Current implemented flow:
 1. User exports `cv_sensor_*.csv` from early-fusion capture.
-2. User opens Early Fusion Cropper.
-3. Cropper sends CSV + crop rules to `worker-fusion-preprocess`.
-4. If the operator provides the matching capture video, the worker runs OpenCV motion analysis on that video.
-5. Worker returns:
+2. Capture flow also records a raw capture video and keeps the latest CSV + video pair available to the cropper in the same browser session.
+3. User opens Early Fusion Cropper.
+4. Cropper can autoload the latest capture pair or accept manual CSV/video upload.
+5. Cropper sends CSV + crop rules to `worker-fusion-preprocess`.
+6. If the matching capture video is present, the worker runs OpenCV motion analysis on that video.
+7. Worker returns:
    - processed CSV text
    - metadata
    - validation summary
    - optional OpenCV video summary
-6. User can:
+8. User can:
    - download processed CSV
    - download metadata JSON
    - save processed CSV into CSV Library
-7. CSV Library shows worker validation status directly in the file list and stats modal.
-8. Operator can filter and sort datasets by validation state during review.
-9. Operator can mark processed datasets as `approved`, `needs_review`, or `rejected`.
-10. Each operator review can include notes, and CSV Library keeps the full review history for audit.
+9. CSV Library shows worker validation status directly in the file list and stats modal.
+10. Operator can filter and sort datasets by validation state during review.
+11. Operator can mark processed datasets as `approved`, `needs_review`, or `rejected`.
+12. Each operator review can include notes, and CSV Library keeps the full review history for audit.
 
 ## Why OpenCV Belongs Here
 
@@ -286,9 +289,14 @@ The UI should show:
 - final acceptance state
 
 Implemented UI surfaces:
+- Capture Session:
+  - raw capture video recording during take collection
+  - export of latest `cv_sensor_*.csv` plus matching raw capture video
+  - direct handoff into cropper via latest-capture session artifact
 - Early Fusion Cropper:
   - worker validation card
   - optional capture-video upload
+  - autoload of latest capture artifact from the capture flow
   - OpenCV motion summary panel
   - processed summary
   - save-to-CSV-Library action
@@ -339,7 +347,7 @@ Completed:
    - `reject`
 
 Next:
-1. Move from manual video upload to native capture artifact ingestion from the capture flow.
+1. Persist capture artifacts beyond the current browser session instead of keeping only the latest in-memory pair.
 2. Expand OpenCV from motion-only analysis to glove-region preprocessing and crop suggestion.
 3. Persist richer worker job history and artifact lineage.
 4. Add crop/timeline visualization instead of table-only preview.

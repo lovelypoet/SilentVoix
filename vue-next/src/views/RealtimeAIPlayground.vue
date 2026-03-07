@@ -19,7 +19,7 @@ const uploadError = ref('')
 const isUploading = ref(false)
 const activeModel = ref(null)
 
-const mirrorCamera = ref(false)
+const mirrorCamera = ref(true)
 const showLandmarks = ref(true)
 const videoEl = ref(null)
 const landmarkCanvasEl = ref(null)
@@ -57,6 +57,10 @@ const modelSummary = computed(() => {
 })
 
 const modelInputDim = computed(() => Number(activeModel.value?.input_dim || 63))
+const videoClasses = computed(() => [
+  'absolute inset-0 h-full w-full object-cover',
+  { '-scale-x-100': mirrorCamera.value }
+])
 const modelModality = computed(() => {
   const raw = String(activeModel.value?.metadata?.modality || '').trim().toLowerCase()
   if (raw === 'cv' || raw === 'sensor') return raw
@@ -517,7 +521,7 @@ onMounted(() => {
       <p class="mt-2 text-sm text-slate-400">{{ liveStatus }}</p>
 
       <div class="mt-4 relative aspect-video w-full overflow-hidden rounded-xl border border-slate-700 bg-black">
-        <video v-show="modelModality !== 'sensor'" ref="videoEl" autoplay playsinline muted class="absolute inset-0 h-full w-full object-cover"></video>
+        <video v-show="modelModality !== 'sensor'" ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
         <canvas v-show="modelModality !== 'sensor'" ref="landmarkCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
         <canvas v-show="modelModality !== 'sensor'" ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
         <div v-if="modelModality === 'sensor'" class="absolute inset-0 overflow-auto bg-slate-950/70 p-4">

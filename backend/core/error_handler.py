@@ -129,6 +129,7 @@ def create_error_response(
         error_response.update({
             "error_code": error.error_code,
             "message": error.message,
+            "detail": error.message,
             "status_code": error.status_code
         })
         status_code = error.status_code
@@ -136,6 +137,7 @@ def create_error_response(
         error_response.update({
             "error_code": "HTTP_ERROR",
             "message": error.detail,
+            "detail": error.detail,
             "status_code": error.status_code
         })
         status_code = error.status_code
@@ -143,6 +145,7 @@ def create_error_response(
         error_response.update({
             "error_code": "INTERNAL_ERROR",
             "message": "An unexpected error occurred",
+            "detail": "An unexpected error occurred",
             "status_code": 500
         })
         status_code = 500

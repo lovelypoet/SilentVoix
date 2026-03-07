@@ -1,0 +1,27 @@
+{
+  "model_name": "SilentVoix-V1",
+  "model_family": "lstm",
+  "export_format": "pytorch",
+  "version": "1.0",
+  "labels": [
+    "HELLO",
+    "I",
+    "NULL",
+    "SORRY",
+    "VIETNAM",
+    "YES"
+  ],
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1": 1.0,
+  "modality": "cv",
+  "input_spec": {
+    "input_dim": 63,
+    "shape": [
+      1,
+      100,
+      63
+    ],
+    "modality": "cv"
+  }
+}

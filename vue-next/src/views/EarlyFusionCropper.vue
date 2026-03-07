@@ -1,12 +1,14 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import api from '../services/api'
+import { getLatestFusionCaptureArtifact } from '../services/fusionCaptureArtifacts'
 
 const router = useRouter()
+const route = useRoute()
 
 const selectedFile = ref(null)
 const selectedVideoFile = ref(null)
@@ -267,8 +269,7 @@ function initializeCropBounds(parsedRows) {
   trimEndMs.value = String(Math.max(...timestamps))
 }
 
-async function handleFileChange(event) {
-  const file = event.target.files?.[0]
+async function loadCsvFile(file) {
   selectedFile.value = file || null
   parseError.value = ''
   loadStatus.value = ''
@@ -304,6 +305,10 @@ async function handleFileChange(event) {
   } catch (error) {
     parseError.value = error instanceof Error ? error.message : 'Failed to parse CSV.'
   }
+}
+
+async function handleFileChange(event) {
+  await loadCsvFile(event.target.files?.[0] || null)
 }
 
 function handleVideoFileChange(event) {
@@ -410,6 +415,23 @@ function goBack() {
 
 watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, exportLabel], () => {
   if (analysisJob.value) clearAnalysisResult()
+})
+
+onMounted(async () => {
+  if (String(route.query?.source || '') !== 'latest-capture') return
+  const artifact = getLatestFusionCaptureArtifact()
+  if (!artifact?.csvFile) {
+    loadStatus.value = 'No latest capture artifact is available in this browser session.'
+    return
+  }
+
+  selectedVideoFile.value = artifact.videoFile || null
+  await loadCsvFile(artifact.csvFile)
+  if (artifact.videoFile) {
+    loadStatus.value = `Loaded latest capture artifact: ${artifact.csvFile.name} + ${artifact.videoFile.name}`
+  } else {
+    loadStatus.value = `Loaded latest capture artifact: ${artifact.csvFile.name}`
+  }
 })
 </script>
 

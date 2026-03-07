@@ -7,6 +7,7 @@ import TrainingSettings from '../components/TrainingSettings.vue'
 import CaptureSyncGraph from '../components/CaptureSyncGraph.vue'
 import CaptureTerminal from '../components/CaptureTerminal.vue'
 import api from '../services/api'
+import { setLatestFusionCaptureArtifact } from '../services/fusionCaptureArtifacts'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
 import { useHandTracking } from '../composables/useHandTracking.js'
@@ -39,6 +40,9 @@ const isExportingSensorCsv = ref(false)
 const exportStatusMessage = ref('')
 const showAdvancedControls = ref(false)
 const sensorMaxSamples = ref(0)
+const latestRecordedVideoBlob = ref(null)
+const artifactRecorderStatus = ref('idle')
+const artifactRecorderWarning = ref('')
 
 const {
   collectedLandmarks,
@@ -147,6 +151,8 @@ let frameCount = 0
 let lastTime = performance.now()
 let fpsInterval = null
 let syncCueTimer = null
+let artifactRecorder = null
+let artifactRecorderChunks = []
 
 const calculateFps = () => {
   frameCount++
@@ -190,11 +196,14 @@ const startRecording = () => {
   metadata.value.frame_limit = frameLimit.value
   cvFrameId.value = 0
   hasAutoSavedCurrentRun.value = false
+  latestRecordedVideoBlob.value = null
+  artifactRecorderWarning.value = ''
   isAwaitingSyncCue.value = true
   triggerSyncCue(() => {
     if (!isAwaitingSyncCue.value) return
     recordingStartCount.value = collectedLandmarks.value.length
     startCollecting(currentGestureName.value)
+    startArtifactRecording()
     isAwaitingSyncCue.value = false
   })
 }
@@ -202,15 +211,20 @@ const startRecording = () => {
 const resetRecording = () => {
   cancelPendingRecording()
   stopCollecting()
+  void stopArtifactRecording()
   clearData()
   recordingStartCount.value = 0
   expectedSyncTimestampMs.value = null
   hasAutoSavedCurrentRun.value = false
+  latestRecordedVideoBlob.value = null
+  artifactRecorderStatus.value = 'idle'
+  artifactRecorderWarning.value = ''
 }
 
-const stopTake = () => {
+const stopTake = async () => {
   cancelPendingRecording()
   stopCollecting()
+  await stopArtifactRecording()
 }
 
 const returnToFusionWorkspace = () => {
@@ -218,7 +232,7 @@ const returnToFusionWorkspace = () => {
 }
 
 const openEarlyCropper = () => {
-  router.push('/fusion/early-cropper')
+  router.push({ path: '/fusion/early-cropper', query: { source: 'latest-capture' } })
 }
 
 const stopAndAutoSave = async () => {
@@ -226,8 +240,108 @@ const stopAndAutoSave = async () => {
   hasAutoSavedCurrentRun.value = true
   
   stopCollecting()
+  const videoBlob = await stopArtifactRecording()
+  await downloadCvSensorCsv(videoBlob)
   resetRecording()
-  await downloadCvSensorCsv()
+}
+
+const preferredArtifactMimeType = () => {
+  if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return ''
+  const candidates = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ]
+  return candidates.find((item) => MediaRecorder.isTypeSupported(item)) || ''
+}
+
+const startArtifactRecording = () => {
+  if (!stream.value) {
+    artifactRecorderWarning.value = 'Camera stream unavailable for raw capture video.'
+    artifactRecorderStatus.value = 'unavailable'
+    return
+  }
+  if (typeof MediaRecorder === 'undefined') {
+    artifactRecorderWarning.value = 'Browser does not support MediaRecorder, so no raw capture video was saved.'
+    artifactRecorderStatus.value = 'unsupported'
+    return
+  }
+
+  try {
+    const mimeType = preferredArtifactMimeType()
+    artifactRecorderChunks = []
+    artifactRecorder = mimeType
+      ? new MediaRecorder(stream.value, { mimeType })
+      : new MediaRecorder(stream.value)
+
+    artifactRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        artifactRecorderChunks.push(event.data)
+      }
+    }
+    artifactRecorder.onerror = () => {
+      artifactRecorderWarning.value = 'Raw capture video recording failed.'
+      artifactRecorderStatus.value = 'failed'
+    }
+    artifactRecorder.start(250)
+    artifactRecorderStatus.value = 'recording'
+  } catch (error) {
+    console.error('Failed to start raw capture video recording', error)
+    artifactRecorderWarning.value = 'Unable to start raw capture video recording.'
+    artifactRecorderStatus.value = 'failed'
+    artifactRecorder = null
+    artifactRecorderChunks = []
+  }
+}
+
+const stopArtifactRecording = async () => {
+  if (!artifactRecorder) {
+    return latestRecordedVideoBlob.value
+  }
+  if (artifactRecorder.state === 'inactive') {
+    return latestRecordedVideoBlob.value
+  }
+
+  const recorder = artifactRecorder
+  const mimeType = recorder.mimeType || 'video/webm'
+
+  return await new Promise((resolve) => {
+    recorder.addEventListener('stop', () => {
+      const blob = artifactRecorderChunks.length ? new Blob(artifactRecorderChunks, { type: mimeType }) : null
+      latestRecordedVideoBlob.value = blob
+      artifactRecorder = null
+      artifactRecorderChunks = []
+      artifactRecorderStatus.value = blob ? 'ready' : 'idle'
+      resolve(blob)
+    }, { once: true })
+
+    try {
+      recorder.stop()
+    } catch (error) {
+      console.error('Failed to stop raw capture video recording', error)
+      artifactRecorderWarning.value = 'Unable to finalize raw capture video recording.'
+      artifactRecorder = null
+      artifactRecorderChunks = []
+      artifactRecorderStatus.value = 'failed'
+      resolve(latestRecordedVideoBlob.value)
+    }
+  })
+}
+
+const downloadBlobFile = (filename, blob) => {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+const videoExtensionForBlob = (blob) => {
+  const mime = String(blob?.type || '').toLowerCase()
+  if (mime.includes('mp4')) return 'mp4'
+  if (mime.includes('quicktime')) return 'mov'
+  return 'webm'
 }
 
 const buildFusionCsv = (frames, sensorHeader, sensorRows, sensorSource = 'unknown') => {
@@ -299,7 +413,7 @@ const buildFusionCsv = (frames, sensorHeader, sensorRows, sensorSource = 'unknow
   return lines.join('\n') + '\n'
 }
 
-const downloadCvSensorCsv = async () => {
+const downloadCvSensorCsv = async (videoBlobOverride = null) => {
   exportStatusMessage.value = ''
   if (collectedLandmarks.value.length === 0 || isExportingSensorCsv.value) {
     exportStatusMessage.value = 'No CV frames to export yet.'
@@ -335,19 +449,38 @@ const downloadCvSensorCsv = async () => {
     const csv = buildFusionCsv(frames, sensorHeader, sensorRows, sensorSource)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const label = (currentGestureName.value || 'data').replace(/\s+/g, '_')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `cv_sensor_${label}_${stamp}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const csvName = `cv_sensor_${label}_${stamp}.csv`
+    const csvBlob = new Blob([csv], { type: 'text/csv' })
+    const csvFile = new File([csvBlob], csvName, { type: 'text/csv' })
+    downloadBlobFile(csvName, csvBlob)
+
+    const videoBlob = videoBlobOverride || latestRecordedVideoBlob.value
+    let videoFile = null
+    if (videoBlob instanceof Blob && videoBlob.size > 0) {
+      const videoName = `cv_capture_${label}_${stamp}.${videoExtensionForBlob(videoBlob)}`
+      videoFile = new File([videoBlob], videoName, { type: videoBlob.type || 'video/webm' })
+      downloadBlobFile(videoName, videoBlob)
+    }
+
+    setLatestFusionCaptureArtifact({
+      created_at: new Date().toISOString(),
+      gesture: currentGestureName.value || '',
+      csvFile,
+      videoFile
+    })
+
     if (usedFallback) {
-      exportStatusMessage.value = 'Sensor API unavailable. Downloaded CV-only CSV.'
+      exportStatusMessage.value = videoFile
+        ? 'Sensor API unavailable. Downloaded CV-only CSV plus raw capture video.'
+        : 'Sensor API unavailable. Downloaded CV-only CSV.'
     } else if (!sensorRows.length) {
-      exportStatusMessage.value = 'Downloaded CSV. No sensor rows matched this capture window.'
+      exportStatusMessage.value = videoFile
+        ? 'Downloaded CSV plus raw capture video. No sensor rows matched this capture window.'
+        : 'Downloaded CSV. No sensor rows matched this capture window.'
     } else {
-      exportStatusMessage.value = `Downloaded CSV with ${sensorRows.length} sensor rows.`
+      exportStatusMessage.value = videoFile
+        ? `Downloaded CSV with ${sensorRows.length} sensor rows plus raw capture video.`
+        : `Downloaded CSV with ${sensorRows.length} sensor rows.`
     }
     return true
   } catch (e) {
@@ -395,6 +528,7 @@ const scrollTerminalToBottom = () => {
 
 onUnmounted(() => {
   cancelPendingRecording()
+  void stopArtifactRecording()
 })
 
 watch(
@@ -403,6 +537,7 @@ watch(
     if (!active || !cameraEnabled) {
       stopHandTracking()
       stopFpsCounter()
+      void stopArtifactRecording()
       prevLandmarks.value = null
       prevHandedness.value = null
       resetCvState()
@@ -787,6 +922,15 @@ watch(terminalLines, () => {
             </div>
             <div v-if="exportStatusMessage" class="text-xs text-sky-300 mt-1">
               {{ exportStatusMessage }}
+            </div>
+            <div v-if="artifactRecorderStatus === 'recording'" class="text-xs text-cyan-300 mt-1">
+              Raw capture video recording in progress.
+            </div>
+            <div v-if="artifactRecorderStatus === 'ready'" class="text-xs text-cyan-300 mt-1">
+              Latest capture video is ready for cropper ingestion.
+            </div>
+            <div v-if="artifactRecorderWarning" class="text-xs text-amber-300 mt-1">
+              {{ artifactRecorderWarning }}
             </div>
             <div class="text-slate-400">
               Frames collected: <span class="text-white font-bold">{{ framesInCurrentTake }}</span>
