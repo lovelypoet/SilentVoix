@@ -93,13 +93,18 @@ Use `run_dev.sh` for the lightweight local API + frontend flow. Use Docker profi
     Use the default credentials created earlier, for example:
     *   **Email:** `admin@signglove.com`
     *   **Password:** `admin123`
+ 
+### Docker dev stack with runtimes
 
-### Optional: Runtime-split Docker services
+`docker-compose.dev.yml` now starts the full development stack by default, including:
+- `ml-tensorflow`
+- `ml-pytorch`
+- `worker-library`
 
-If you need the full runtime dispatch path (`backend -> ml-tensorflow/ml-pytorch`), run:
+Run:
 
 ```bash
-USE_RUNTIME_SERVICES=true USE_WORKER_LIBRARY=true docker compose -f docker-compose.dev.yml --profile runtime-split up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 Service URLs:
@@ -123,7 +128,7 @@ Service URLs:
 *   **Frontend not loading**: Ensure `npm install` was successful in the `vue-next` directory and that the `npm run dev` command is running without errors.
 *   **Runtime-check or predict fails in Docker**:
     *   Confirm `USE_RUNTIME_SERVICES=true`.
-    *   Confirm the `runtime-split` profile is up and the `8091`, `8092`, and `8093` health endpoints respond.
+    *   Confirm the `8091`, `8092`, and `8093` health endpoints respond.
     *   Confirm uploaded model metadata has the correct `export_format`.
 
 If you encounter persistent issues, please provide detailed error messages and the steps you've taken.

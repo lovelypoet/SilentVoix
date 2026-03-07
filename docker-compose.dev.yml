@@ -33,13 +33,19 @@ services:
       - TTS_PROVIDER=gtts
       - BACKEND_BASE_URL=http://localhost:8080
       - SERIAL_PORT_SINGLE=/dev/ttyACM0
-      - USE_RUNTIME_SERVICES=${USE_RUNTIME_SERVICES:-false}
+      - USE_RUNTIME_SERVICES=${USE_RUNTIME_SERVICES:-true}
       - ML_TENSORFLOW_URL=${ML_TENSORFLOW_URL:-http://ml-tensorflow:8091}
       - ML_PYTORCH_URL=${ML_PYTORCH_URL:-http://ml-pytorch:8092}
-      - USE_WORKER_LIBRARY=${USE_WORKER_LIBRARY:-false}
+      - USE_WORKER_LIBRARY=${USE_WORKER_LIBRARY:-true}
       - WORKER_LIBRARY_URL=${WORKER_LIBRARY_URL:-http://worker-library:8093}
     depends_on:
       mongo:
+        condition: service_healthy
+      ml-tensorflow:
+        condition: service_healthy
+      ml-pytorch:
+        condition: service_healthy
+      worker-library:
         condition: service_healthy
     volumes:
       - /dev:/dev
@@ -47,7 +53,6 @@ services:
       - ./backend/AI/model_library:/app/AI/model_library
 
   ml-tensorflow:
-    profiles: ["tf", "runtime-split", "full"]
     build: ./ml-tensorflow
     ports:
       - "8091:8091"
@@ -62,7 +67,6 @@ services:
       start_period: 5s
 
   ml-pytorch:
-    profiles: ["torch", "runtime-split", "full"]
     build: ./ml-pytorch
     ports:
       - "8092:8092"
@@ -76,7 +80,6 @@ services:
       start_period: 5s
 
   worker-library:
-    profiles: ["worker", "runtime-split", "full"]
     build: ./worker-library
     ports:
       - "8093:8093"

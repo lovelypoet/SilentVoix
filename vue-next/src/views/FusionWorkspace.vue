@@ -16,6 +16,10 @@ const openEarlyModule = () => {
   router.push('/fusion/early-module')
 }
 
+const openEarlyCropper = () => {
+  router.push('/fusion/early-cropper')
+}
+
 const openLateModule = () => {
   router.push('/fusion/late-module')
 }
@@ -56,8 +60,9 @@ const goTraining = () => {
       <p class="text-slate-400 mt-2">
         Use this module to capture synchronized CV + sensor data and export fusion datasets. Training is handled elsewhere.
       </p>
-      <div class="mt-4">
+      <div class="mt-4 flex flex-wrap gap-3">
         <BaseBtn variant="primary" @click="openEarlyModule">Open Early Fusion Capture</BaseBtn>
+        <BaseBtn variant="secondary" @click="openEarlyCropper">Open Cropper</BaseBtn>
       </div>
     </BaseCard>
 

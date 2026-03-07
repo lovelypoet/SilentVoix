@@ -53,6 +53,12 @@ const router = createRouter({
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
+            path: '/fusion/early-cropper',
+            name: 'fusion-early-cropper',
+            component: () => import('../views/EarlyFusionCropper.vue'),
+            meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
+        },
+        {
             path: '/fusion/late-module',
             name: 'fusion-late-module',
             component: () => import('../views/LateFusionTraining.vue'),

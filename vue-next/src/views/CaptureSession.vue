@@ -217,6 +217,10 @@ const returnToFusionWorkspace = () => {
   router.push({ path: '/fusion', query: { tab: returnFusionTab.value } })
 }
 
+const openEarlyCropper = () => {
+  router.push('/fusion/early-cropper')
+}
+
 const stopAndAutoSave = async () => {
   if (!isCollecting.value || hasAutoSavedCurrentRun.value) return
   hasAutoSavedCurrentRun.value = true
@@ -740,6 +744,7 @@ watch(terminalLines, () => {
             </BaseBtn>
 
             <BaseBtn variant="secondary" @click="resetRecording">Reset</BaseBtn>
+            <BaseBtn variant="secondary" @click="openEarlyCropper">Open Cropper</BaseBtn>
           </div>
 
           <div class="mt-4 border border-slate-800 rounded-lg bg-slate-950/40 p-3">
