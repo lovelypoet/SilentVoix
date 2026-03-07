@@ -1,5 +1,22 @@
 # Fusion Preprocessing Worker Plan
 
+## Status
+
+Phase 1 is now implemented.
+
+What exists today:
+- dedicated `worker-fusion-preprocess` service
+- backend proxy routes under `/fusion-preprocess/*`
+- early-fusion cropper integration with worker-backed analysis
+- worker validation summary in the cropper
+- save processed fusion CSV into CSV Library
+- CSV Library validation badge sourced from worker sidecar metadata
+
+Current limitation:
+- preprocessing is still CSV-driven in phase 1
+- OpenCV is installed in the worker, but the current job flow is not yet doing full gloved-hand video preprocessing
+- persistence is local file storage, not a queued job system with retries/history UI
+
 ## Problem
 
 Early-fusion data collection currently depends on browser-side CV capture plus glove sensor capture. This works for a basic prototype, but it breaks down when the user is wearing the glove during camera capture.
@@ -55,6 +72,9 @@ This worker should be separate from:
 Suggested service name:
 - `worker-fusion-preprocess`
 
+Implementation status:
+- done in phase 1
+
 ## Why A Separate Worker
 
 Fusion preprocessing should not live in the main backend or inference services.
@@ -87,6 +107,13 @@ Out of scope:
 - model upload/runtime-check
 - non-fusion dataset management
 
+Phase 1 implementation scope:
+- analyze captured fusion CSV exports
+- apply crop rules
+- compute validation summary
+- export processed CSV and metadata
+- save processed result into CSV Library
+
 ## Proposed Processing Flow
 
 1. User captures raw CV + sensor data.
@@ -108,6 +135,20 @@ Out of scope:
    - `valid`
    - `warning`
    - `invalid`
+
+Current implemented flow:
+1. User exports `cv_sensor_*.csv` from early-fusion capture.
+2. User opens Early Fusion Cropper.
+3. Cropper sends CSV + crop rules to `worker-fusion-preprocess`.
+4. Worker returns:
+   - processed CSV text
+   - metadata
+   - validation summary
+5. User can:
+   - download processed CSV
+   - download metadata JSON
+   - save processed CSV into CSV Library
+6. CSV Library shows worker validation status directly in the file list and stats modal.
 
 ## Why OpenCV Belongs Here
 
@@ -165,6 +206,16 @@ Recommended job outputs:
 - health flags
 - numeric summary fields
 
+Current phase 1 job contract:
+- `POST /fusion-preprocess/jobs/analyze`
+- `GET /fusion-preprocess/jobs/{job_id}`
+- `POST /fusion-preprocess/jobs/{job_id}/save`
+
+Current save target:
+- `backend/data/csv_library/active/fusion_single/*.csv`
+- `backend/data/csv_library/active/fusion_dual/*.csv`
+- sidecar metadata stored as `*.metadata.json`
+
 This is safer and easier to debug than trying to add full realtime preprocessing immediately.
 
 ## Validation Requirements
@@ -187,6 +238,16 @@ Suggested thresholds:
 - reject: `|offset_ms| > 2000`
 - reject when spike detection fails on either side
 
+Current phase 1 validation fields:
+- `status`
+- `reasons[]`
+- `offset_ms`
+- `max_abs_sensor_match_delta_ms`
+- `sensor_match_ratio`
+- `missing_frame_ratio`
+- `cv_spike_detected`
+- `sensor_spike_detected`
+
 ## UI / UX Implications
 
 The current UX makes the user do too much manual trust-based work.
@@ -207,6 +268,15 @@ The UI should show:
 - data quality flags
 - final acceptance state
 
+Implemented UI surfaces:
+- Early Fusion Cropper:
+  - worker validation card
+  - processed summary
+  - save-to-CSV-Library action
+- CSV Library:
+  - per-file validation badge
+  - worker validation details in stats modal
+
 ## Docker / Deployment Impact
 
 Add one new service in development and runtime deployments:
@@ -222,16 +292,30 @@ This service should mount:
 - processed dataset output directory
 - optional shared CSV library path
 
+Current dev compose status:
+- `docker-compose.dev.yml` starts `worker-fusion-preprocess` by default
+- backend uses:
+  - `USE_FUSION_PREPROCESS_WORKER=true`
+  - `FUSION_PREPROCESS_WORKER_URL=http://worker-fusion-preprocess:8094`
+
 ## Suggested Next Steps
 
+Completed:
 1. Add this worker as a new Docker service.
 2. Define a backend job contract for preprocessing requests.
 3. Extend the cropper to consume validation output from the worker.
 4. Save processed fusion outputs into CSV Library with health flags.
 5. Add dataset badges:
-   - `valid`
+   - `pass`
    - `warning`
-   - `invalid`
+   - `reject`
+
+Next:
+1. Add CSV Library filtering/sorting by worker validation status.
+2. Move from CSV-only preprocessing to actual OpenCV frame/video preprocessing.
+3. Persist richer worker job history and artifact lineage.
+4. Add crop/timeline visualization instead of table-only preview.
+5. Add stronger validation thresholds for dual-hand/gloved-hand cases.
 
 ## Summary
 

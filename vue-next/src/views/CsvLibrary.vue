@@ -100,6 +100,13 @@ const formatDate = (value) => {
   return Number.isNaN(d.getTime()) ? '--' : d.toLocaleString()
 }
 
+const workerValidationClass = (status) => {
+  if (status === 'pass') return 'bg-emerald-500/20 text-emerald-300'
+  if (status === 'warning') return 'bg-amber-500/20 text-amber-300'
+  if (status === 'reject') return 'bg-rose-500/20 text-rose-300'
+  return 'bg-slate-800 text-slate-400'
+}
+
 const loadFiles = async () => {
   isLoading.value = true
   error.value = ''
@@ -462,6 +469,7 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
               <th class="py-2 pr-3">Rows</th>
               <th class="py-2 pr-3">Size</th>
               <th class="py-2 pr-3">Updated</th>
+              <th class="py-2 pr-3">Validation</th>
               <th class="py-2 pr-3">Selected</th>
               <th class="py-2 pr-3">Compatibility</th>
               <th class="py-2 pr-3">Actions</th>
@@ -469,10 +477,10 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="8" class="py-4 text-slate-400">Loading files...</td>
+              <td colspan="9" class="py-4 text-slate-400">Loading files...</td>
             </tr>
             <tr v-else-if="filteredFiles.length === 0">
-              <td colspan="8" class="py-4 text-slate-400">No CSV files found.</td>
+              <td colspan="9" class="py-4 text-slate-400">No CSV files found.</td>
             </tr>
             <tr v-for="file in filteredFiles" :key="file.name" class="border-b border-slate-900/70">
               <td class="py-2 pr-3 text-slate-200 font-medium">{{ file.name }}</td>
@@ -480,6 +488,17 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
               <td class="py-2 pr-3 text-slate-300">{{ file.row_count }}</td>
               <td class="py-2 pr-3 text-slate-300">{{ formatBytes(file.size_bytes) }}</td>
               <td class="py-2 pr-3 text-slate-300">{{ formatDate(file.modified_at) }}</td>
+              <td class="py-2 pr-3">
+                <span
+                  class="px-2 py-1 rounded text-xs font-semibold"
+                  :class="workerValidationClass(file.worker_validation?.status)"
+                >
+                  {{ file.worker_validation?.status || 'Unreviewed' }}
+                </span>
+                <p v-if="file.worker_validation?.offset_ms !== undefined && file.worker_validation?.offset_ms !== null" class="text-[11px] text-slate-500 mt-1">
+                  offset {{ file.worker_validation.offset_ms }} ms
+                </p>
+              </td>
               <td class="py-2 pr-3">
                 <span
                   v-if="isFileSelectedForActiveSlot(file)"
@@ -602,6 +621,20 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
         <div v-else class="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-1">
           <div class="text-slate-300">
             {{ statsData.name }} | schema: {{ statsData.schema_id }} | columns: {{ statsData.column_count }} | rows: {{ statsData.row_count }}
+          </div>
+          <div v-if="statsData.worker_validation" class="rounded border border-slate-800 p-3 bg-slate-950/40">
+            <p class="text-slate-400 mb-1">Worker Validation</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2 py-1 rounded text-xs font-semibold" :class="workerValidationClass(statsData.worker_validation.status)">
+                {{ statsData.worker_validation.status }}
+              </span>
+              <span class="text-slate-200 text-xs">
+                offset: {{ statsData.worker_validation.offset_ms ?? '--' }} ms
+              </span>
+            </div>
+            <p class="text-slate-300 text-xs mt-2">
+              {{ Array.isArray(statsData.worker_validation.reasons) ? statsData.worker_validation.reasons.join(' | ') : '--' }}
+            </p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="rounded border border-slate-800 p-3 bg-slate-950/40">

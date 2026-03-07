@@ -559,6 +559,37 @@ def _archive_target_path(schema_id: str, original_name: str) -> Path:
     raise HTTPException(status_code=500, detail="Unable to allocate archive filename")
 
 
+def _sidecar_metadata_path(csv_path: Path) -> Path:
+    return csv_path.with_suffix(".metadata.json")
+
+
+def _load_sidecar_metadata(csv_path: Path) -> Dict[str, Any]:
+    sidecar = _sidecar_metadata_path(csv_path)
+    if not sidecar.exists() or not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _with_worker_metadata(base: Dict[str, Any], csv_path: Path) -> Dict[str, Any]:
+    sidecar = _load_sidecar_metadata(csv_path)
+    if not sidecar:
+        base["worker_validation"] = None
+        return base
+
+    worker_validation = sidecar.get("validation") if isinstance(sidecar.get("validation"), dict) else None
+    sidecar_flags = sidecar.get("health_flags") if isinstance(sidecar.get("health_flags"), list) else []
+    merged_flags = sorted(set(list(base.get("health_flags", [])) + [str(flag) for flag in sidecar_flags if isinstance(flag, str)]))
+    base["health_flags"] = merged_flags
+    base["worker_validation"] = worker_validation
+    base["worker_job_id"] = sidecar.get("job_id")
+    base["worker_processed_at"] = sidecar.get("processed_at")
+    return base
+
+
 @router.get("/files")
 async def list_csv_files(
     include_archived: bool = Query(False),
@@ -569,7 +600,7 @@ async def list_csv_files(
         stat = path.stat()
         meta = _scan_csv_file(path)
         result.append(
-            {
+            _with_worker_metadata({
                 "name": rel_name,
                 "scope": scope,
                 "size_bytes": stat.st_size,
@@ -584,7 +615,7 @@ async def list_csv_files(
                 "label_summary": meta["label_summary"],
                 "timestamp_range": meta["timestamp_range"],
                 "health_flags": meta["health_flags"],
-            }
+            }, path)
         )
 
     result.sort(key=lambda item: (item.get("schema_id") or "", item.get("modified_at") or ""), reverse=False)
@@ -607,7 +638,7 @@ async def list_compatible_csv_files(
         if meta.get("schema_id") not in allowed:
             continue
         result.append(
-            {
+            _with_worker_metadata({
                 "name": rel_name,
                 "scope": scope,
                 "size_bytes": stat.st_size,
@@ -622,7 +653,7 @@ async def list_compatible_csv_files(
                 "label_summary": meta["label_summary"],
                 "timestamp_range": meta["timestamp_range"],
                 "health_flags": meta["health_flags"],
-            }
+            }, path)
         )
 
     result.sort(key=lambda item: (item.get("schema_id") or "", item.get("modified_at") or ""), reverse=False)
@@ -764,7 +795,7 @@ async def preview_csv_file(
 
     schema_check = "pass" if "schema_mismatch" not in meta["health_flags"] and "unknown_schema" not in meta["health_flags"] else "fail"
 
-    return {
+    return _with_worker_metadata({
         "status": "success",
         "name": safe_name,
         "scope": scope,
@@ -777,7 +808,7 @@ async def preview_csv_file(
         "schema_version": meta["schema_version"],
         "schema_check": schema_check,
         "health_flags": meta["health_flags"],
-    }
+    }, path)
 
 
 @router.get("/files/{name:path}/download")
@@ -833,12 +864,12 @@ async def csv_file_stats(
     scope, path, safe_name = _resolve_csv_path(name, include_archived=True)
     meta = _scan_csv_file(path)
     stats = _compute_csv_stats(path, meta)
-    return {
+    return _with_worker_metadata({
         "status": "success",
         "name": safe_name,
         "scope": scope,
         **stats,
-    }
+    }, path)
 
 
 @router.post("/files/{name:path}/archive")
@@ -856,6 +887,9 @@ async def archive_csv_file(
 
     try:
         shutil.move(str(path), str(destination))
+        sidecar = _sidecar_metadata_path(path)
+        if sidecar.exists() and sidecar.is_file():
+            shutil.move(str(sidecar), str(_sidecar_metadata_path(destination)))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to archive file '{safe_name}': {exc}")
 
@@ -886,6 +920,9 @@ async def delete_csv_file_permanently(
 
     try:
         path.unlink()
+        sidecar = _sidecar_metadata_path(path)
+        if sidecar.exists() and sidecar.is_file():
+            sidecar.unlink()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"CSV file not found: {safe_name}")
     except Exception as exc:
