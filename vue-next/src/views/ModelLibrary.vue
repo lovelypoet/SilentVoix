@@ -12,7 +12,10 @@ const isLoading = ref(false)
 const error = ref('')
 const actionLoading = ref({})
 const runtimeCheckState = ref({})
-const deleteArmedModelId = ref(null)
+const deleteConfirmOpen = ref(false)
+const deleteConfirmModelId = ref('')
+const deleteConfirmModelName = ref('')
+const deleteConfirmTypedName = ref('')
 const toast = useToast()
 const searchQuery = ref('')
 const familyFilter = ref('all')
@@ -111,6 +114,8 @@ const formatDate = (value) => {
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? '--' : d.toLocaleString()
 }
+
+const displayModelName = (model) => String(model?.display_name || model?.id || '')
 
 const setActionLoading = (modelId, loading) => {
   actionLoading.value = { ...actionLoading.value, [modelId]: loading }
@@ -238,12 +243,18 @@ const downloadArtifact = async (model, kind) => {
   }
 }
 
-const requestDelete = (modelId) => {
-  deleteArmedModelId.value = modelId
+const openDeleteConfirm = (model) => {
+  deleteConfirmModelId.value = String(model?.id || '')
+  deleteConfirmModelName.value = displayModelName(model)
+  deleteConfirmTypedName.value = ''
+  deleteConfirmOpen.value = true
 }
 
-const cancelDelete = () => {
-  deleteArmedModelId.value = null
+const closeDeleteConfirm = () => {
+  deleteConfirmOpen.value = false
+  deleteConfirmModelId.value = ''
+  deleteConfirmModelName.value = ''
+  deleteConfirmTypedName.value = ''
 }
 
 const deleteModel = async (modelId) => {
@@ -253,7 +264,6 @@ const deleteModel = async (modelId) => {
     const res = await api.playground.deleteModel(modelId)
     models.value = models.value.filter((m) => m.id !== modelId)
     activeModelId.value = res?.active_model_id || null
-    deleteArmedModelId.value = null
     toast.add({ severity: 'info', summary: 'Deleted', detail: 'Model deleted successfully.', life: 3000 })
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Failed to delete model.'
@@ -348,18 +358,30 @@ const runtimeCheckFromMenu = async (modelId, close) => {
 }
 
 const requestDeleteFromMenu = (modelId, close) => {
-  requestDelete(modelId)
+  const model = models.value.find((item) => item.id === modelId)
+  if (!model) return
+  openDeleteConfirm(model)
   close()
 }
 
-const deleteFromMenu = async (modelId, close) => {
+const submitDeleteConfirm = async () => {
+  const modelId = deleteConfirmModelId.value
+  const modelName = deleteConfirmModelName.value
+  if (!modelId || !modelName) {
+    closeDeleteConfirm()
+    return
+  }
+  if (deleteConfirmTypedName.value !== modelName) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Name Mismatch',
+      detail: 'Type the exact model name to confirm delete.',
+      life: 3200
+    })
+    return
+  }
+  closeDeleteConfirm()
   await deleteModel(modelId)
-  close()
-}
-
-const cancelDeleteFromMenu = (close) => {
-  cancelDelete()
-  close()
 }
 
 watch([searchQuery, familyFilter, formatFilter, statusFilter, sortKey, sortDir, pageSize], () => {
@@ -464,10 +486,6 @@ onMounted(() => {
           </p>
         </div>
       </div>
-      <p class="mb-4 text-xs" :class="isManualSort ? 'text-cyan-300' : 'text-slate-500'">
-        {{ isManualSort ? 'Drag rows to reorder models. The saved order is reused across sessions and the playground.' : 'Switch Sort by to Manual Order to drag and reorder.' }}
-      </p>
-
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -479,8 +497,8 @@ onMounted(() => {
               <th class="py-2 pr-3">P / R / F1</th>
               <th class="py-2 pr-3">Created</th>
               <th class="py-2 pr-3">Status</th>
-              <th class="py-2 pr-3">Runtime</th>
-              <th class="py-2 pr-3">Actions</th>
+              <th class="py-2 px-3 text-center">Runtime</th>
+              <th class="py-2 px-3 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -520,24 +538,22 @@ onMounted(() => {
                   {{ isActive(model.id) ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td class="py-2 pr-3 align-middle">
-                <div class="flex items-center justify-center">
-                  <button
-                    type="button"
-                    class="w-3.5 h-3.5 rounded-full shrink-0 transition-colors shadow-sm outline-none ring-2 ring-transparent focus-visible:ring-slate-400"
-                    :class="
-                      runtimeStatusFor(model.id) === 'pass'
-                        ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
-                        : runtimeStatusFor(model.id) === 'fail'
-                          ? 'bg-rose-500 hover:bg-rose-400 shadow-rose-500/20'
-                          : 'bg-amber-400 hover:bg-amber-300 shadow-amber-400/20'
-                    "
-                    title="Click to view runtime status details"
-                    @click="showRuntimeStatusToast(model)"
-                  ></button>
-                </div>
+              <td class="py-2 px-3 align-middle text-center">
+                <button
+                  type="button"
+                  class="mx-auto w-3.5 h-3.5 rounded-full shrink-0 transition-colors shadow-sm outline-none ring-2 ring-transparent focus-visible:ring-slate-400"
+                  :class="
+                    runtimeStatusFor(model.id) === 'pass'
+                      ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
+                      : runtimeStatusFor(model.id) === 'fail'
+                        ? 'bg-rose-500 hover:bg-rose-400 shadow-rose-500/20'
+                        : 'bg-amber-400 hover:bg-amber-300 shadow-amber-400/20'
+                  "
+                  title="Click to view runtime status details"
+                  @click="showRuntimeStatusToast(model)"
+                ></button>
               </td>
-              <td class="py-2 pr-3">
+              <td class="py-2 px-3 text-center">
                 <BaseEllipsisMenu :disabled="isActionLoading(model.id)">
                   <template #menu="{ close }">
                     <button
@@ -569,28 +585,11 @@ onMounted(() => {
                       Runtime Check
                     </button>
                     <button
-                      v-if="deleteArmedModelId !== model.id"
                       class="w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
                       :disabled="isActionLoading(model.id)"
                       @click="requestDeleteFromMenu(model.id, close)"
                     >
                       Delete
-                    </button>
-                    <button
-                      v-else
-                      class="w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
-                      :disabled="isActionLoading(model.id)"
-                      @click="deleteFromMenu(model.id, close)"
-                    >
-                      Confirm Delete
-                    </button>
-                    <button
-                      v-if="deleteArmedModelId === model.id"
-                      class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
-                      :disabled="isActionLoading(model.id)"
-                      @click="cancelDeleteFromMenu(close)"
-                    >
-                      Cancel
                     </button>
                   </template>
                 </BaseEllipsisMenu>
@@ -611,5 +610,33 @@ onMounted(() => {
         </div>
       </div>
     </BaseCard>
+
+    <div v-if="deleteConfirmOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closeDeleteConfirm">
+      <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+        <h3 class="text-lg font-semibold text-white">Confirm Permanent Delete</h3>
+        <p class="mt-2 text-sm text-slate-300">
+          Delete <span class="font-semibold text-white">{{ deleteConfirmModelName }}</span> permanently. This cannot be undone.
+        </p>
+        <div class="mt-3">
+          <label class="block text-xs text-slate-400 mb-1">Type exact model name to confirm</label>
+          <input
+            v-model="deleteConfirmTypedName"
+            type="text"
+            class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+            :placeholder="deleteConfirmModelName"
+          >
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+          <BaseBtn variant="secondary" @click="closeDeleteConfirm">Cancel</BaseBtn>
+          <BaseBtn
+            variant="danger"
+            :disabled="isActionLoading(deleteConfirmModelId)"
+            @click="submitDeleteConfirm"
+          >
+            {{ isActionLoading(deleteConfirmModelId) ? 'Deleting...' : 'Delete Permanently' }}
+          </BaseBtn>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

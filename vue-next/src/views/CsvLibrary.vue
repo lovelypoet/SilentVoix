@@ -13,7 +13,6 @@ const files = ref([])
 const isLoading = ref(false)
 const error = ref('')
 
-const includeArchived = ref(false)
 const pipeline = ref('early')
 const mode = ref('single')
 const compatibleOnly = ref(false)
@@ -22,7 +21,6 @@ const selectingByName = ref({})
 
 const compatibilityByName = ref({})
 const checkingByName = ref({})
-const archivingByName = ref({})
 const deletingByName = ref({})
 const reviewingByName = ref({})
 
@@ -179,8 +177,8 @@ const loadFiles = async () => {
   compatibilityByName.value = {}
   try {
     const res = compatibleOnly.value
-      ? await api.admin.csvLibrary.listCompatible(pipeline.value, mode.value, includeArchived.value)
-      : await api.admin.csvLibrary.listFiles(includeArchived.value)
+      ? await api.admin.csvLibrary.listCompatible(pipeline.value, mode.value)
+      : await api.admin.csvLibrary.listFiles()
     files.value = Array.isArray(res?.files) ? res.files : []
     await loadSelections()
   } catch (e) {
@@ -289,22 +287,6 @@ const closeStatsModal = () => {
   statsModalOpen.value = false
 }
 
-const archiveFile = async (name) => {
-  archivingByName.value = { ...archivingByName.value, [name]: true }
-  try {
-    await api.admin.csvLibrary.archive(encodePathParam(name))
-    if (previewData.value?.name === name) previewData.value = null
-    if (statsData.value?.name === name) statsData.value = null
-    await loadFiles()
-    toast.add({ severity: 'success', summary: 'Archived', detail: `${name} moved to archive.`, life: 3000 })
-  } catch (e) {
-    error.value = e?.response?.data?.detail || 'Archive failed.'
-    toast.add({ severity: 'error', summary: 'Archive Failed', detail: error.value, life: 3500 })
-  } finally {
-    archivingByName.value = { ...archivingByName.value, [name]: false }
-  }
-}
-
 const reviewLabel = (decision) => {
   if (decision === 'approved') return 'approved'
   if (decision === 'needs_review') return 'needs review'
@@ -372,13 +354,6 @@ const useDataset = async (name) => {
   }
 }
 
-const openArchiveConfirm = (name) => {
-  confirmActionType.value = 'archive'
-  confirmFileName.value = name
-  confirmTypedName.value = ''
-  confirmDialogOpen.value = true
-}
-
 const openDeleteConfirm = (name) => {
   confirmActionType.value = 'delete'
   confirmFileName.value = name
@@ -442,10 +417,6 @@ const confirmDialogSubmit = async () => {
     return
   }
 
-  if (action === 'archive') {
-    closeConfirmDialog()
-    await archiveFile(name)
-  }
 }
 
 const checkCompatibilityFromMenu = async (name, close) => {
@@ -470,11 +441,6 @@ const downloadFromMenu = async (name, close) => {
 
 const useFromMenu = async (name, close) => {
   await useDataset(name)
-  close()
-}
-
-const archiveConfirmFromMenu = (name, close) => {
-  openArchiveConfirm(name)
   close()
 }
 
@@ -564,7 +530,7 @@ onMounted(() => {
   void loadFiles()
 })
 
-watch([compatibleOnly, pipeline, mode, includeArchived], () => {
+watch([compatibleOnly, pipeline, mode], () => {
   void loadFiles()
 })
 
@@ -631,10 +597,6 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
           </select>
         </label>
 
-        <label class="text-sm text-slate-300 md:col-span-1 flex items-end">
-          <input v-model="includeArchived" type="checkbox" class="mr-2" /> Include archived
-        </label>
-
         <div class="md:col-span-1 flex items-end">
           <BaseBtn variant="primary" class="w-full" :disabled="isLoading || filteredFiles.length === 0" @click="checkAllCompatibility">
             Check Compatibility
@@ -659,9 +621,6 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
       </div>
 
       <p v-if="error" class="text-red-300 text-sm mt-3">{{ error }}</p>
-      <p class="mt-2 text-xs" :class="isManualSort ? 'text-cyan-300' : 'text-slate-500'">
-        {{ isManualSort ? 'Drag rows to reorder datasets. The saved order persists across sessions.' : 'Switch Sort to manual order to drag and reorder.' }}
-      </p>
     </BaseCard>
 
     <BaseCard>
@@ -677,7 +636,7 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
               <th class="py-2 pr-3">Validation</th>
               <th class="py-2 pr-3">Selected</th>
               <th class="py-2 pr-3">Compatibility</th>
-              <th class="py-2 pr-3">Actions</th>
+              <th class="py-2 px-3 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -743,7 +702,7 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
                 </div>
                 <span v-else class="text-xs text-slate-500">Not checked</span>
               </td>
-              <td class="py-2 pr-3">
+              <td class="py-2 px-3 text-center">
                 <BaseEllipsisMenu>
                   <template #menu="{ close }">
                     <button
@@ -798,13 +757,6 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
                       @click="useFromMenu(file.name, close)"
                     >
                       {{ selectingByName[file.name] ? 'Selecting...' : 'Use' }}
-                    </button>
-                    <button
-                      :class="menuWarningClass"
-                      :disabled="file.scope === 'archive' || archivingByName[file.name]"
-                      @click="archiveConfirmFromMenu(file.name, close)"
-                    >
-                      {{ file.scope === 'archive' ? 'Archived' : (archivingByName[file.name] ? 'Archiving...' : 'Archive') }}
                     </button>
                     <button
                       :class="menuDangerClass"
@@ -965,18 +917,11 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
 
     <div v-if="confirmDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
-        <h3 class="text-lg font-semibold text-white">
-          {{ confirmActionType === 'delete' ? 'Confirm Permanent Delete' : 'Confirm Archive' }}
-        </h3>
+        <h3 class="text-lg font-semibold text-white">Confirm Permanent Delete</h3>
         <p class="mt-2 text-sm text-slate-300">
-          <span v-if="confirmActionType === 'archive'">
-            Archive <span class="font-semibold text-white">{{ confirmFileName }}</span>?
-          </span>
-          <span v-else>
-            Delete <span class="font-semibold text-white">{{ confirmFileName }}</span> permanently. This cannot be undone.
-          </span>
+          Delete <span class="font-semibold text-white">{{ confirmFileName }}</span> permanently. This cannot be undone.
         </p>
-        <div v-if="confirmActionType === 'delete'" class="mt-3">
+        <div class="mt-3">
           <label class="block text-xs text-slate-400 mb-1">Type exact file name to confirm</label>
           <input
             v-model="confirmTypedName"
@@ -988,7 +933,7 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
         <div class="mt-5 flex justify-end gap-2">
           <BaseBtn variant="secondary" @click="closeConfirmDialog">Cancel</BaseBtn>
           <BaseBtn variant="danger" @click="confirmDialogSubmit">
-            {{ confirmActionType === 'delete' ? 'Delete Permanently' : 'Archive' }}
+            Delete Permanently
           </BaseBtn>
         </div>
       </div>
