@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from core.settings import settings
@@ -51,6 +51,32 @@ def _call_worker(method: str, path: str, payload: Dict[str, Any] | None = None) 
     try:
         with httpx.Client(timeout=30.0) as client:
             response = client.request(method, url, json=payload)
+    except httpx.TimeoutException as exc:
+        raise HTTPException(status_code=504, detail="Fusion preprocess worker timed out.") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=503, detail=f"Fusion preprocess worker request failed: {exc}") from exc
+
+    if response.status_code >= 400:
+        detail = response.text
+        try:
+            detail = response.json().get("detail") or response.json()
+        except Exception:
+            pass
+        raise HTTPException(status_code=response.status_code, detail=detail)
+    return response.json()
+
+
+def _call_worker_multipart(
+    path: str,
+    data: Dict[str, Any],
+    files: Dict[str, tuple[str, bytes, str]],
+) -> Dict[str, Any]:
+    if not _worker_enabled():
+        raise HTTPException(status_code=503, detail="Fusion preprocess worker is disabled.")
+    url = f"{_worker_base_url()}{path}"
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(url, data=data, files=files)
     except httpx.TimeoutException as exc:
         raise HTTPException(status_code=504, detail="Fusion preprocess worker timed out.") from exc
     except httpx.HTTPError as exc:
@@ -122,6 +148,42 @@ def fusion_preprocess_health(_user=Depends(role_or_internal_dep("editor"))) -> D
 @router.post("/jobs/analyze")
 def analyze_fusion_csv(req: FusionAnalyzeRequest, _user=Depends(role_or_internal_dep("editor"))) -> Dict[str, Any]:
     return _call_worker("POST", "/v1/jobs/analyze", req.model_dump())
+
+
+@router.post("/jobs/analyze-upload")
+async def analyze_fusion_upload(
+    source_file: str = Form(...),
+    trim_start_ms: Optional[int] = Form(None),
+    trim_end_ms: Optional[int] = Form(None),
+    max_abs_sensor_delta_ms: Optional[float] = Form(None),
+    require_sensor_match: bool = Form(True),
+    export_label: str = Form("processed"),
+    notes: str = Form(""),
+    csv_file: UploadFile = File(...),
+    video_file: Optional[UploadFile] = File(None),
+    _user=Depends(role_or_internal_dep("editor")),
+) -> Dict[str, Any]:
+    csv_bytes = await csv_file.read()
+    video_bytes = await video_file.read() if video_file else None
+    data = {
+        "source_file": source_file,
+        "trim_start_ms": "" if trim_start_ms is None else str(trim_start_ms),
+        "trim_end_ms": "" if trim_end_ms is None else str(trim_end_ms),
+        "max_abs_sensor_delta_ms": "" if max_abs_sensor_delta_ms is None else str(max_abs_sensor_delta_ms),
+        "require_sensor_match": "true" if require_sensor_match else "false",
+        "export_label": export_label,
+        "notes": notes,
+    }
+    files = {
+        "csv_file": (csv_file.filename or "capture.csv", csv_bytes, csv_file.content_type or "text/csv"),
+    }
+    if video_file and video_bytes is not None:
+        files["video_file"] = (
+            video_file.filename or "capture.webm",
+            video_bytes,
+            video_file.content_type or "video/webm",
+        )
+    return _call_worker_multipart("/v1/jobs/analyze-upload", data=data, files=files)
 
 
 @router.get("/jobs/{job_id}")

@@ -9,15 +9,16 @@ What exists today:
 - backend proxy routes under `/fusion-preprocess/*`
 - early-fusion cropper integration with worker-backed analysis
 - worker validation summary in the cropper
+- optional video upload from the cropper for OpenCV motion analysis
 - save processed fusion CSV into CSV Library
 - CSV Library validation badge sourced from worker sidecar metadata
 - CSV Library filtering and sorting by worker validation state
-- explicit operator review actions for processed fusion datasets **Pending**
-- operator review notes and review history stored in worker sidecar metadata **Pending**
+- explicit operator review actions for processed fusion datasets
+- operator review notes and review history stored in worker sidecar metadata
 
 Current limitation:
-- preprocessing is still CSV-driven in phase 1
-- OpenCV is installed in the worker, but the current job flow is not yet doing full gloved-hand video preprocessing
+- OpenCV is now used for uploaded capture video motion analysis, but the pipeline still depends on the operator providing the matching video file manually
+- preprocessing is still driven by CSV export plus optional video, not by native capture artifacts/job queue ingestion
 - persistence is local file storage, not a queued job system with retries/history UI
 
 ## Problem
@@ -112,6 +113,7 @@ Out of scope:
 
 Phase 1 implementation scope:
 - analyze captured fusion CSV exports
+- optionally analyze matching capture video with OpenCV
 - apply crop rules
 - compute validation summary
 - export processed CSV and metadata
@@ -143,18 +145,20 @@ Current implemented flow:
 1. User exports `cv_sensor_*.csv` from early-fusion capture.
 2. User opens Early Fusion Cropper.
 3. Cropper sends CSV + crop rules to `worker-fusion-preprocess`.
-4. Worker returns:
+4. If the operator provides the matching capture video, the worker runs OpenCV motion analysis on that video.
+5. Worker returns:
    - processed CSV text
    - metadata
    - validation summary
-5. User can:
+   - optional OpenCV video summary
+6. User can:
    - download processed CSV
    - download metadata JSON
    - save processed CSV into CSV Library
-6. CSV Library shows worker validation status directly in the file list and stats modal.
-7. Operator can filter and sort datasets by validation state during review.
-8. Operator can mark processed datasets as `approved`, `needs_review`, or `rejected`.
-9. Each operator review can include notes, and CSV Library keeps the full review history for audit.
+7. CSV Library shows worker validation status directly in the file list and stats modal.
+8. Operator can filter and sort datasets by validation state during review.
+9. Operator can mark processed datasets as `approved`, `needs_review`, or `rejected`.
+10. Each operator review can include notes, and CSV Library keeps the full review history for audit.
 
 ## Why OpenCV Belongs Here
 
@@ -214,6 +218,7 @@ Recommended job outputs:
 
 Current phase 1 job contract:
 - `POST /fusion-preprocess/jobs/analyze`
+- `POST /fusion-preprocess/jobs/analyze-upload`
 - `GET /fusion-preprocess/jobs/{job_id}`
 - `POST /fusion-preprocess/jobs/{job_id}/save`
 
@@ -258,6 +263,7 @@ Current phase 1 validation fields:
 - `missing_frame_ratio`
 - `cv_spike_detected`
 - `sensor_spike_detected`
+- `opencv_summary` when a matching video is uploaded
 
 ## UI / UX Implications
 
@@ -282,6 +288,8 @@ The UI should show:
 Implemented UI surfaces:
 - Early Fusion Cropper:
   - worker validation card
+  - optional capture-video upload
+  - OpenCV motion summary panel
   - processed summary
   - save-to-CSV-Library action
 - CSV Library:
@@ -331,11 +339,12 @@ Completed:
    - `reject`
 
 Next:
-1. Move from CSV-only preprocessing to actual OpenCV frame/video preprocessing.
-2. Persist richer worker job history and artifact lineage.
-3. Add crop/timeline visualization instead of table-only preview.
-4. Add stronger validation thresholds for dual-hand/gloved-hand cases.
-5. Add review history filtering and reviewer attribution once authenticated operator identity is available in the sidecar.
+1. Move from manual video upload to native capture artifact ingestion from the capture flow.
+2. Expand OpenCV from motion-only analysis to glove-region preprocessing and crop suggestion.
+3. Persist richer worker job history and artifact lineage.
+4. Add crop/timeline visualization instead of table-only preview.
+5. Add stronger validation thresholds for dual-hand/gloved-hand cases.
+6. Add review history filtering and reviewer attribution once authenticated operator identity is available in the sidecar.
 
 ## Summary
 

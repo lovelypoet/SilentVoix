@@ -9,6 +9,7 @@ import api from '../services/api'
 const router = useRouter()
 
 const selectedFile = ref(null)
+const selectedVideoFile = ref(null)
 const rawCsvText = ref('')
 const header = ref([])
 const rows = ref([])
@@ -150,6 +151,7 @@ const suggestedExportName = computed(() => {
 })
 
 const validationSummary = computed(() => workerMetadata.value?.validation || null)
+const opencvSummary = computed(() => workerMetadata.value?.opencv_summary || null)
 const effectiveProcessedStats = computed(() => workerMetadata.value?.processed_summary || filteredStats.value)
 const effectiveSourceStats = computed(() => workerMetadata.value?.source_summary || sourceStats.value)
 const effectivePreviewRows = computed(() => processedRowsPreview.value.length ? processedRowsPreview.value : filteredRows.value.slice(0, 20))
@@ -304,25 +306,39 @@ async function handleFileChange(event) {
   }
 }
 
+function handleVideoFileChange(event) {
+  const file = event.target.files?.[0]
+  selectedVideoFile.value = file || null
+  if (analysisJob.value) clearAnalysisResult()
+}
+
 async function runWorkerAnalysis() {
   if (!selectedFile.value || !rawCsvText.value) return
   analysisLoading.value = true
   analysisError.value = ''
   saveError.value = ''
   saveResult.value = null
+  const options = {
+    trim_start_ms: trimStartMs.value === '' ? null : Number(trimStartMs.value),
+    trim_end_ms: trimEndMs.value === '' ? null : Number(trimEndMs.value),
+    max_abs_sensor_delta_ms: maxDeltaMs.value === '' ? null : Number(maxDeltaMs.value),
+    require_sensor_match: requireSensorMatch.value,
+    export_label: exportLabel.value || 'processed',
+    notes: exportNotes.value || ''
+  }
   try {
-    const result = await api.fusionPreprocess.analyzeCsv({
-      source_file: selectedFile.value.name,
-      csv_text: rawCsvText.value,
-      options: {
-        trim_start_ms: trimStartMs.value === '' ? null : Number(trimStartMs.value),
-        trim_end_ms: trimEndMs.value === '' ? null : Number(trimEndMs.value),
-        max_abs_sensor_delta_ms: maxDeltaMs.value === '' ? null : Number(maxDeltaMs.value),
-        require_sensor_match: requireSensorMatch.value,
-        export_label: exportLabel.value || 'processed',
-        notes: exportNotes.value || ''
-      }
-    })
+    const result = selectedVideoFile.value
+      ? await api.fusionPreprocess.analyzeUpload({
+        source_file: selectedFile.value.name,
+        csv_file: selectedFile.value,
+        video_file: selectedVideoFile.value,
+        options
+      })
+      : await api.fusionPreprocess.analyzeCsv({
+        source_file: selectedFile.value.name,
+        csv_text: rawCsvText.value,
+        options
+      })
     analysisJob.value = result
     processedCsvText.value = result?.result?.processed_csv_text || ''
     processedRowsPreview.value = Array.isArray(result?.result?.processed_rows_preview) ? result.result.processed_rows_preview : []
@@ -373,6 +389,7 @@ function exportMetadata() {
 
 function resetAll() {
   selectedFile.value = null
+  selectedVideoFile.value = null
   rawCsvText.value = ''
   header.value = []
   rows.value = []
@@ -416,7 +433,7 @@ watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, expo
         <div class="space-y-4">
           <div>
             <p class="text-sm uppercase tracking-[0.2em] text-teal-300">Source File</p>
-            <p class="text-sm text-slate-400 mt-1">Load a `cv_sensor_*.csv` export from the early-fusion capture flow.</p>
+            <p class="text-sm text-slate-400 mt-1">Load a `cv_sensor_*.csv` export from the early-fusion capture flow. Optionally add the matching capture video so the worker can run OpenCV motion analysis.</p>
           </div>
           <input
             type="file"
@@ -424,7 +441,14 @@ watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, expo
             class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-white"
             @change="handleFileChange"
           />
+          <input
+            type="file"
+            accept="video/*,.webm,.mp4,.mov,.mkv"
+            class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-white"
+            @change="handleVideoFileChange"
+          />
           <p v-if="loadStatus" class="text-sm text-emerald-300">{{ loadStatus }}</p>
+          <p v-if="selectedVideoFile" class="text-sm text-cyan-300">Video loaded: {{ selectedVideoFile.name }}</p>
           <p v-if="parseError" class="text-sm text-rose-300">{{ parseError }}</p>
           <p v-if="analysisError" class="text-sm text-rose-300">{{ analysisError }}</p>
           <p v-if="saveError" class="text-sm text-rose-300">{{ saveError }}</p>
@@ -523,6 +547,21 @@ watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, expo
             </p>
           </div>
 
+          <div v-if="opencvSummary" class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-slate-200">
+            <p class="text-xs uppercase tracking-[0.2em] text-cyan-300">OpenCV Video Summary</p>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <p>frames: <span class="text-white">{{ opencvSummary.frame_count ?? '--' }}</span></p>
+              <p>fps: <span class="text-white">{{ opencvSummary.fps ?? '--' }}</span></p>
+              <p>duration: <span class="text-white">{{ formatMs(opencvSummary.duration_ms) }}</span></p>
+              <p>peak motion time: <span class="text-white">{{ formatMs(opencvSummary.peak_time_ms) }}</span></p>
+              <p>motion peak: <span class="text-white">{{ opencvSummary.motion_peak ?? '--' }}</span></p>
+              <p>spike detected: <span class="text-white">{{ opencvSummary.spike_detected ? 'yes' : 'no' }}</span></p>
+            </div>
+            <p class="mt-3 text-xs text-slate-300">
+              {{ Array.isArray(opencvSummary.reasons) ? opencvSummary.reasons.join(' | ') : '' }}
+            </p>
+          </div>
+
           <div class="grid gap-3 sm:grid-cols-2">
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Kept Rows</p>
@@ -547,6 +586,7 @@ watch([trimStartMs, trimEndMs, maxDeltaMs, requireSensorMatch, exportNotes, expo
             <p class="mt-2">Gesture column: <span class="text-white">{{ gestureColumn || '--' }}</span></p>
             <p class="mt-2">Timestamp column: <span class="text-white">{{ timestampColumn || '--' }}</span></p>
             <p class="mt-2">Delta column: <span class="text-white">{{ deltaColumn || '--' }}</span></p>
+            <p class="mt-2">OpenCV source: <span class="text-white">{{ selectedVideoFile ? selectedVideoFile.name : 'CSV-only analysis' }}</span></p>
             <p v-if="validationSummary" class="mt-2">Sensor match ratio: <span class="text-white">{{ validationSummary.sensor_match_ratio }}</span></p>
             <p v-if="validationSummary" class="mt-2">Missing frame ratio: <span class="text-white">{{ validationSummary.missing_frame_ratio }}</span></p>
           </div>

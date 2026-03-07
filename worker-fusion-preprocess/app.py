@@ -5,12 +5,15 @@ import io
 import json
 import logging
 import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+import cv2
+import numpy as np
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
@@ -163,7 +166,102 @@ def _evaluate_status(max_abs_delta_ms: Optional[float], sensor_match_ratio: floa
     return status, reasons
 
 
-def _analyze(req: AnalyzeRequest) -> Dict[str, Any]:
+def _analyze_video(video_bytes: bytes, filename: str) -> Dict[str, Any]:
+    suffix = Path(filename or "capture.webm").suffix or ".webm"
+    tmp_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(video_bytes)
+            tmp_path = Path(tmp.name)
+
+        capture = cv2.VideoCapture(str(tmp_path))
+        if not capture.isOpened():
+            raise HTTPException(status_code=400, detail="OpenCV could not open the uploaded video.")
+
+        fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+        if not np.isfinite(fps) or fps <= 0:
+            fps = 30.0
+        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+
+        motion_scores: list[float] = []
+        prev_gray: Optional[np.ndarray] = None
+        frames_read = 0
+
+        while True:
+            ok, frame = capture.read()
+            if not ok:
+                break
+            frames_read += 1
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.GaussianBlur(gray, (5, 5), 0)
+            if prev_gray is None:
+                prev_gray = gray
+                continue
+            diff = cv2.absdiff(gray, prev_gray)
+            motion_scores.append(float(np.mean(diff)))
+            prev_gray = gray
+
+        capture.release()
+
+        if frames_read <= 1:
+            return {
+                "provided": True,
+                "filename": filename,
+                "frame_count": frames_read,
+                "fps": round(fps, 3),
+                "width": width,
+                "height": height,
+                "duration_ms": round((frames_read / fps) * 1000) if fps > 0 and frames_read > 0 else None,
+                "motion_mean": None,
+                "motion_std": None,
+                "motion_peak": None,
+                "spike_detected": False,
+                "peak_frame_index": None,
+                "peak_time_ms": None,
+                "reasons": ["video has too few frames for OpenCV motion analysis"],
+            }
+
+        motion_array = np.asarray(motion_scores, dtype=np.float32)
+        motion_mean = float(np.mean(motion_array))
+        motion_std = float(np.std(motion_array))
+        motion_peak = float(np.max(motion_array))
+        peak_index = int(np.argmax(motion_array)) + 1
+        dynamic_threshold = max(6.0, motion_mean + (2.0 * motion_std))
+        spike_detected = bool(motion_peak >= dynamic_threshold)
+        reasons = []
+        if spike_detected:
+            reasons.append("opencv motion spike detected from uploaded video")
+        else:
+            reasons.append("opencv motion spike not detected from uploaded video")
+
+        return {
+            "provided": True,
+            "filename": filename,
+            "frame_count": frames_read,
+            "fps": round(fps, 3),
+            "width": width,
+            "height": height,
+            "duration_ms": round((frames_read / fps) * 1000) if fps > 0 else None,
+            "motion_mean": round(motion_mean, 4),
+            "motion_std": round(motion_std, 4),
+            "motion_peak": round(motion_peak, 4),
+            "motion_threshold": round(dynamic_threshold, 4),
+            "spike_detected": spike_detected,
+            "peak_frame_index": peak_index,
+            "peak_time_ms": round((peak_index / fps) * 1000) if fps > 0 else None,
+            "reasons": reasons,
+        }
+    finally:
+        if tmp_path and tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                logger.warning("Failed to remove temp video file %s", tmp_path)
+
+
+def _analyze(req: AnalyzeRequest, video_bytes: Optional[bytes] = None, video_name: Optional[str] = None) -> Dict[str, Any]:
     header, rows = _read_csv(req.csv_text)
     schema_id = _infer_schema_id(header)
     ts_key = _first_present(header, "timestamp_ms", "timestamp")
@@ -215,6 +313,18 @@ def _analyze(req: AnalyzeRequest) -> Dict[str, Any]:
         sensor_match_ratio,
         missing_frame_ratio,
     )
+    opencv_summary = None
+    if video_bytes:
+        opencv_summary = _analyze_video(video_bytes, video_name or "capture.webm")
+        if not opencv_summary.get("spike_detected"):
+            if status == "pass":
+                status = "warning"
+            reasons.append("opencv motion spike was not detected in uploaded video")
+        else:
+            reasons.extend([
+                reason for reason in opencv_summary.get("reasons", [])
+                if isinstance(reason, str)
+            ])
 
     metadata = {
         "source_file": req.source_file,
@@ -239,15 +349,16 @@ def _analyze(req: AnalyzeRequest) -> Dict[str, Any]:
             "missing_frame_ratio": round(missing_frame_ratio, 4),
         },
         "validation": {
-            "cv_spike_detected": bool(valid_processed_timestamps),
+            "cv_spike_detected": bool(opencv_summary.get("spike_detected")) if opencv_summary else bool(valid_processed_timestamps),
             "sensor_spike_detected": sensor_match_ratio > 0,
             "offset_ms": round(sum(processed_deltas) / len(processed_deltas)) if processed_deltas else None,
             "max_abs_sensor_match_delta_ms": max(valid_processed_deltas) if valid_processed_deltas else None,
             "sensor_match_ratio": round(sensor_match_ratio, 4),
             "missing_frame_ratio": round(missing_frame_ratio, 4),
             "status": status,
-            "reasons": reasons,
+            "reasons": list(dict.fromkeys(reasons)),
         },
+        "opencv_summary": opencv_summary,
         "notes": req.options.notes,
         "processed_at": _utc_now(),
     }
@@ -287,6 +398,48 @@ def create_analyze_job(req: AnalyzeRequest) -> Dict[str, Any]:
     created_at = _utc_now()
     logger.info("Starting fusion preprocess job %s for %s", job_id, req.source_file)
     result = _analyze(req)
+    payload = {
+        "job_id": job_id,
+        "status": "completed",
+        "created_at": created_at,
+        "completed_at": _utc_now(),
+        "result": result,
+    }
+    _save_job(job_id, payload)
+    return payload
+
+
+@app.post("/v1/jobs/analyze-upload")
+async def create_analyze_upload_job(
+    source_file: str = Form(...),
+    trim_start_ms: Optional[int] = Form(None),
+    trim_end_ms: Optional[int] = Form(None),
+    max_abs_sensor_delta_ms: Optional[float] = Form(None),
+    require_sensor_match: bool = Form(True),
+    export_label: str = Form("processed"),
+    notes: str = Form(""),
+    csv_file: UploadFile = File(...),
+    video_file: Optional[UploadFile] = File(None),
+) -> Dict[str, Any]:
+    csv_text = (await csv_file.read()).decode("utf-8", errors="ignore")
+    video_bytes = await video_file.read() if video_file else None
+    req = AnalyzeRequest(
+        source_file=source_file,
+        csv_text=csv_text,
+        options=AnalyzeOptions(
+            trim_start_ms=trim_start_ms,
+            trim_end_ms=trim_end_ms,
+            max_abs_sensor_delta_ms=max_abs_sensor_delta_ms,
+            require_sensor_match=require_sensor_match,
+            export_label=export_label,
+            notes=notes,
+        ),
+    )
+
+    job_id = str(uuid4())
+    created_at = _utc_now()
+    logger.info("Starting fusion preprocess upload job %s for %s", job_id, source_file)
+    result = _analyze(req, video_bytes=video_bytes, video_name=video_file.filename if video_file else None)
     payload = {
         "job_id": job_id,
         "status": "completed",

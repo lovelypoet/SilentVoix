@@ -143,6 +143,29 @@ export default {
   fusionPreprocess: {
     health: () => api.get('/fusion-preprocess/health'),
     analyzeCsv: (payload) => api.post('/fusion-preprocess/jobs/analyze', payload),
+    analyzeUpload: (payload) => {
+      const formData = new FormData()
+      formData.append('source_file', payload.source_file)
+      if (payload.options?.trim_start_ms !== null && payload.options?.trim_start_ms !== undefined) {
+        formData.append('trim_start_ms', String(payload.options.trim_start_ms))
+      }
+      if (payload.options?.trim_end_ms !== null && payload.options?.trim_end_ms !== undefined) {
+        formData.append('trim_end_ms', String(payload.options.trim_end_ms))
+      }
+      if (payload.options?.max_abs_sensor_delta_ms !== null && payload.options?.max_abs_sensor_delta_ms !== undefined) {
+        formData.append('max_abs_sensor_delta_ms', String(payload.options.max_abs_sensor_delta_ms))
+      }
+      formData.append('require_sensor_match', payload.options?.require_sensor_match ? 'true' : 'false')
+      formData.append('export_label', payload.options?.export_label || 'processed')
+      formData.append('notes', payload.options?.notes || '')
+      formData.append('csv_file', payload.csv_file)
+      if (payload.video_file) {
+        formData.append('video_file', payload.video_file)
+      }
+      return api.post('/fusion-preprocess/jobs/analyze-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    },
     getJob: (jobId) => api.get(`/fusion-preprocess/jobs/${jobId}`),
     saveJobOutput: (jobId, payload = {}) => api.post(`/fusion-preprocess/jobs/${jobId}/save`, payload)
   },
