@@ -168,6 +168,8 @@ export default {
         api.get(`/admin/csv-library/files/${name}/stats`),
       compatibility: (name, pipeline = 'early', mode = 'single') =>
         api.get(`/admin/csv-library/files/${name}/compatibility?pipeline=${pipeline}&mode=${mode}`),
+      review: (name, decision, notes = '') =>
+        api.post(`/admin/csv-library/files/${name}/review`, { decision, notes }),
       archive: (name) =>
         api.post(`/admin/csv-library/files/${name}/archive`),
       deletePermanent: (name, confirmName) =>

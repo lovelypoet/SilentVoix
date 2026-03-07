@@ -12,6 +12,8 @@ What exists today:
 - save processed fusion CSV into CSV Library
 - CSV Library validation badge sourced from worker sidecar metadata
 - CSV Library filtering and sorting by worker validation state
+- explicit operator review actions for processed fusion datasets **Pending**
+- operator review notes and review history stored in worker sidecar metadata **Pending**
 
 Current limitation:
 - preprocessing is still CSV-driven in phase 1
@@ -151,6 +153,8 @@ Current implemented flow:
    - save processed CSV into CSV Library
 6. CSV Library shows worker validation status directly in the file list and stats modal.
 7. Operator can filter and sort datasets by validation state during review.
+8. Operator can mark processed datasets as `approved`, `needs_review`, or `rejected`.
+9. Each operator review can include notes, and CSV Library keeps the full review history for audit.
 
 ## Why OpenCV Belongs Here
 
@@ -218,6 +222,11 @@ Current save target:
 - `backend/data/csv_library/active/fusion_dual/*.csv`
 - sidecar metadata stored as `*.metadata.json`
 
+Current review metadata:
+- `operator_review`
+- `review_history[]`
+- `review_history_count`
+
 This is safer and easier to debug than trying to add full realtime preprocessing immediately.
 
 ## Validation Requirements
@@ -280,6 +289,13 @@ Implemented UI surfaces:
   - worker validation details in stats modal
   - validation filter (`pass`, `warning`, `reject`, `unreviewed`)
   - sort controls for newest, oldest, worst validation first, and largest offset first
+  - operator review actions:
+    - `approve`
+    - `needs review`
+    - `reject override`
+  - operator review badge in the table and stats modal
+  - review note dialog before saving operator review
+  - review history list in stats modal
 
 ## Docker / Deployment Impact
 
@@ -319,7 +335,7 @@ Next:
 2. Persist richer worker job history and artifact lineage.
 3. Add crop/timeline visualization instead of table-only preview.
 4. Add stronger validation thresholds for dual-hand/gloved-hand cases.
-5. Add explicit operator actions such as `approve`, `needs review`, and `reject override`.
+5. Add review history filtering and reviewer attribution once authenticated operator identity is available in the sidecar.
 
 ## Summary
 

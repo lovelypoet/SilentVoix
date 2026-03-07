@@ -53,6 +53,11 @@ class DeleteCsvRequest(BaseModel):
     confirm_name: str
 
 
+class ReviewCsvRequest(BaseModel):
+    decision: str
+    notes: Optional[str] = None
+
+
 def _safe_csv_name(name: str) -> str:
     value = (name or "").strip().replace("\\", "/")
     if not value:
@@ -587,7 +592,30 @@ def _with_worker_metadata(base: Dict[str, Any], csv_path: Path) -> Dict[str, Any
     base["worker_validation"] = worker_validation
     base["worker_job_id"] = sidecar.get("job_id")
     base["worker_processed_at"] = sidecar.get("processed_at")
+    operator_review = sidecar.get("operator_review") if isinstance(sidecar.get("operator_review"), dict) else None
+    base["operator_review"] = operator_review
+    review_history = sidecar.get("review_history") if isinstance(sidecar.get("review_history"), list) else []
+    normalized_history = [item for item in review_history if isinstance(item, dict)]
+    base["review_history"] = normalized_history
+    base["review_history_count"] = len(normalized_history)
     return base
+
+
+def _save_sidecar_metadata(csv_path: Path, data: Dict[str, Any]) -> None:
+    sidecar = _sidecar_metadata_path(csv_path)
+    sidecar.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
+
+
+def _review_decision_flag(decision: str) -> str:
+    normalized = decision.strip().lower()
+    mapping = {
+        "approved": "review_approved",
+        "needs_review": "review_needs_review",
+        "rejected": "review_rejected",
+    }
+    if normalized not in mapping:
+        raise HTTPException(status_code=400, detail="decision must be one of: approved, needs_review, rejected")
+    return mapping[normalized]
 
 
 @router.get("/files")
@@ -870,6 +898,50 @@ async def csv_file_stats(
         "scope": scope,
         **stats,
     }, path)
+
+
+@router.post("/files/{name:path}/review")
+async def review_csv_file(
+    name: str,
+    req: ReviewCsvRequest,
+    _user=Depends(role_or_internal_dep("admin")),
+):
+    scope, path, safe_name = _resolve_csv_path(name, include_archived=True)
+    sidecar = _load_sidecar_metadata(path)
+    if not sidecar:
+        raise HTTPException(status_code=400, detail="This dataset does not have fusion preprocess metadata to review.")
+
+    decision_flag = _review_decision_flag(req.decision)
+    existing_flags = [str(flag) for flag in sidecar.get("health_flags", []) if isinstance(flag, str)]
+    review_flags = {"review_approved", "review_needs_review", "review_rejected"}
+    merged_flags = [flag for flag in existing_flags if flag not in review_flags]
+    merged_flags.append(decision_flag)
+
+    reviewed_at = datetime.now(timezone.utc).isoformat()
+    review_entry = {
+        "decision": req.decision.strip().lower(),
+        "notes": (req.notes or "").strip(),
+        "reviewed_at": reviewed_at,
+        "scope": scope,
+    }
+    review_history = sidecar.get("review_history") if isinstance(sidecar.get("review_history"), list) else []
+    review_history = [item for item in review_history if isinstance(item, dict)]
+    review_history.append(review_entry)
+
+    sidecar["health_flags"] = sorted(set(merged_flags))
+    sidecar["operator_review"] = review_entry
+    sidecar["review_history"] = review_history
+    _save_sidecar_metadata(path, sidecar)
+
+    return {
+        "status": "success",
+        "name": safe_name,
+        "scope": scope,
+        "operator_review": sidecar["operator_review"],
+        "review_history": sidecar["review_history"],
+        "review_history_count": len(sidecar["review_history"]),
+        "health_flags": sidecar["health_flags"],
+    }
 
 
 @router.post("/files/{name:path}/archive")

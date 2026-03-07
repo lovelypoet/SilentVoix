@@ -24,6 +24,7 @@ const compatibilityByName = ref({})
 const checkingByName = ref({})
 const archivingByName = ref({})
 const deletingByName = ref({})
+const reviewingByName = ref({})
 
 const previewData = ref(null)
 const previewLoading = ref(false)
@@ -37,6 +38,10 @@ const confirmDialogOpen = ref(false)
 const confirmActionType = ref('')
 const confirmFileName = ref('')
 const confirmTypedName = ref('')
+const reviewDialogOpen = ref(false)
+const reviewFileName = ref('')
+const reviewDecision = ref('')
+const reviewNotes = ref('')
 
 const schemaFilter = ref('all')
 const validationFilter = ref('all')
@@ -147,6 +152,13 @@ const workerValidationClass = (status) => {
   if (status === 'pass') return 'bg-emerald-500/20 text-emerald-300'
   if (status === 'warning') return 'bg-amber-500/20 text-amber-300'
   if (status === 'reject') return 'bg-rose-500/20 text-rose-300'
+  return 'bg-slate-800 text-slate-400'
+}
+
+const operatorReviewClass = (decision) => {
+  if (decision === 'approved') return 'bg-emerald-500/15 text-emerald-200'
+  if (decision === 'needs_review') return 'bg-amber-500/15 text-amber-200'
+  if (decision === 'rejected') return 'bg-rose-500/15 text-rose-200'
   return 'bg-slate-800 text-slate-400'
 }
 
@@ -286,6 +298,34 @@ const archiveFile = async (name) => {
   }
 }
 
+const reviewLabel = (decision) => {
+  if (decision === 'approved') return 'approved'
+  if (decision === 'needs_review') return 'needs review'
+  if (decision === 'rejected') return 'rejected'
+  return decision
+}
+
+const reviewFile = async (name, decision, notes = '') => {
+  reviewingByName.value = { ...reviewingByName.value, [name]: true }
+  error.value = ''
+  try {
+    await api.admin.csvLibrary.review(encodePathParam(name), decision, notes)
+    if (previewData.value?.name === name) {
+      await openPreview(name)
+    }
+    if (statsData.value?.name === name) {
+      await openStats(name)
+    }
+    await loadFiles()
+    toast.add({ severity: 'success', summary: 'Review Saved', detail: `${name} marked as ${reviewLabel(decision)}.`, life: 3000 })
+  } catch (e) {
+    error.value = e?.response?.data?.detail || 'Failed to save review state.'
+    toast.add({ severity: 'error', summary: 'Review Failed', detail: error.value, life: 3500 })
+  } finally {
+    reviewingByName.value = { ...reviewingByName.value, [name]: false }
+  }
+}
+
 const deleteFilePermanently = async (name) => {
   deletingByName.value = { ...deletingByName.value, [name]: true }
   error.value = ''
@@ -344,6 +384,32 @@ const closeConfirmDialog = () => {
   confirmActionType.value = ''
   confirmFileName.value = ''
   confirmTypedName.value = ''
+}
+
+const openReviewDialog = (name, decision) => {
+  reviewFileName.value = name
+  reviewDecision.value = decision
+  reviewNotes.value = ''
+  reviewDialogOpen.value = true
+}
+
+const closeReviewDialog = () => {
+  reviewDialogOpen.value = false
+  reviewFileName.value = ''
+  reviewDecision.value = ''
+  reviewNotes.value = ''
+}
+
+const submitReviewDialog = async () => {
+  const name = reviewFileName.value
+  const decision = reviewDecision.value
+  const notes = reviewNotes.value
+  if (!name || !decision) {
+    closeReviewDialog()
+    return
+  }
+  closeReviewDialog()
+  await reviewFile(name, decision, notes)
 }
 
 const confirmDialogSubmit = async () => {
@@ -407,6 +473,11 @@ const archiveConfirmFromMenu = (name, close) => {
 
 const deleteConfirmFromMenu = (name, close) => {
   openDeleteConfirm(name)
+  close()
+}
+
+const reviewFromMenu = (name, decision, close) => {
+  openReviewDialog(name, decision)
   close()
 }
 
@@ -562,6 +633,14 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
                 <p v-if="file.worker_validation?.offset_ms !== undefined && file.worker_validation?.offset_ms !== null" class="text-[11px] text-slate-500 mt-1">
                   offset {{ file.worker_validation.offset_ms }} ms
                 </p>
+                <p v-if="file.operator_review?.decision" class="mt-1">
+                  <span class="px-2 py-1 rounded text-[11px] font-semibold" :class="operatorReviewClass(file.operator_review.decision)">
+                    {{ file.operator_review.decision }}
+                  </span>
+                </p>
+                <p v-if="file.review_history_count" class="text-[11px] text-slate-500 mt-1">
+                  {{ file.review_history_count }} review {{ file.review_history_count === 1 ? 'entry' : 'entries' }}
+                </p>
               </td>
               <td class="py-2 pr-3">
                 <span
@@ -611,6 +690,27 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
                       @click="downloadFromMenu(file.name, close)"
                     >
                       Download
+                    </button>
+                    <button
+                      :class="menuAccentClass"
+                      :disabled="!file.worker_validation || reviewingByName[file.name]"
+                      @click="reviewFromMenu(file.name, 'approved', close)"
+                    >
+                      {{ reviewingByName[file.name] ? 'Saving...' : 'Approve' }}
+                    </button>
+                    <button
+                      :class="menuWarningClass"
+                      :disabled="!file.worker_validation || reviewingByName[file.name]"
+                      @click="reviewFromMenu(file.name, 'needs_review', close)"
+                    >
+                      {{ reviewingByName[file.name] ? 'Saving...' : 'Needs Review' }}
+                    </button>
+                    <button
+                      :class="menuDangerClass"
+                      :disabled="!file.worker_validation || reviewingByName[file.name]"
+                      @click="reviewFromMenu(file.name, 'rejected', close)"
+                    >
+                      {{ reviewingByName[file.name] ? 'Saving...' : 'Reject Override' }}
                     </button>
                     <button
                       :class="menuAccentClass"
@@ -699,6 +799,39 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
             <p class="text-slate-300 text-xs mt-2">
               {{ Array.isArray(statsData.worker_validation.reasons) ? statsData.worker_validation.reasons.join(' | ') : '--' }}
             </p>
+            <div v-if="statsData.operator_review?.decision" class="mt-3">
+              <span class="px-2 py-1 rounded text-xs font-semibold" :class="operatorReviewClass(statsData.operator_review.decision)">
+                {{ statsData.operator_review.decision }}
+              </span>
+              <p class="text-slate-400 text-xs mt-2">
+                reviewed at: {{ formatDate(statsData.operator_review.reviewed_at) }}
+              </p>
+              <p v-if="statsData.operator_review.notes" class="text-slate-300 text-xs mt-1">
+                {{ statsData.operator_review.notes }}
+              </p>
+            </div>
+            <div v-if="statsData.review_history?.length" class="mt-3">
+              <p class="text-slate-400 text-xs mb-2">Review History</p>
+              <div class="space-y-2">
+                <div
+                  v-for="(entry, idx) in statsData.review_history"
+                  :key="`review-history-${idx}`"
+                  class="rounded border border-slate-800 bg-slate-900/40 p-2"
+                >
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="px-2 py-1 rounded text-[11px] font-semibold" :class="operatorReviewClass(entry.decision)">
+                      {{ entry.decision }}
+                    </span>
+                    <span class="text-slate-500 text-[11px]">
+                      {{ formatDate(entry.reviewed_at) }}
+                    </span>
+                  </div>
+                  <p v-if="entry.notes" class="text-slate-300 text-xs mt-2">
+                    {{ entry.notes }}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="rounded border border-slate-800 p-3 bg-slate-950/40">
@@ -776,6 +909,31 @@ watch([compatibleOnly, pipeline, mode, includeArchived], () => {
           <BaseBtn variant="secondary" @click="closeConfirmDialog">Cancel</BaseBtn>
           <BaseBtn variant="danger" @click="confirmDialogSubmit">
             {{ confirmActionType === 'delete' ? 'Delete Permanently' : 'Archive' }}
+          </BaseBtn>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="reviewDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closeReviewDialog">
+      <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+        <h3 class="text-lg font-semibold text-white">Save Review</h3>
+        <p class="mt-2 text-sm text-slate-300">
+          Mark <span class="font-semibold text-white">{{ reviewFileName }}</span> as
+          <span class="font-semibold text-white">{{ reviewLabel(reviewDecision) }}</span>.
+        </p>
+        <div class="mt-3">
+          <label class="block text-xs text-slate-400 mb-1">Review notes (optional)</label>
+          <textarea
+            v-model="reviewNotes"
+            rows="4"
+            class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+            placeholder="Explain why this dataset was approved, flagged, or overridden."
+          />
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+          <BaseBtn variant="secondary" @click="closeReviewDialog">Cancel</BaseBtn>
+          <BaseBtn variant="primary" :disabled="reviewingByName[reviewFileName]" @click="submitReviewDialog">
+            {{ reviewingByName[reviewFileName] ? 'Saving...' : 'Save Review' }}
           </BaseBtn>
         </div>
       </div>
