@@ -1,145 +1,83 @@
 # SilentVoix
 
-A sign language glove project that serves as a **multi-format model testing ground**, translating hand gestures into text and speech using machine learning.
+SilentVoix is a sign-glove platform centered on a **multi-format model testing ground**. The current product scope is model upload, storage, activation, runtime validation, and live inference, not in-app model training.
 
-## Overview
+## Current Scope
 
-SilentVoix is an innovative assistive technology project that uses a smart glove equipped with sensors to recognize sign language gestures. The system has shifted from an in-app training platform to a **model testing ground**, where researchers and developers can upload, store, and test curated model formats in real-time.
+- Upload exported model packages for playground inference.
+- Support curated runtime formats: `.tflite`, `.keras`, `.h5`, `.pth`, `.pt`.
+- Run runtime preflight checks before activation or live testing.
+- Stream sensor and camera input into the realtime playground.
+- Manage datasets for **external** training workflows through the CSV Library.
 
-The system consists of a hardware component (ESP32-based glove with sensors), a backend API (FastAPI/Python), and a web-based frontend (Vue 3) for model management, monitoring, and playground inference.
+## Deprecated Scope
 
-## Features
+The old in-app training pipeline under `/training/*` is deprecated and being removed. Train models externally, then upload the exported runtime artifact and metadata into the Playground.
 
-- **Model Testing Ground**: Upload and manage exported model packages for testing.
-- **Real-time Inference Playground**: Run live gesture recognition using uploaded models (`.tflite`, `.keras`, `.h5`, `.pth`).
-- **Runtime Health Check**: Validate model load/inference readiness before live testing from Model Library.
-- **Text-to-Speech (TTS)**: Converts recognized gestures to spoken words.
-- **Multi-Format Support**: Curated support for popular deep learning model formats.
-- **User Management**: Role-based authentication with admin, editor, and user roles.
-- **Audio Management**: Upload and manage custom audio files for different gestures.
-- **MongoDB Integration**: Stores model metadata, user information, and gesture logs.
+## Runtime Architecture
 
-## Runtime Notes
-- Model library runtime artifacts are stored under `backend/AI/model_library`.
-- For PyTorch imports, upload/export callable inference artifacts (`.pth`/`.pt`), not state_dict-only checkpoints.
+- `backend` is the API, auth, registry, and dispatch layer.
+- `ml-tensorflow` serves TensorFlow-family inference.
+- `ml-pytorch` serves PyTorch-family inference.
+- `worker-library` reconciles model-library state.
+- Runtime model artifacts live in `backend/AI/model_library`.
 
-## ⚠️ Deprecation Notice: In-App Training
-
-The internal training pipeline (previously under `/training/*`) is now **deprecated**. 
-- **In-app model training is no longer supported.**
-- Users should train models externally and use the **Model Upload** feature in the Playground to import exported model packages.
-- Data collection features remain active for gathering external training datasets.
-
-## Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- **Python 3.8+**: For the backend
-- **Node.js (LTS version)**: For the frontend
-- **npm**: Node package manager, usually installed with Node.js
-- **MongoDB**: A running MongoDB instance (local or remote)
+PyTorch uploads must be callable inference artifacts. `state_dict`-only checkpoints are not valid playground runtime artifacts.
 
 ## Quick Start
 
-### 1. Backend Setup
+Requirements:
+- Python 3.10+
+- Node.js LTS
+- npm
+- MongoDB
 
-Navigate to the backend directory and set up the Python environment:
+Backend API:
 
 ```bash
 cd backend
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-```
-
-**Configure MongoDB Connection:**
-
-Create or edit `backend/.env` file:
-
-```env
-# For local MongoDB (default: mongodb://localhost:27017)
-# MONGO_URI=mongodb://localhost:27017
-DB_NAME=signglove
-
-# For MongoDB Atlas (uncomment and update with your credentials)
-# MONGO_URI=mongodb+srv://your_user:your_password@your_cluster.mongodb.net/your_db?retryWrites=true&w=majority
-```
-
-> **⚠️ Security Note**: Never commit credentials to version control. Use environment variables and keep your `.env` file in `.gitignore`.
-
-**Create Default Users:**
-
-```bash
+pip install -r requirements-api.txt
 python3 create_users.py
 ```
 
-Default credentials (for development only):
-- Admin: `admin@signglove.com` / `admin123`
-- Editor: `editor@signglove.com` / `editor123`
-- User: `user@signglove.com` / `user123`
-
-> **⚠️ Security Warning**: These are default development credentials. Change all passwords before deploying to production.
-
-### 2. Frontend Setup
-
-Navigate to the frontend directory and install dependencies:
+Frontend:
 
 ```bash
 cd vue-next
 npm install
 ```
 
-### 3. Running the Application
-
-Use the convenience script to start both servers:
+Local dev:
 
 ```bash
 ./run_dev.sh
 ```
 
-This will start:
-- Backend API server on `http://localhost:8000`
-- Frontend dev server on `http://localhost:5173`
+Runtime-split Docker profile:
 
-Access the application at `http://localhost:5173` and log in with the default credentials.
-
-## Project Structure
-
-```
-SilentVoix/
-├── backend/          # FastAPI backend
-│   ├── core/         # Core settings and configuration
-│   ├── models/       # Database models
-│   ├── routes/       # API routes
-│   ├── services/     # Business logic
-│   └── main.py       # Application entry point
-├── vue-next/         # Vue 3 frontend
-│   ├── src/          # Source code
-│   └── tests/        # Frontend tests
-├── mongo-init/       # MongoDB initialization scripts
-└── run_dev.sh        # Development server launcher
+```bash
+USE_RUNTIME_SERVICES=true USE_WORKER_LIBRARY=true \
+docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 ```
 
-## Troubleshooting
+## Default Dev URLs
 
-**ModuleNotFoundError**: Ensure you have activated your Python virtual environment and installed all dependencies.
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- TensorFlow runtime: `http://localhost:8091`
+- PyTorch runtime: `http://localhost:8092`
+- Worker library: `http://localhost:8093`
 
-**MongoDB Connection Errors**: 
-- Verify your `MONGO_URI` in `backend/.env` is correct
-- Ensure MongoDB is running locally or your Atlas cluster is accessible
+## Documentation
 
-**Connection Refused Errors**:
-- Ensure both backend and frontend servers are running
-- Check the logs in `logs/backend.log` and `logs/frontend.log`
+- [docs/README.md](docs/README.md)
+- [docs/instruction.md](docs/instruction.md)
+- [docs/migration_guide.md](docs/migration_guide.md)
+- [docs/runtime_service_contract.md](docs/runtime_service_contract.md)
 
-**Frontend not loading**: 
-- Ensure `npm install` completed successfully
-- Check that port 5173 is not already in use
+## Notes
 
-## Development
-
-For more detailed development instructions, see [instruction.md](instruction.md).
-
-## License
-
-This project is part of an assistive technology initiative for sign language communication.
+- Keep secrets out of version control. Use `backend/.env` for local configuration.
+- The backend API container should use `backend/requirements-api.txt`, not the monolithic ML dependency set.
