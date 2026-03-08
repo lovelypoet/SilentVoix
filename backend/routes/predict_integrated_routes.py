@@ -1,0 +1,60 @@
+import base64
+import cv2
+import numpy as np
+from fastapi import APIRouter, HTTPException, Depends, Body
+from services.gesture_service import get_gesture_service, GestureService
+from typing import Dict, Any
+import logging
+
+logger = logging.getLogger("signglove.predict")
+
+router = APIRouter(prefix="/predict/integrated", tags=["Prediction"])
+
+@router.post(
+    "",
+    summary="Integrated Gesture Prediction",
+    description="Predict gesture from a single camera frame (base64) using YOLO+LSTM loop."
+)
+async def predict_integrated(
+    image_data: str = Body(..., embed=True),
+    service: GestureService = Depends(get_gesture_service)
+) -> Dict[str, Any]:
+    """
+    Example input: {"image_data": "data:image/jpeg;base64,..."}
+    """
+    try:
+        # 1. Decode base64 image
+        if "," in image_data:
+            header, encoded = image_data.split(",", 1)
+        else:
+            encoded = image_data
+            
+        nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            raise ValueError("Invalid image data")
+
+        # 2. Process frame
+        gesture, score, hand_found = service.predict_frame(frame)
+        
+        return {
+            "status": "success",
+            "gesture": gesture,
+            "confidence": score,
+            "hand_detected": hand_found,
+            "buffer_status": f"{len(service.frame_buffer)}/{service.sequence_length}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Prediction failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post(
+    "/reset",
+    summary="Reset Prediction Buffer",
+    description="Clears the temporal buffer for the gesture service."
+)
+async def reset_buffer(service: GestureService = Depends(get_gesture_service)) -> Dict[str, Any]:
+    service.reset_buffer()
+    return {"status": "success", "message": "Buffer cleared"}
