@@ -369,7 +369,107 @@ const drawBoundingBoxes = (results) => {
   })
 }
 
+const useIntegratedMode = ref(false)
+const backendLandmarks = ref(null)
+
+const drawBackendSkeleton = (landmarks) => {
+  const canvas = landmarkCanvasEl.value
+  const video = videoEl.value
+  if (!canvas || !video || !landmarks) return
+  const ctx = canvas.getContext('2d')
+  canvas.width = video.videoWidth || 640
+  canvas.height = video.videoHeight || 480
+  
+  // Clear previous landmarks if we are the only ones drawing
+  if (useIntegratedMode.value) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+  }
+
+  // Draw points and connections (standard hand skeleton)
+  const connections = [
+    [0,1],[1,2],[2,3],[3,4], // thumb
+    [0,5],[5,6],[6,7],[7,8], // index
+    [5,9],[9,10],[10,11],[11,12], // middle
+    [9,13],[13,14],[14,15],[15,16], // ring
+    [13,17],[17,18],[18,19],[19,20], // pinky
+    [0,17] // palm base
+  ]
+
+  ctx.strokeStyle = '#facc15' // teal-400
+  ctx.fillStyle = '#ffffff'
+  ctx.lineWidth = 3
+
+  landmarks.forEach((pt, i) => {
+    const x = Number(pt[0]) * canvas.width
+    const y = Number(pt[1]) * canvas.height
+    const actualX = mirrorCamera.value ? canvas.width - x : x
+    
+    ctx.beginPath()
+    ctx.arc(actualX, y, 4, 0, 2 * Math.PI)
+    ctx.fill()
+  })
+
+  ctx.beginPath()
+  connections.forEach(([i, j]) => {
+    const p1 = landmarks[i]
+    const p2 = landmarks[j]
+    const x1 = Number(p1[0]) * canvas.width
+    const y1 = Number(p1[1]) * canvas.height
+    const x2 = Number(p2[0]) * canvas.width
+    const y2 = Number(p2[1]) * canvas.height
+    
+    const ax1 = mirrorCamera.value ? canvas.width - x1 : x1
+    const ax2 = mirrorCamera.value ? canvas.width - x2 : x2
+    
+    ctx.moveTo(ax1, y1)
+    ctx.lineTo(ax2, y2)
+  })
+  ctx.stroke()
+}
+
+const predictFromIntegratedService = async () => {
+  if (isPredictingFrame) return
+  if (!videoEl.value || videoEl.value.readyState < 2) return
+  
+  isPredictingFrame = true
+  try {
+    // Capture frame from video element
+    const canvas = document.createElement('canvas')
+    canvas.width = videoEl.value.videoWidth
+    canvas.height = videoEl.value.videoHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(videoEl.value, 0, 0)
+    const base64 = canvas.toDataURL('image/jpeg', 0.7)
+
+    const res = await api.playground.predictIntegrated(base64)
+    
+    if (res.status === 'success') {
+      prediction.value = {
+        label: res.gesture,
+        confidence: res.confidence,
+        note: `Integrated YOLO+LSTM Loop. Buffer: ${res.buffer_status}`
+      }
+      backendLandmarks.value = res.landmarks
+      if (res.landmarks) {
+        drawBackendSkeleton(res.landmarks)
+      }
+    }
+  } catch (e) {
+    prediction.value = {
+      label: 'error',
+      confidence: 0,
+      note: e?.response?.data?.detail || 'Integrated inference failed.'
+    }
+  } finally {
+    isPredictingFrame = false
+  }
+}
+
 const predictFromResults = async (results) => {
+  if (useIntegratedMode.value) {
+    void predictFromIntegratedService()
+    return
+  }
   if (!activeModel.value) return
   if (isPredictingFrame) return
   const now = Date.now()
@@ -506,8 +606,21 @@ const startLive = async () => {
     mediaStream.value = stream
     await startHandTracking(videoEl.value, landmarkCanvasEl.value, stream)
     onFrame((results) => {
-      drawBoundingBoxes(results)
-      if (results?.landmarks?.length) {
+      if (!useIntegratedMode.value) {
+        drawBoundingBoxes(results)
+      } else {
+        // In integrated mode, we don't draw bounding boxes from mediapipe
+        // because we will draw the skeleton from YOLO keypoints
+        const canvas = bboxCanvasEl.value
+        if (canvas) {
+          const ctx = canvas.getContext('2d')
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+        }
+      }
+      
+      // If no landmarks from mediapipe but we are in integrated mode, 
+      // we still want to trigger the loop (YOLO will find its own hands)
+      if (results?.landmarks?.length || useIntegratedMode.value) {
         void predictFromResults(results)
       }
     })
@@ -616,13 +729,31 @@ watch(() => activeModel.value?.id, () => {
     <BaseCard>
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-xl text-white font-semibold">Live Preview</h2>
-        <div class="flex gap-2">
-          <BaseBtn variant="secondary" :disabled="isLive" @click="startLive">
-            {{ modelModality === 'sensor' ? 'Start Sensor Live' : 'Start CV Live' }}
-          </BaseBtn>
-          <BaseBtn variant="secondary" :disabled="!isLive" @click="stopLive">
-            {{ modelModality === 'sensor' ? 'Stop Sensor Live' : 'Stop CV Live' }}
-          </BaseBtn>
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="flex items-center gap-2 bg-slate-800/50 p-1 rounded-lg border border-slate-700">
+            <button 
+              class="px-3 py-1 text-xs rounded transition-colors"
+              :class="!useIntegratedMode ? 'bg-teal-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+              @click="useIntegratedMode = false"
+            >
+              MediaPipe (Client)
+            </button>
+            <button 
+              class="px-3 py-1 text-xs rounded transition-colors"
+              :class="useIntegratedMode ? 'bg-teal-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+              @click="useIntegratedMode = true"
+            >
+              YOLO+LSTM (Server)
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <BaseBtn variant="secondary" :disabled="isLive" @click="startLive">
+              {{ modelModality === 'sensor' ? 'Start Sensor Live' : 'Start CV Live' }}
+            </BaseBtn>
+            <BaseBtn variant="secondary" :disabled="!isLive" @click="stopLive">
+              {{ modelModality === 'sensor' ? 'Stop Sensor Live' : 'Stop CV Live' }}
+            </BaseBtn>
+          </div>
         </div>
       </div>
       <p class="mt-2 text-sm text-slate-400">{{ liveStatus }}</p>

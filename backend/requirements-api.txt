@@ -37,3 +37,8 @@ pyttsx3==2.90
 gtts==2.3.2
 edge-tts==6.1.9
 pyserial==3.5
+# Integrated Inference Support
+ultralytics==8.3.0
+opencv-python-headless==4.11.0.86
+torch==2.1.0 --extra-index-url https://download.pytorch.org/whl/cpu
+torchvision==0.16.0 --extra-index-url https://download.pytorch.org/whl/cpu

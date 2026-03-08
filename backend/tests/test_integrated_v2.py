@@ -2,7 +2,6 @@ import torch
 import numpy as np
 import cv2
 from services.gesture_service import GestureService
-from AI.models.model_def6 import HandLSTMClassifier
 import os
 
 def test_integrated_service():
@@ -27,7 +26,8 @@ def test_integrated_service():
         # 1. Test with a blank frame (should append zeros)
         print("\nTesting with blank frame (no hand)...")
         blank_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        gesture, score, hand_found = service.predict_frame(blank_frame)
+        result = service.predict_frame(blank_frame)
+        gesture, score, hand_found = result["gesture"], result["confidence"], result["hand_detected"]
         print(f"Result: Gesture={gesture}, Score={score:.4f}, HandFound={hand_found}")
         print(f"Buffer size: {len(service.frame_buffer)}")
         
@@ -37,8 +37,11 @@ def test_integrated_service():
             service.predict_frame(blank_frame)
             
         print(f"Final buffer size: {len(service.frame_buffer)}")
-        gesture, score, hand_found = service.predict_frame(blank_frame)
+        result = service.predict_frame(blank_frame)
+        gesture, score, hand_found = result["gesture"], result["confidence"], result["hand_detected"]
+        landmarks = result["landmarks"]
         print(f"Full Loop Result: Gesture={gesture}, Score={score:.4f}, HandFound={hand_found}")
+        print(f"Landmarks returned: {len(landmarks) if landmarks else 'None'}")
         
         if gesture != "Waiting...":
             print("✅ SUCCESS: Integrated loop returned a prediction.")

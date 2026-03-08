@@ -2,7 +2,7 @@ import base64
 import cv2
 import numpy as np
 from fastapi import APIRouter, HTTPException, Depends, Body
-from services.gesture_service import get_gesture_service, GestureService
+from services.gesture_service import get_gesture_service
 from typing import Dict, Any
 import logging
 
@@ -10,19 +10,19 @@ logger = logging.getLogger("signglove.predict")
 
 router = APIRouter(prefix="/predict/integrated", tags=["Prediction"])
 
-@router.post(
-    "",
-    summary="Integrated Gesture Prediction",
-    description="Predict gesture from a single camera frame (base64) using YOLO+LSTM loop."
-)
+@router.post("", summary="Predict gesture using YOLOv8-Pose + LSTM")
 async def predict_integrated(
-    image_data: str = Body(..., embed=True),
-    service: GestureService = Depends(get_gesture_service)
+    payload: Dict[str, Any] = Body(...),
+    service = Depends(get_gesture_service)
 ) -> Dict[str, Any]:
     """
-    Example input: {"image_data": "data:image/jpeg;base64,..."}
+    Expects JSON: {"image_data": "data:image/jpeg;base64,..."}
     """
     try:
+        image_data = payload.get("image_data")
+        if not image_data:
+            raise HTTPException(status_code=400, detail="Missing image_data")
+
         # 1. Decode base64 image
         if "," in image_data:
             header, encoded = image_data.split(",", 1)
@@ -36,13 +36,14 @@ async def predict_integrated(
             raise ValueError("Invalid image data")
 
         # 2. Process frame
-        gesture, score, hand_found = service.predict_frame(frame)
+        result = service.predict_frame(frame)
         
         return {
             "status": "success",
-            "gesture": gesture,
-            "confidence": score,
-            "hand_detected": hand_found,
+            "gesture": result["gesture"],
+            "confidence": result["confidence"],
+            "hand_detected": result["hand_detected"],
+            "landmarks": result["landmarks"],
             "buffer_status": f"{len(service.frame_buffer)}/{service.sequence_length}"
         }
         
@@ -50,11 +51,7 @@ async def predict_integrated(
         logger.error(f"Prediction failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post(
-    "/reset",
-    summary="Reset Prediction Buffer",
-    description="Clears the temporal buffer for the gesture service."
-)
-async def reset_buffer(service: GestureService = Depends(get_gesture_service)) -> Dict[str, Any]:
+@router.post("/reset", summary="Reset temporal buffer")
+async def reset_integrated(service = Depends(get_gesture_service)) -> Dict[str, Any]:
     service.reset_buffer()
     return {"status": "success", "message": "Buffer cleared"}

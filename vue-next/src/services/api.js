@@ -256,6 +256,8 @@ export default {
     predictCv: (payload) =>
       api.post('/playground/predict/cv', payload),
     predictSensor: (payload) =>
-      api.post('/playground/predict/sensor', payload)
+      api.post('/playground/predict/sensor', payload),
+    predictIntegrated: (imageData) =>
+      api.post('/predict/integrated', { image_data: imageData })
   }
 };
