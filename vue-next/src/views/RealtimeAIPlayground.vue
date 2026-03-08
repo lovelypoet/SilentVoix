@@ -371,6 +371,57 @@ const drawBoundingBoxes = (results) => {
 
 const useIntegratedMode = ref(false)
 const backendLandmarks = ref(null)
+const availableDetectors = ref([])
+const currentDetector = ref('')
+const detectorFile = ref(null)
+const isUpdatingDetector = ref(false)
+
+const loadDetectorsList = async () => {
+  try {
+    const res = await api.playground.listDetectors()
+    availableDetectors.value = res.detectors || []
+    currentDetector.value = res.current || ''
+  } catch (e) {
+    console.error('Failed to load detectors:', e)
+  }
+}
+
+const onPickDetectorFile = (event) => {
+  detectorFile.value = event?.target?.files?.[0] || null
+}
+
+const uploadNewDetector = async () => {
+  if (!detectorFile.value) return
+  isUpdatingDetector.value = true
+  try {
+    await api.playground.setDetector(null, detectorFile.value)
+    uploadMessage.value = 'Detector uploaded and activated.'
+    detectorFile.value = null
+    await loadDetectorsList()
+  } catch (e) {
+    uploadError.value = e?.response?.data?.detail || 'Failed to upload detector.'
+  } finally {
+    isUpdatingDetector.value = false
+  }
+}
+
+const switchDetector = async (name) => {
+  if (name === currentDetector.value) return
+  isUpdatingDetector.value = true
+  try {
+    await api.playground.setDetector(name)
+    uploadMessage.value = `Switched to ${name}`
+    await loadDetectorsList()
+  } catch (e) {
+    uploadError.value = e?.response?.data?.detail || 'Failed to switch detector.'
+  } finally {
+    isUpdatingDetector.value = false
+  }
+}
+
+watch(useIntegratedMode, (val) => {
+  if (val) loadDetectorsList()
+})
 
 const drawBackendSkeleton = (landmarks) => {
   const canvas = landmarkCanvasEl.value
@@ -746,6 +797,33 @@ watch(() => activeModel.value?.id, () => {
               YOLO+LSTM (Server)
             </button>
           </div>
+
+          <!-- YOLO Detector Management (Integrated Mode Only) -->
+          <div v-if="useIntegratedMode" class="flex flex-wrap items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
+            <span class="text-xs font-medium text-slate-400">Detector:</span>
+            <select 
+              :value="currentDetector"
+              @change="switchDetector($event.target.value)"
+              class="bg-slate-900 text-xs text-white rounded border border-slate-700 px-2 py-1 outline-none"
+            >
+              <option v-for="d in availableDetectors" :key="d" :value="d">{{ d }}</option>
+            </select>
+            <div class="h-4 w-px bg-slate-700 mx-1"></div>
+            <label class="cursor-pointer bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[10px] text-white transition-colors">
+              Upload .pt
+              <input type="file" accept=".pt" class="hidden" @change="onPickDetectorFile" />
+            </label>
+            <span v-if="detectorFile" class="text-[10px] text-teal-400 truncate max-w-[100px]">{{ detectorFile.name }}</span>
+            <button 
+              v-if="detectorFile"
+              @click="uploadNewDetector"
+              :disabled="isUpdatingDetector"
+              class="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 px-2 py-1 rounded text-[10px] text-white"
+            >
+              {{ isUpdatingDetector ? '...' : 'Save' }}
+            </button>
+          </div>
+
           <div class="flex gap-2">
             <BaseBtn variant="secondary" :disabled="isLive" @click="startLive">
               {{ modelModality === 'sensor' ? 'Start Sensor Live' : 'Start CV Live' }}

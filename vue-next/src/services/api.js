@@ -258,6 +258,18 @@ export default {
     predictSensor: (payload) =>
       api.post('/playground/predict/sensor', payload),
     predictIntegrated: (imageData) =>
-      api.post('/predict/integrated', { image_data: imageData })
+      api.post('/predict/integrated', { image_data: imageData }),
+    listDetectors: () =>
+      api.get('/predict/integrated/detectors'),
+    setDetector: (name, file) => {
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post('/predict/integrated/detector', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+      return api.post('/predict/integrated/detector', { name });
+    }
   }
 };

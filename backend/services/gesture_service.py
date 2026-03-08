@@ -16,9 +16,12 @@ class GestureService:
         if lstm_path is None:
             lstm_path = os.path.join(base_ai_dir, "best_model 2.pth")
 
-        # 2. Load YOLOv8-Pose
-        print(f"Loading YOLO model from: {yolo_path}")
-        self.detector = YOLO(yolo_path)
+        # 2. Initial Model Load
+        self.yolo_path = yolo_path
+        self.lstm_path = lstm_path
+        
+        print(f"Loading YOLO model from: {self.yolo_path}")
+        self.detector = YOLO(self.yolo_path)
         
         # 3. Load LSTM Classifier dynamically
         print(f"Loading LSTM model from: {lstm_path}")
@@ -133,6 +136,15 @@ class GestureService:
             "hand_detected": found_hand,
             "landmarks": current_landmarks
         }
+
+    def reload_detector(self, new_yolo_path: str):
+        """Reloads the YOLO detector from a new path."""
+        if not os.path.exists(new_yolo_path):
+            raise FileNotFoundError(f"YOLO model not found: {new_yolo_path}")
+        
+        print(f"Reloading YOLO detector from: {new_yolo_path}")
+        self.detector = YOLO(new_yolo_path)
+        self.yolo_path = new_yolo_path
 
     def reset_buffer(self):
         """Resets the temporal buffer."""

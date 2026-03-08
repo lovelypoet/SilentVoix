@@ -1,7 +1,8 @@
 import base64
 import cv2
 import numpy as np
-from fastapi import APIRouter, HTTPException, Depends, Body
+import os
+from fastapi import APIRouter, HTTPException, Depends, Body, UploadFile, File
 from services.gesture_service import get_gesture_service
 from typing import Dict, Any
 import logging
@@ -55,3 +56,38 @@ async def predict_integrated(
 async def reset_integrated(service = Depends(get_gesture_service)) -> Dict[str, Any]:
     service.reset_buffer()
     return {"status": "success", "message": "Buffer cleared"}
+
+@router.get("/detectors", summary="List available YOLO detectors")
+async def list_detectors(service = Depends(get_gesture_service)):
+    base_ai_dir = os.path.join(settings.BASE_DIR, "AI", "models")
+    files = [f for f in os.listdir(base_ai_dir) if f.endswith(".pt")]
+    current = os.path.basename(service.yolo_path)
+    return {
+        "status": "success",
+        "detectors": files,
+        "current": current
+    }
+
+@router.post("/detector", summary="Set or Upload YOLO detector")
+async def set_detector(
+    name: str = Body(None, embed=True),
+    file: UploadFile = File(None),
+    service = Depends(get_gesture_service)
+):
+    base_ai_dir = os.path.join(settings.BASE_DIR, "AI", "models")
+    
+    if file:
+        file_path = os.path.join(base_ai_dir, file.filename)
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+        service.reload_detector(file_path)
+        return {"status": "success", "message": f"Detector {file.filename} uploaded and activated"}
+    
+    if name:
+        file_path = os.path.join(base_ai_dir, name)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Detector file not found")
+        service.reload_detector(file_path)
+        return {"status": "success", "message": f"Detector switched to {name}"}
+    
+    raise HTTPException(status_code=400, detail="Missing detector name or file")
