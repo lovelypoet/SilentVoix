@@ -6,7 +6,7 @@ from typing import Any, Dict
 import numpy as np
 
 SUPPORTED_MODEL_EXTENSIONS = {".tflite", ".keras", ".h5", ".pth", ".pt"}
-SUPPORTED_EXPORT_FORMATS = {"tflite", "tensorflow-lite", "keras", "h5", "pytorch", "torch", "pth"}
+SUPPORTED_EXPORT_FORMATS = {"tflite", "tensorflow-lite", "keras", "h5", "pytorch", "torch", "pth", "yolo"}
 
 
 def normalize_export_format(raw: str) -> str:
@@ -30,8 +30,8 @@ def validate_export_and_extension(model_suffix: str, export_format: str) -> None
         raise ValueError("Model extension .tflite requires export_format=tflite|tensorflow-lite")
     if suffix in {".keras", ".h5"} and normalized not in {"keras", "h5"}:
         raise ValueError("Model extension .keras/.h5 requires export_format=keras|h5")
-    if suffix in {".pth", ".pt"} and normalized != "pytorch":
-        raise ValueError("Model extension .pth/.pt requires export_format=pytorch|torch|pth")
+    if suffix in {".pth", ".pt"} and normalized not in {"pytorch", "yolo"}:
+        raise ValueError("Model extension .pth/.pt requires export_format=pytorch|torch|pth|yolo")
 
 
 def _normalize_output(output: np.ndarray) -> np.ndarray:
@@ -164,6 +164,15 @@ def load_runtime(model_path: str, export_format: str, is_state_dict: bool = Fals
         runtime["model"] = model
         return runtime
 
+    if normalized == "yolo":
+        try:
+            from ultralytics import YOLO
+        except ImportError as exc:
+            raise RuntimeError("Ultralytics runtime is unavailable. Install ultralytics in backend environment.") from exc
+        
+        runtime["model"] = YOLO(str(path))
+        return runtime
+
     raise ValueError(f"Unsupported export_format at runtime: {export_format}")
 
 
@@ -210,5 +219,10 @@ def predict(runtime: Dict[str, Any], cv_values: np.ndarray) -> np.ndarray:
         if hasattr(extracted, "detach"):
             extracted = extracted.detach().cpu().numpy()
         return _normalize_output(np.asarray(extracted))
+
+    if export_format == "yolo":
+        # YOLO models are usually used as detectors, but we can return the raw results if called
+        model = runtime["model"]
+        return model(cv_values, verbose=False)
 
     raise ValueError(f"Unsupported export_format at runtime: {export_format}")

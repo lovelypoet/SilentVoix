@@ -2,8 +2,9 @@ import base64
 import cv2
 import numpy as np
 import os
-from fastapi import APIRouter, HTTPException, Depends, Body, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Body
 from services.gesture_service import get_gesture_service
+from services.playground_service import playground_service
 from typing import Dict, Any
 import logging
 
@@ -17,7 +18,7 @@ async def predict_integrated(
     service = Depends(get_gesture_service)
 ) -> Dict[str, Any]:
     """
-    Expects JSON: {"image_data": "data:image/jpeg;base64,..."}
+    Expects JSON: {"image_data": "data:image/jpeg;base64,...", "model_id": "optional-classifier-id"}
     """
     try:
         image_data = payload.get("image_data")
@@ -45,49 +46,38 @@ async def predict_integrated(
             "confidence": result["confidence"],
             "hand_detected": result["hand_detected"],
             "landmarks": result["landmarks"],
-            "buffer_status": f"{len(service.frame_buffer)}/{service.sequence_length}"
+            "buffer_status": f"{len(service.frame_buffer)}/{service.sequence_length}",
+            "detector": os.path.basename(service.yolo_path)
         }
         
     except Exception as e:
         logger.error(f"Prediction failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/detector", summary="Get active YOLO detector info")
+async def get_active_detector(service = Depends(get_gesture_service)):
+    registry = playground_service.load_registry()
+    current_path = service.yolo_path
+    
+    # Try to find which entry matches this path
+    match = next((m for m in registry.get("models", []) if m.get("model_path") == current_path), None)
+    
+    return {
+        "status": "success",
+        "current_path": current_path,
+        "model_id": match["id"] if match else None,
+        "display_name": match["display_name"] if match else os.path.basename(current_path)
+    }
+
+@router.post("/detector/{model_id}", summary="Set active YOLO detector by ID")
+async def set_active_detector(model_id: str, service = Depends(get_gesture_service)):
+    try:
+        service.reload_detector_by_id(model_id)
+        return {"status": "success", "message": f"Detector switched to model {model_id}"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/reset", summary="Reset temporal buffer")
 async def reset_integrated(service = Depends(get_gesture_service)) -> Dict[str, Any]:
     service.reset_buffer()
     return {"status": "success", "message": "Buffer cleared"}
-
-@router.get("/detectors", summary="List available YOLO detectors")
-async def list_detectors(service = Depends(get_gesture_service)):
-    base_ai_dir = os.path.join(settings.BASE_DIR, "AI", "models")
-    files = [f for f in os.listdir(base_ai_dir) if f.endswith(".pt")]
-    current = os.path.basename(service.yolo_path)
-    return {
-        "status": "success",
-        "detectors": files,
-        "current": current
-    }
-
-@router.post("/detector", summary="Set or Upload YOLO detector")
-async def set_detector(
-    name: str = Body(None, embed=True),
-    file: UploadFile = File(None),
-    service = Depends(get_gesture_service)
-):
-    base_ai_dir = os.path.join(settings.BASE_DIR, "AI", "models")
-    
-    if file:
-        file_path = os.path.join(base_ai_dir, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-        service.reload_detector(file_path)
-        return {"status": "success", "message": f"Detector {file.filename} uploaded and activated"}
-    
-    if name:
-        file_path = os.path.join(base_ai_dir, name)
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Detector file not found")
-        service.reload_detector(file_path)
-        return {"status": "success", "message": f"Detector switched to {name}"}
-    
-    raise HTTPException(status_code=400, detail="Missing detector name or file")

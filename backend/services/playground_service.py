@@ -140,6 +140,9 @@ class PlaygroundService:
         validate_export_and_extension(model_suffix, export_format)
 
     def input_dim_from_metadata(self, metadata: Dict[str, Any]) -> int:
+        if str(metadata.get("export_format")).lower() == "yolo":
+            return 0
+        
         input_spec = metadata.get("input_spec") or {}
         if not isinstance(input_spec, dict):
             raise ValueError("metadata.input_spec must be object")
@@ -159,6 +162,9 @@ class PlaygroundService:
         raise ValueError("Unable to infer input dimension from metadata.input_spec")
 
     def resolve_model_modality(self, metadata: Dict[str, Any], input_dim: int) -> Optional[str]:
+        if str(metadata.get("export_format")).lower() == "yolo":
+            return "cv"
+            
         input_spec = metadata.get("input_spec") or {}
         raw = metadata.get("modality") or input_spec.get("modality")
         if raw is not None:
@@ -390,6 +396,18 @@ class PlaygroundService:
             }
 
         runtime = self.load_model_runtime(entry)
+        
+        if str(entry.get("metadata", {}).get("export_format")).lower() == "yolo":
+            return {
+                "status": "success",
+                "model_id": str(entry.get("id", "")),
+                "model_name": entry.get("display_name"),
+                "export_format": "yolo",
+                "input_dim": 0,
+                "output_dim": 0,
+                "message": "YOLO model loaded successfully",
+            }
+            
         probe = np.zeros((expected_dim,), dtype=np.float32)
         probs = self.predict_with_runtime(runtime, probe)
         probs = np.asarray(probs, dtype=np.float32).reshape(-1)

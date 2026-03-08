@@ -21,7 +21,7 @@ def test_integrated_service():
 
     try:
         # Initialize service
-        service = GestureService(yolo_path=yolo_model, lstm_path=lstm_model)
+        service = GestureService()
         
         # 1. Test with a blank frame (should append zeros)
         print("\nTesting with blank frame (no hand)...")

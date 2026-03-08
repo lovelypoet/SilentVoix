@@ -6,35 +6,40 @@ from collections import deque
 from ultralytics import YOLO
 from core.settings import settings
 from AI.runtime_adapter import load_runtime, predict as predict_runtime
+from services.playground_service import playground_service
 
 class GestureService:
-    def __init__(self, yolo_path=None, lstm_path=None):
-        # 1. Resolve Paths
+    def __init__(self):
+        # 1. Resolve LSTM model (Classifier)
+        # We still use the default path for now, but we'll try to find it in the registry if possible
         base_ai_dir = os.path.join(settings.BASE_DIR, "AI", "models")
-        if yolo_path is None:
-            yolo_path = os.path.join(base_ai_dir, "best.pt")
-        if lstm_path is None:
-            lstm_path = os.path.join(base_ai_dir, "best_model 2.pth")
-
-        # 2. Initial Model Load
-        self.yolo_path = yolo_path
-        self.lstm_path = lstm_path
+        lstm_path = os.path.join(base_ai_dir, "best_model 2.pth")
         
+        # 2. Resolve YOLO model (Detector)
+        # Try to find a YOLO model in the registry, fallback to best.pt
+        self.yolo_path = os.path.join(base_ai_dir, "best.pt")
+        registry = playground_service.load_registry()
+        yolo_model = next((m for m in registry.get("models", []) if m.get("metadata", {}).get("export_format") == "yolo"), None)
+        if yolo_model:
+            self.yolo_path = yolo_model["model_path"]
+            print(f"Using YOLO detector from registry: {yolo_model['display_name']}")
+        else:
+            print(f"No YOLO detector found in registry, using fallback: {self.yolo_path}")
+
+        # 3. Load Models
         print(f"Loading YOLO model from: {self.yolo_path}")
         self.detector = YOLO(self.yolo_path)
         
-        # 3. Load LSTM Classifier dynamically
         print(f"Loading LSTM model from: {lstm_path}")
-        # We know it's a state_dict for this specific model pair
         self.lstm_runtime = load_runtime(
             model_path=lstm_path,
             export_format="pytorch",
             is_state_dict=True,
-            has_model_class=True # model.py is now present
+            has_model_class=True
         )
         self.classifier = self.lstm_runtime["model"]
         self.torch = self.lstm_runtime["torch"]
-        self.device = "cpu" # Keep on CPU for compatibility with predict_runtime
+        self.device = "cpu"
         self.classifier.to(self.device)
         
         # 4. Config & Metadata
@@ -136,6 +141,18 @@ class GestureService:
             "hand_detected": found_hand,
             "landmarks": current_landmarks
         }
+
+    def reload_detector_by_id(self, model_id: str):
+        """Reloads the YOLO detector using a model ID from the registry."""
+        registry = playground_service.load_registry()
+        model_entry = next((m for m in registry.get("models", []) if m.get("id") == model_id), None)
+        if not model_entry:
+            raise ValueError(f"Model {model_id} not found in registry")
+        
+        if model_entry.get("metadata", {}).get("export_format") != "yolo":
+            raise ValueError(f"Model {model_id} is not a YOLO detector")
+            
+        self.reload_detector(model_entry["model_path"])
 
     def reload_detector(self, new_yolo_path: str):
         """Reloads the YOLO detector from a new path."""
