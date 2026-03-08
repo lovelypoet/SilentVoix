@@ -4,7 +4,7 @@ import numpy as np
 import os
 from fastapi import APIRouter, HTTPException, Depends, Body
 from services.gesture_service import get_gesture_service
-from services.playground_service import playground_service
+from services.model_library_service import model_library_service
 from typing import Dict, Any
 import logging
 
@@ -56,7 +56,7 @@ async def predict_integrated(
 
 @router.get("/detector", summary="Get active YOLO detector info")
 async def get_active_detector(service = Depends(get_gesture_service)):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     current_path = service.yolo_path
     
     # Try to find which entry matches this path

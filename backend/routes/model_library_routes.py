@@ -12,11 +12,11 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query, 
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from services.playground_service import playground_service
+from services.model_library_service import model_library_service
 from routes.auth_routes import role_or_internal_dep
 
-router = APIRouter(prefix="/playground", tags=["Realtime AI Playground"])
-logger = logging.getLogger("signglove.playground")
+router = APIRouter(prefix="/model-library", tags=["Model Library"])
+logger = logging.getLogger("signglove.model_library")
 
 
 class PlaygroundPredictRequest(BaseModel):
@@ -42,7 +42,7 @@ def _runtime_status_timestamp() -> str:
 
 def _compute_runtime_status(entry: Dict[str, Any]) -> Dict[str, Any]:
     try:
-        result = playground_service.perform_runtime_check(entry)
+        result = model_library_service.perform_runtime_check(entry)
         return {
             "state": "pass",
             "checked_at": _runtime_status_timestamp(),
@@ -86,13 +86,13 @@ async def upload_playground_model(
         metadata = json.loads(metadata_bytes.decode("utf-8"))
         if not isinstance(metadata, dict):
             raise ValueError("Metadata must be a JSON object")
-        playground_service.validate_metadata(metadata, suffix)
+        model_library_service.validate_metadata(metadata, suffix)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     try:
-        input_dim = playground_service.input_dim_from_metadata(metadata)
-        modality = playground_service.resolve_model_modality(metadata, input_dim)
+        input_dim = model_library_service.input_dim_from_metadata(metadata)
+        modality = model_library_service.resolve_model_modality(metadata, input_dim)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -107,7 +107,7 @@ async def upload_playground_model(
     metadata["has_model_class"] = class_file is not None
 
     model_id = str(uuid4())
-    model_dir = playground_service.get_models_root() / model_id
+    model_dir = model_library_service.get_models_root() / model_id
     model_dir.mkdir(parents=True, exist_ok=True)
     saved_model_path = model_dir / f"model{suffix}"
     saved_metadata_path = model_dir / "metadata.json"
@@ -137,12 +137,12 @@ async def upload_playground_model(
 
     entry["runtime_status"] = _compute_runtime_status(entry)
 
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     registry["models"] = [*registry.get("models", []), entry]
     registry["active_model_id"] = model_id
-    playground_service.save_registry(registry)
-    playground_service.clear_cache(model_id)
-    playground_service.trigger_worker_reconcile("model upload")
+    model_library_service.save_registry(registry)
+    model_library_service.clear_cache(model_id)
+    model_library_service.trigger_worker_reconcile("model upload")
 
     return {
         "status": "success",
@@ -154,7 +154,7 @@ async def upload_playground_model(
 
 @router.get("/models")
 async def list_playground_models(_user=Depends(role_or_internal_dep("editor"))):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     return {
         "status": "success",
         "models": registry.get("models", []),
@@ -171,7 +171,7 @@ async def reorder_playground_models(
     if not ordered_ids:
         raise HTTPException(status_code=400, detail="model_ids must contain at least one model id")
 
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     models = [entry for entry in registry.get("models", []) if isinstance(entry, dict)]
     by_id = {str(entry.get("id") or ""): entry for entry in models}
     
@@ -190,7 +190,7 @@ async def reorder_playground_models(
     remaining = [entry for entry in models if str(entry.get("id") or "") not in seen]
     reordered = [by_id[model_id] for model_id in deduped_ids]
     registry["models"] = [*reordered, *remaining]
-    playground_service.save_registry(registry)
+    model_library_service.save_registry(registry)
     
     return {
         "status": "success",
@@ -201,7 +201,7 @@ async def reorder_playground_models(
 
 @router.get("/models/active")
 async def get_active_playground_model(_user=Depends(role_or_internal_dep("editor"))):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     active_id = registry.get("active_model_id")
     active = next((m for m in registry.get("models", []) if m.get("id") == active_id), None)
     return {
@@ -213,16 +213,16 @@ async def get_active_playground_model(_user=Depends(role_or_internal_dep("editor
 
 @router.post("/models/{model_id}/activate")
 async def activate_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     try:
-        target = playground_service.get_model_entry(registry, model_id)
+        target = model_library_service.get_model_entry(registry, model_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
         
     registry["active_model_id"] = model_id
     target["runtime_status"] = _compute_runtime_status(target)
-    playground_service.save_registry(registry)
-    playground_service.trigger_worker_reconcile("model activate")
+    model_library_service.save_registry(registry)
+    model_library_service.trigger_worker_reconcile("model activate")
     return {
         "status": "success",
         "active_model_id": model_id,
@@ -236,9 +236,9 @@ async def download_playground_model_artifact(
     kind: str = Query("model", pattern="^(model|metadata)$"),
     _user=Depends(role_or_internal_dep("editor")),
 ):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     try:
-        entry = playground_service.get_model_entry(registry, model_id)
+        entry = model_library_service.get_model_entry(registry, model_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
         
@@ -259,14 +259,14 @@ async def download_playground_model_artifact(
 
 @router.get("/models/{model_id}/runtime-check")
 async def runtime_check_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     try:
-        entry = playground_service.get_model_entry(registry, model_id)
+        entry = model_library_service.get_model_entry(registry, model_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
         
     try:
-        result = playground_service.perform_runtime_check(entry)
+        result = model_library_service.perform_runtime_check(entry)
         entry["runtime_status"] = {
             "state": "pass",
             "checked_at": _runtime_status_timestamp(),
@@ -274,7 +274,7 @@ async def runtime_check_playground_model(model_id: str, _user=Depends(role_or_in
             "output_dim": int(result["output_dim"]),
             "message": str(result["message"]),
         }
-        playground_service.save_registry(registry)
+        model_library_service.save_registry(registry)
         return result
     except Exception as exc:
         detail = str(exc)
@@ -283,16 +283,16 @@ async def runtime_check_playground_model(model_id: str, _user=Depends(role_or_in
             "checked_at": _runtime_status_timestamp(),
             "message": detail,
         }
-        playground_service.save_registry(registry)
+        model_library_service.save_registry(registry)
         raise HTTPException(status_code=400, detail=detail)
 
 
 @router.delete("/models/{model_id}")
 async def delete_playground_model(model_id: str, _user=Depends(role_or_internal_dep("editor"))):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     models = registry.get("models", [])
     try:
-        entry = playground_service.get_model_entry(registry, model_id)
+        entry = model_library_service.get_model_entry(registry, model_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
         
@@ -300,15 +300,15 @@ async def delete_playground_model(model_id: str, _user=Depends(role_or_internal_
     registry["models"] = remaining
     if registry.get("active_model_id") == model_id:
         registry["active_model_id"] = remaining[0]["id"] if remaining else None
-    playground_service.save_registry(registry)
+    model_library_service.save_registry(registry)
 
-    model_dir = (playground_service.get_models_root() / model_id).resolve()
+    model_dir = (model_library_service.get_models_root() / model_id).resolve()
     if model_dir.exists() and model_dir.is_dir():
         import shutil
         shutil.rmtree(model_dir, ignore_errors=True)
 
-    playground_service.clear_cache(model_id)
-    playground_service.trigger_worker_reconcile("model delete")
+    model_library_service.clear_cache(model_id)
+    model_library_service.trigger_worker_reconcile("model delete")
 
     return {
         "status": "success",
@@ -320,32 +320,32 @@ async def delete_playground_model(model_id: str, _user=Depends(role_or_internal_
 
 @router.post("/predict/cv")
 async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(role_or_internal_dep("editor"))):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     model_id = req.model_id or registry.get("active_model_id")
     if not model_id:
         raise HTTPException(status_code=404, detail="No active playground model")
         
     try:
-        model_entry = playground_service.get_model_entry(registry, model_id)
+        model_entry = model_library_service.get_model_entry(registry, model_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
         
-    model_modality = playground_service.get_entry_modality(model_entry)
+    model_modality = model_library_service.get_entry_modality(model_entry)
     if model_modality == "sensor":
         raise HTTPException(
             status_code=400,
-            detail="Selected model modality is sensor, but /playground/predict/cv expects a CV model.",
+            detail="Selected model modality is sensor, but /model-library/predict/cv expects a CV model.",
         )
 
     expected_dim = int(model_entry.get("input_dim") or 0)
     try:
         if req.sequence is not None:
-            vector = playground_service.preprocess_cv_sequence(req.sequence, model_entry.get("metadata", {}))
+            vector = model_library_service.preprocess_cv_sequence(req.sequence, model_entry.get("metadata", {}))
             # Verify the preprocessed vector matches expected_dim
             if vector.shape[0] != expected_dim:
                 raise ValueError(f"Preprocessed sequence length mismatch: expected {expected_dim}, got {vector.shape[0]}")
         elif req.cv_values is not None:
-            vector = playground_service.coerce_input_vector(req.cv_values, expected_dim, "cv_values")
+            vector = model_library_service.coerce_input_vector(req.cv_values, expected_dim, "cv_values")
         else:
             raise HTTPException(status_code=400, detail="Either 'cv_values' or 'sequence' must be provided.")
     except ValueError as exc:
@@ -354,7 +354,7 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
     from core.settings import settings
     if bool(settings.USE_RUNTIME_SERVICES):
         try:
-            remote = playground_service.remote_predict(model_entry, vector)
+            remote = model_library_service.remote_predict(model_entry, vector)
             prediction = remote.get("prediction")
             if not isinstance(prediction, dict):
                 raise HTTPException(status_code=502, detail="Runtime service returned invalid prediction payload")
@@ -368,8 +368,8 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
             raise HTTPException(status_code=502, detail=str(exc))
 
     try:
-        runtime = playground_service.load_model_runtime(model_entry)
-        probs = playground_service.predict_with_runtime(runtime, vector)
+        runtime = model_library_service.load_model_runtime(model_entry)
+        probs = model_library_service.predict_with_runtime(runtime, vector)
         labels = [str(v) for v in (model_entry.get("metadata", {}).get("labels") or [])]
         if not labels:
             raise HTTPException(status_code=500, detail="Model metadata labels are missing")
@@ -380,7 +380,7 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
             labels = labels[:n]
             probs = probs[:n]
 
-        probs = playground_service.normalize_probs(probs)
+        probs = model_library_service.normalize_probs(probs)
 
         best_idx = int(np.argmax(probs))
         best_label = labels[best_idx]
@@ -405,33 +405,33 @@ async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(rol
 
 @router.post("/predict/sensor")
 async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=Depends(role_or_internal_dep("editor"))):
-    registry = playground_service.load_registry()
+    registry = model_library_service.load_registry()
     model_id = req.model_id or registry.get("active_model_id")
     if not model_id:
         raise HTTPException(status_code=404, detail="No active playground model")
         
     try:
-        model_entry = playground_service.get_model_entry(registry, model_id)
+        model_entry = model_library_service.get_model_entry(registry, model_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    model_modality = playground_service.get_entry_modality(model_entry)
+    model_modality = model_library_service.get_entry_modality(model_entry)
     if model_modality == "cv":
         raise HTTPException(
             status_code=400,
-            detail="Selected model modality is cv, but /playground/predict/sensor expects a sensor model.",
+            detail="Selected model modality is cv, but /model-library/predict/sensor expects a sensor model.",
         )
 
     expected_dim = int(model_entry.get("input_dim") or 0)
     try:
-        vector = playground_service.coerce_input_vector(req.sensor_values, expected_dim, "sensor_values")
+        vector = model_library_service.coerce_input_vector(req.sensor_values, expected_dim, "sensor_values")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     from core.settings import settings
     if bool(settings.USE_RUNTIME_SERVICES):
         try:
-            remote = playground_service.remote_predict(model_entry, vector)
+            remote = model_library_service.remote_predict(model_entry, vector)
             prediction = remote.get("prediction")
             if not isinstance(prediction, dict):
                 raise HTTPException(status_code=502, detail="Runtime service returned invalid prediction payload")
@@ -445,8 +445,8 @@ async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=D
             raise HTTPException(status_code=502, detail=str(exc))
 
     try:
-        runtime = playground_service.load_model_runtime(model_entry)
-        probs = playground_service.predict_with_runtime(runtime, vector)
+        runtime = model_library_service.load_model_runtime(model_entry)
+        probs = model_library_service.predict_with_runtime(runtime, vector)
         labels = [str(v) for v in (model_entry.get("metadata", {}).get("labels") or [])]
         if not labels:
             raise HTTPException(status_code=500, detail="Model metadata labels are missing")
@@ -457,7 +457,7 @@ async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=D
             labels = labels[:n]
             probs = probs[:n]
 
-        probs = playground_service.normalize_probs(probs)
+        probs = model_library_service.normalize_probs(probs)
 
         best_idx = int(np.argmax(probs))
         best_label = labels[best_idx]

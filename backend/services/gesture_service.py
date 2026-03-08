@@ -6,7 +6,7 @@ from collections import deque
 from ultralytics import YOLO
 from core.settings import settings
 from AI.runtime_adapter import load_runtime, predict as predict_runtime
-from services.playground_service import playground_service
+from services.model_library_service import model_library_service
 
 class GestureService:
     def __init__(self):
@@ -18,7 +18,7 @@ class GestureService:
         # 2. Resolve YOLO model (Detector)
         # Try to find a YOLO model in the registry, fallback to best.pt
         self.yolo_path = os.path.join(base_ai_dir, "best.pt")
-        registry = playground_service.load_registry()
+        registry = model_library_service.load_registry()
         yolo_model = next((m for m in registry.get("models", []) if m.get("metadata", {}).get("export_format") == "yolo"), None)
         if yolo_model:
             self.yolo_path = yolo_model["model_path"]
@@ -144,7 +144,7 @@ class GestureService:
 
     def reload_detector_by_id(self, model_id: str):
         """Reloads the YOLO detector using a model ID from the registry."""
-        registry = playground_service.load_registry()
+        registry = model_library_service.load_registry()
         model_entry = next((m for m in registry.get("models", []) if m.get("id") == model_id), None)
         if not model_entry:
             raise ValueError(f"Model {model_id} not found in registry")

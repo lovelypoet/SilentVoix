@@ -24,7 +24,7 @@ from core.settings import settings
 
 logger = logging.getLogger("signglove.playground")
 
-class PlaygroundService:
+class ModelLibraryService:
     def __init__(self):
         self._cache_lock = threading.Lock()
         self._model_cache: Dict[str, Dict[str, Any]] = {}
@@ -432,4 +432,4 @@ class PlaygroundService:
                 self._model_cache.clear()
 
 # Singleton instance
-playground_service = PlaygroundService()
+model_library_service = ModelLibraryService()

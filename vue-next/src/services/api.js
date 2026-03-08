@@ -230,7 +230,7 @@ export default {
   },
 
   // ===================== Realtime AI Playground API =====================
-  playground: {
+  modelLibrary: {
     uploadModel: (modelFile, metadataFile, modelClassFile = null, isStateDict = false) => {
       const formData = new FormData();
       formData.append('model_file', modelFile);
@@ -241,22 +241,22 @@ export default {
       if (modelClassFile) {
         formData.append('model_class_file', modelClassFile);
       }
-      return api.post('/playground/models/upload', formData, {
+      return api.post('/model-library/models/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
-    listModels: () => api.get('/playground/models'),
-    reorderModels: (modelIds) => api.post('/playground/models/reorder', { model_ids: modelIds }),
-    getActiveModel: () => api.get('/playground/models/active'),
-    activateModel: (modelId) => api.post(`/playground/models/${modelId}/activate`),
-    runtimeCheckModel: (modelId) => api.get(`/playground/models/${modelId}/runtime-check`),
-    deleteModel: (modelId) => api.delete(`/playground/models/${modelId}`),
+    listModels: () => api.get('/model-library/models'),
+    reorderModels: (modelIds) => api.post('/model-library/models/reorder', { model_ids: modelIds }),
+    getActiveModel: () => api.get('/model-library/models/active'),
+    activateModel: (modelId) => api.post(`/model-library/models/${modelId}/activate`),
+    runtimeCheckModel: (modelId) => api.get(`/model-library/models/${modelId}/runtime-check`),
+    deleteModel: (modelId) => api.delete(`/model-library/models/${modelId}`),
     downloadModelArtifact: (modelId, kind = 'model') =>
-      api.get(`/playground/models/${modelId}/download?kind=${kind}`, { responseType: 'blob' }),
+      api.get(`/model-library/models/${modelId}/download?kind=${kind}`, { responseType: 'blob' }),
     predictCv: (payload) =>
-      api.post('/playground/predict/cv', payload),
+      api.post('/model-library/predict/cv', payload),
     predictSensor: (payload) =>
-      api.post('/playground/predict/sensor', payload),
+      api.post('/model-library/predict/sensor', payload),
     predictIntegrated: (imageData) =>
       api.post('/predict/integrated', { image_data: imageData }),
     getIntegratedDetector: () =>

@@ -8,15 +8,7 @@ import api from '../services/api'
 
 const router = useRouter()
 
-const modelFile = ref(null)
-const metadataFile = ref(null)
-const modelClassFile = ref(null)
-const isStateDict = ref(false)
-const metadata = ref(null)
-const validationErrors = ref([])
-const uploadMessage = ref('')
 const uploadError = ref('')
-const isUploading = ref(false)
 const activeModel = ref(null)
 const savedModels = ref([])
 const selectedSavedModelId = ref('')
@@ -44,7 +36,7 @@ const cvFrameBuffer = ref([])
 const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
 
 const modelSummary = computed(() => {
-  const source = activeModel.value?.metadata || metadata.value
+  const source = activeModel.value?.metadata
   if (!source) return null
   const m = source
   return {
@@ -136,69 +128,9 @@ const sensorDisplayRows = computed(() => {
   return rows
 })
 
-const parseJsonFile = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader()
-  reader.onload = () => {
-    try {
-      resolve(JSON.parse(String(reader.result || '{}')))
-    } catch (e) {
-      reject(e)
-    }
-  }
-  reader.onerror = () => reject(new Error('Failed to read metadata file'))
-  reader.readAsText(file)
-})
-
-const validateMetadata = (m) => {
-  const errs = []
-  if (!m || typeof m !== 'object') errs.push('Metadata must be a JSON object.')
-  if (!m?.model_name) errs.push('Missing `model_name`.')
-  if (!m?.model_family) errs.push('Missing `model_family`.')
-  if (!m?.input_spec) errs.push('Missing `input_spec`.')
-  if (!Array.isArray(m?.labels) || m.labels.length === 0) errs.push('`labels` must be a non-empty array.')
-  if (!m?.export_format) errs.push('Missing `export_format`.')
-  if (!m?.version) errs.push('Missing `version`.')
-  if (typeof m?.precision !== 'number') errs.push('Missing numeric `precision`.')
-  if (typeof m?.recall !== 'number') errs.push('Missing numeric `recall`.')
-  if (typeof m?.f1 !== 'number') errs.push('Missing numeric `f1`.')
-  return errs
-}
-
-const onPickModelFile = (event) => {
-  const file = event?.target?.files?.[0]
-  modelFile.value = file || null
-}
-
-const onPickModelClassFile = (event) => {
-  const file = event?.target?.files?.[0]
-  modelClassFile.value = file || null
-}
-
-const onPickMetadataFile = async (event) => {
-  const file = event?.target?.files?.[0]
-  metadataFile.value = file || null
-  metadata.value = null
-  validationErrors.value = []
-  uploadMessage.value = ''
-
-  if (!file) return
-  try {
-    const parsed = await parseJsonFile(file)
-    const errs = validateMetadata(parsed)
-    metadata.value = parsed
-    validationErrors.value = errs
-    uploadMessage.value = errs.length
-      ? 'Metadata loaded with validation errors.'
-      : 'Model package metadata is valid.'
-  } catch {
-    validationErrors.value = ['Invalid metadata JSON file.']
-    uploadMessage.value = 'Failed to parse metadata.'
-  }
-}
-
 const loadActiveModel = async () => {
   try {
-    const res = await api.playground.getActiveModel()
+    const res = await api.modelLibrary.getActiveModel()
     activeModel.value = res?.model || null
     selectedSavedModelId.value = activeModel.value?.id || ''
   } catch {
@@ -209,7 +141,7 @@ const loadActiveModel = async () => {
 
 const loadSavedModels = async () => {
   try {
-    const res = await api.playground.listModels()
+    const res = await api.modelLibrary.listModels()
     const rows = Array.isArray(res?.models) ? res.models : []
     savedModels.value = rows
   } catch {
@@ -221,51 +153,18 @@ const loadModelContext = async () => {
   await Promise.all([loadActiveModel(), loadSavedModels()])
 }
 
-const uploadAndActivateModel = async () => {
-  uploadError.value = ''
-  uploadMessage.value = ''
-  if (!modelFile.value) {
-    uploadError.value = 'Select an exported model file first.'
-    return
-  }
-  if (!metadataFile.value) {
-    uploadError.value = 'Select a metadata JSON file first.'
-    return
-  }
-  if (validationErrors.value.length) {
-    uploadError.value = 'Fix metadata validation errors before upload.'
-    return
-  }
-  if (isStateDict.value && !modelClassFile.value) {
-    uploadError.value = 'Model class file (.py) is required for state_dict models.'
-    return
-  }
-  isUploading.value = true
-  try {
-    const res = await api.playground.uploadModel(modelFile.value, metadataFile.value, modelClassFile.value, isStateDict.value)
-    activeModel.value = res?.model || null
-    selectedSavedModelId.value = activeModel.value?.id || ''
-    uploadMessage.value = res?.message || 'Model uploaded.'
-    await loadSavedModels()
-  } catch (e) {
-    uploadError.value = e?.response?.data?.detail || 'Failed to upload model package.'
-  } finally {
-    isUploading.value = false
-  }
-}
-
 const activateSavedModel = async () => {
   uploadError.value = ''
-  uploadMessage.value = ''
+  
   if (!selectedSavedModelId.value) {
     uploadError.value = 'Select a saved model first.'
     return
   }
   isSwitchingSavedModel.value = true
   try {
-    await api.playground.activateModel(selectedSavedModelId.value)
+    await api.modelLibrary.activateModel(selectedSavedModelId.value)
     await loadModelContext()
-    uploadMessage.value = 'Saved model activated.'
+    
   } catch (e) {
     uploadError.value = e?.response?.data?.detail || 'Failed to activate saved model.'
   } finally {
@@ -380,7 +279,7 @@ const availableDetectors = computed(() => {
 
 const loadActiveDetector = async () => {
   try {
-    const res = await api.playground.getIntegratedDetector()
+    const res = await api.modelLibrary.getIntegratedDetector()
     activeDetectorId.value = res.model_id || ''
   } catch (e) {
     console.error('Failed to load active detector:', e)
@@ -391,9 +290,9 @@ const switchDetector = async (modelId) => {
   if (modelId === activeDetectorId.value) return
   isUpdatingDetector.value = true
   try {
-    await api.playground.setIntegratedDetector(modelId)
+    await api.modelLibrary.setIntegratedDetector(modelId)
     activeDetectorId.value = modelId
-    uploadMessage.value = 'Detector switched successfully.'
+    
   } catch (e) {
     uploadError.value = e?.response?.data?.detail || 'Failed to switch detector.'
   } finally {
@@ -476,7 +375,7 @@ const predictFromIntegratedService = async () => {
     ctx.drawImage(videoEl.value, 0, 0)
     const base64 = canvas.toDataURL('image/jpeg', 0.7)
 
-    const res = await api.playground.predictIntegrated(base64)
+    const res = await api.modelLibrary.predictIntegrated(base64)
     
     if (res.status === 'success') {
       prediction.value = {
@@ -514,7 +413,7 @@ const predictFromResults = async (results) => {
   try {
     const payload = buildCvPayloadForModel(results)
     payload.model_id = activeModel.value.id
-    const res = await api.playground.predictCv(payload)
+    const res = await api.modelLibrary.predictCv(payload)
     const pred = res?.prediction
     if (pred) {
       prediction.value = {
@@ -565,7 +464,7 @@ const predictFromLatestSensor = async () => {
       }
       return
     }
-    const res = await api.playground.predictSensor({ sensor_values: normalized, model_id: activeModel.value.id })
+    const res = await api.modelLibrary.predictSensor({ sensor_values: normalized, model_id: activeModel.value.id })
     const pred = res?.prediction
     if (pred) {
       prediction.value = {
@@ -697,67 +596,53 @@ watch(() => activeModel.value?.id, () => {
     </section>
 
     <BaseCard>
-      <h2 class="text-xl text-white font-semibold">Model Package</h2>
-      <p class="text-xs text-slate-400 mt-1">Accepted metadata fields: model_name, model_family, input_spec, labels, export_format, version, precision, recall, f1.</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-        <label class="text-sm text-slate-300 md:col-span-2">
-          Reuse Saved Model
+      <h2 class="text-xl text-white font-semibold">Active Model</h2>
+      <p class="text-xs text-slate-400 mt-1">Select a model from your library to use in the playground. Manage your models in the <router-link to="/model-library" class="text-teal-400 hover:underline">Model Library</router-link>.</p>
+      <div class="mt-4">
+        <label class="text-sm text-slate-300">
+          Switch Classifier
           <div class="mt-1 flex flex-col gap-2 md:flex-row">
             <select v-model="selectedSavedModelId" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
-              <option value="">Select a saved model...</option>
-              <option v-for="model in savedModels" :key="model.id" :value="model.id">
-                {{ model.display_name || model.id }} | {{ model.metadata?.model_family || '--' }} | {{ model.metadata?.export_format || '--' }}
+              <option value="">Select a classifier...</option>
+              <option v-for="model in savedModels.filter(m => m.metadata?.model_family !== 'yolo-pose')" :key="model.id" :value="model.id">
+                {{ model.display_name || model.id }} | {{ model.metadata?.export_format || '--' }}
               </option>
             </select>
             <BaseBtn variant="secondary" :disabled="isSwitchingSavedModel || !selectedSavedModelId" @click="activateSavedModel">
-              {{ isSwitchingSavedModel ? 'Activating...' : 'Use Saved Model' }}
+              {{ isSwitchingSavedModel ? 'Activating...' : 'Activate' }}
             </BaseBtn>
           </div>
         </label>
-        <label class="text-sm text-slate-300">
-          Exported Model File (required)
-          <input type="file" class="mt-1 block w-full text-sm text-slate-300" @change="onPickModelFile" />
-        </label>
-        <label class="text-sm text-slate-300">
-          Metadata JSON (required)
-          <input type="file" accept=".json,application/json" class="mt-1 block w-full text-sm text-slate-300" @change="onPickMetadataFile" />
-        </label>
-        <div class="md:col-span-2 pt-2 border-t border-slate-800 flex flex-col gap-3">
-          <label class="text-sm text-slate-300 flex items-center gap-2">
-            <input type="checkbox" v-model="isStateDict" class="rounded border-slate-700 bg-slate-800 text-teal-400 focus:ring-teal-500" />
-            This PyTorch model is a state_dict
-          </label>
-          <div v-if="isStateDict" class="transition-all bg-slate-900/50 p-3 rounded border border-slate-800">
-            <label class="text-sm text-slate-300">
-              Model Class Definition (.py file)
-              <span class="block text-xs text-slate-500 mt-1 mb-2">Required for backend runtime to instantiate the model before loading weights.</span>
-              <input type="file" accept=".py" class="mt-1 block w-full text-sm text-slate-300" @change="onPickModelClassFile" />
-            </label>
+      </div>
+
+      <div v-if="uploadError" class="mt-4 p-3 rounded bg-rose-400/10 text-rose-300 border border-rose-400/20 text-sm italic">
+        {{ uploadError }}
+      </div>
+
+      <div v-if="modelSummary" class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 p-4 shadow-inner">
+        <div class="flex items-start justify-between">
+          <div>
+            <h3 class="text-slate-100 font-bold text-lg">{{ modelSummary.name }}</h3>
+            <p class="text-teal-400 text-xs font-medium uppercase tracking-wider mt-0.5">{{ modelSummary.family }}</p>
+          </div>
+          <span 
+            class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter"
+            :class="activeRuntimeState === 'pass' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'"
+          >
+            Runtime: {{ activeRuntimeState }}
+          </span>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mt-4 text-xs">
+          <div class="space-y-1">
+            <p class="text-slate-500">Format: <span class="text-slate-300">{{ modelSummary.format }}</span></p>
+            <p class="text-slate-500">Version: <span class="text-slate-300">{{ modelSummary.version }}</span></p>
+          </div>
+          <div class="space-y-1">
+            <p class="text-slate-500">P/R/F1: <span class="text-slate-300">{{ modelSummary.precision }}/{{ modelSummary.recall }}/{{ modelSummary.f1 }}</span></p>
+            <p class="text-slate-500 truncate">Labels: <span class="text-slate-300">{{ modelSummary.labels.join(', ') }}</span></p>
           </div>
         </div>
-      </div>
-
-      <p v-if="uploadMessage" class="mt-3 text-sm" :class="validationErrors.length ? 'text-amber-300' : 'text-emerald-300'">{{ uploadMessage }}</p>
-      <p v-if="uploadError" class="mt-2 text-sm text-rose-300">{{ uploadError }}</p>
-      <ul v-if="validationErrors.length" class="mt-2 text-sm text-rose-300 list-disc list-inside">
-        <li v-for="err in validationErrors" :key="err">{{ err }}</li>
-      </ul>
-
-      <div class="mt-3 flex gap-2">
-        <BaseBtn variant="primary" :disabled="isUploading" @click="uploadAndActivateModel">
-          {{ isUploading ? 'Uploading...' : 'Upload & Activate' }}
-        </BaseBtn>
-        <BaseBtn variant="secondary" @click="loadModelContext">Refresh Active Model</BaseBtn>
-      </div>
-
-      <div v-if="modelSummary" class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm">
-        <p class="text-slate-100 font-medium">{{ modelSummary.name }} ({{ modelSummary.family }})</p>
-        <p class="text-slate-400 mt-1">Format: {{ modelSummary.format }} | Version: {{ modelSummary.version }}</p>
-        <p class="text-slate-400 mt-1">Precision: {{ modelSummary.precision }} | Recall: {{ modelSummary.recall }} | F1: {{ modelSummary.f1 }}</p>
-        <p class="text-slate-400 mt-1">Labels: {{ modelSummary.labels.join(', ') }}</p>
-        <p class="mt-2 text-xs" :class="activeRuntimeState === 'pass' ? 'text-emerald-300' : activeRuntimeState === 'fail' ? 'text-amber-300' : 'text-slate-400'">
-          Runtime status: {{ activeRuntimeState }}
-        </p>
       </div>
     </BaseCard>
 

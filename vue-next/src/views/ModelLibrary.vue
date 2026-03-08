@@ -28,6 +28,18 @@ const currentPage = ref(1)
 const dragModelId = ref(null)
 const isReordering = ref(false)
 
+// Upload Modal State
+const showUploadModal = ref(false)
+const modelFile = ref(null)
+const metadataFile = ref(null)
+const modelClassFile = ref(null)
+const isStateDict = ref(false)
+const metadata = ref(null)
+const validationErrors = ref([])
+const uploadMessage = ref('')
+const uploadError = ref('')
+const isUploading = ref(false)
+
 const families = computed(() => {
   const values = new Set(models.value.map((m) => m?.metadata?.model_family).filter(Boolean))
   return [...values].sort((a, b) => a.localeCompare(b))
@@ -163,11 +175,117 @@ const showRuntimeStatusToast = (model) => {
 
 const isActive = (modelId) => activeModelId.value === modelId
 
+// Upload Methods
+const parseJsonFile = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      resolve(JSON.parse(String(reader.result || '{}')))
+    } catch (e) {
+      reject(e)
+    }
+  }
+  reader.onerror = () => reject(new Error('Failed to read metadata file'))
+  reader.readAsText(file)
+})
+
+const validateMetadata = (m) => {
+  const errs = []
+  if (!m || typeof m !== 'object') errs.push('Metadata must be a JSON object.')
+  if (!m?.model_name) errs.push('Missing `model_name`.')
+  if (!m?.model_family) errs.push('Missing `model_family`.')
+  if (!m?.input_spec) errs.push('Missing `input_spec`.')
+  if (!Array.isArray(m?.labels) || m.labels.length === 0) errs.push('`labels` must be a non-empty array.')
+  if (!m?.export_format) errs.push('Missing `export_format`.')
+  if (!m?.version) errs.push('Missing `version`.')
+  if (typeof m?.precision !== 'number') errs.push('Missing numeric `precision`.')
+  if (typeof m?.recall !== 'number') errs.push('Missing numeric `recall`.')
+  if (typeof m?.f1 !== 'number') errs.push('Missing numeric `f1`.')
+  return errs
+}
+
+const onPickModelFile = (event) => {
+  const file = event?.target?.files?.[0]
+  modelFile.value = file || null
+}
+
+const onPickModelClassFile = (event) => {
+  const file = event?.target?.files?.[0]
+  modelClassFile.value = file || null
+}
+
+const onPickMetadataFile = async (event) => {
+  const file = event?.target?.files?.[0]
+  metadataFile.value = file || null
+  metadata.value = null
+  validationErrors.value = []
+  uploadMessage.value = ''
+
+  if (!file) return
+  try {
+    const parsed = await parseJsonFile(file)
+    const errs = validateMetadata(parsed)
+    metadata.value = parsed
+    validationErrors.value = errs
+    uploadMessage.value = errs.length
+      ? 'Metadata loaded with validation errors.'
+      : 'Model package metadata is valid.'
+  } catch {
+    validationErrors.value = ['Invalid metadata JSON file.']
+    uploadMessage.value = 'Failed to parse metadata.'
+  }
+}
+
+const uploadModel = async () => {
+  uploadError.value = ''
+  uploadMessage.value = ''
+  if (!modelFile.value || !metadataFile.value) {
+    uploadError.value = 'Model file and metadata JSON are required.'
+    return
+  }
+  if (validationErrors.value.length) {
+    uploadError.value = 'Fix metadata validation errors first.'
+    return
+  }
+
+  isUploading.value = true
+  const formData = new FormData()
+  formData.append('model_file', modelFile.value)
+  formData.append('metadata_file', metadataFile.value)
+  if (isStateDict.value && modelClassFile.value) {
+    formData.append('model_class_file', modelClassFile.value)
+  }
+  formData.append('is_state_dict', String(isStateDict.value))
+
+  try {
+    await api.modelLibrary.uploadModel(formData)
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Model uploaded successfully.', life: 3000 })
+    closeUploadModal()
+    await fetchModels()
+  } catch (e) {
+    uploadError.value = e?.response?.data?.detail || 'Failed to upload model package.'
+  } finally {
+    isUploading.value = false
+  }
+}
+
+const closeUploadModal = () => {
+  showUploadModal.value = false
+  modelFile.value = null
+  metadataFile.value = null
+  modelClassFile.value = null
+  isStateDict.value = false
+  metadata.value = null
+  validationErrors.value = []
+  uploadMessage.value = ''
+  uploadError.value = ''
+}
+
 const fetchModels = async () => {
   isLoading.value = true
   error.value = ''
   try {
-    const res = await api.playground.listModels()
+    const res = await api.modelLibrary.listModels()
     const rows = Array.isArray(res?.models) ? res.models : []
     models.value = rows
     activeModelId.value = res?.active_model_id || null
@@ -183,7 +301,7 @@ const activateModel = async (modelId) => {
   setActionLoading(modelId, true)
   error.value = ''
   try {
-    const res = await api.playground.activateModel(modelId)
+    const res = await api.modelLibrary.activateModel(modelId)
     activeModelId.value = res?.active_model_id || modelId
   } catch (e) {
     error.value = e?.response?.data?.detail || 'Failed to activate model.'
@@ -197,7 +315,7 @@ const runtimeCheckModel = async (modelId) => {
   error.value = ''
   runtimeCheckState.value = { ...runtimeCheckState.value, [modelId]: null }
   try {
-    const res = await api.playground.runtimeCheckModel(modelId)
+    const res = await api.modelLibrary.runtimeCheckModel(modelId)
     runtimeCheckState.value = {
       ...runtimeCheckState.value,
       [modelId]: {
@@ -227,7 +345,7 @@ const downloadArtifact = async (model, kind) => {
   setActionLoading(modelId, true)
   error.value = ''
   try {
-    const blob = await api.playground.downloadModelArtifact(modelId, kind)
+    const blob = await api.modelLibrary.downloadModelArtifact(modelId, kind)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -261,7 +379,7 @@ const deleteModel = async (modelId) => {
   setActionLoading(modelId, true)
   error.value = ''
   try {
-    const res = await api.playground.deleteModel(modelId)
+    const res = await api.modelLibrary.deleteModel(modelId)
     models.value = models.value.filter((m) => m.id !== modelId)
     activeModelId.value = res?.active_model_id || null
     toast.add({ severity: 'info', summary: 'Deleted', detail: 'Model deleted successfully.', life: 3000 })
@@ -287,7 +405,7 @@ const persistModelOrder = async (orderedIds) => {
   isReordering.value = true
   error.value = ''
   try {
-    const res = await api.playground.reorderModels(orderedIds)
+    const res = await api.modelLibrary.reorderModels(orderedIds)
     const rows = Array.isArray(res?.models) ? res.models : []
     if (rows.length) {
       models.value = rows
@@ -407,6 +525,9 @@ onMounted(() => {
         <p class="text-slate-400 text-sm">Manage uploaded inference models for Realtime AI Playground.</p>
       </div>
       <div class="flex gap-2">
+        <BaseBtn variant="primary" @click="showUploadModal = true">
+          Upload Model
+        </BaseBtn>
         <BaseBtn variant="secondary" :disabled="isLoading" @click="fetchModels">
           {{ isLoading ? 'Refreshing...' : 'Refresh' }}
         </BaseBtn>
@@ -612,29 +733,69 @@ onMounted(() => {
     </BaseCard>
 
     <div v-if="deleteConfirmOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closeDeleteConfirm">
-      <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
-        <h3 class="text-lg font-semibold text-white">Confirm Permanent Delete</h3>
-        <p class="mt-2 text-sm text-slate-300">
-          Delete <span class="font-semibold text-white">{{ deleteConfirmModelName }}</span> permanently. This cannot be undone.
-        </p>
-        <div class="mt-3">
-          <label class="block text-xs text-slate-400 mb-1">Type exact model name to confirm</label>
-          <input
-            v-model="deleteConfirmTypedName"
-            type="text"
-            class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
-            :placeholder="deleteConfirmModelName"
-          >
-        </div>
-        <div class="mt-5 flex justify-end gap-2">
-          <BaseBtn variant="secondary" @click="closeDeleteConfirm">Cancel</BaseBtn>
-          <BaseBtn
-            variant="danger"
-            :disabled="isActionLoading(deleteConfirmModelId)"
-            @click="submitDeleteConfirm"
-          >
-            {{ isActionLoading(deleteConfirmModelId) ? 'Deleting...' : 'Delete Permanently' }}
-          </BaseBtn>
+      <!-- ... existing delete modal ... -->
+    </div>
+
+    <!-- Upload Model Modal -->
+    <div v-if="showUploadModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto" @click.self="closeUploadModal">
+      <div class="w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-950 p-6 shadow-2xl relative">
+        <button @click="closeUploadModal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h2 class="text-2xl font-bold text-white mb-2">Upload Model Package</h2>
+        <p class="text-sm text-slate-400 mb-6 font-medium">Accepts .tflite, .keras, .h5, .pth, or .pt files with accompanying metadata contract.</p>
+
+        <div class="space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="block">
+              <span class="text-sm font-semibold text-slate-300">Model File (required)</span>
+              <input type="file" @change="onPickModelFile" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-teal-400 hover:file:bg-slate-700" />
+            </label>
+            <label class="block">
+              <span class="text-sm font-semibold text-slate-300">Metadata JSON (required)</span>
+              <input type="file" @change="onPickMetadataFile" accept=".json,application/json" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-teal-400 hover:file:bg-slate-700" />
+            </label>
+          </div>
+
+          <div class="mt-2 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" v-model="isStateDict" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-teal-400 focus:ring-teal-500 focus:ring-offset-slate-950" />
+              <span class="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">This PyTorch model is a state_dict</span>
+            </label>
+            
+            <div v-if="isStateDict" class="mt-4 pl-8 border-l-2 border-slate-700">
+              <label class="block">
+                <span class="text-sm font-semibold text-slate-300">Model Class Definition (.py)</span>
+                <span class="block text-xs text-slate-500 mt-1 mb-2">Required to rebuild the neural network architecture before loading state weights.</span>
+                <input type="file" @change="onPickModelClassFile" accept=".py" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-teal-400 hover:file:bg-slate-700" />
+              </label>
+            </div>
+          </div>
+
+          <div v-if="uploadMessage" class="p-3 rounded-lg text-sm" :class="validationErrors.length ? 'bg-amber-400/10 text-amber-300 border border-amber-400/20' : 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20'">
+            {{ uploadMessage }}
+          </div>
+          
+          <div v-if="uploadError" class="p-3 rounded-lg bg-rose-400/10 text-rose-300 border border-rose-400/20 text-sm">
+            {{ uploadError }}
+          </div>
+
+          <ul v-if="validationErrors.length" class="space-y-1 bg-red-400/5 p-3 rounded border border-red-400/20">
+            <li v-for="err in validationErrors" :key="err" class="text-xs text-rose-300 flex items-start gap-2">
+              <span class="mt-1 block w-1 h-1 rounded-full bg-rose-400 shrink-0"></span>
+              {{ err }}
+            </li>
+          </ul>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <BaseBtn variant="secondary" @click="closeUploadModal">Cancel</BaseBtn>
+            <BaseBtn variant="primary" :disabled="isUploading || !modelFile || !metadataFile || validationErrors.length > 0" @click="uploadModel">
+              {{ isUploading ? 'Uploading...' : 'Upload Model' }}
+            </BaseBtn>
+          </div>
         </div>
       </div>
     </div>
