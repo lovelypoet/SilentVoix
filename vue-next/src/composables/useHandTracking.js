@@ -5,9 +5,27 @@ import {
   DrawingUtils
 } from '@mediapipe/tasks-vision'
 
-export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
+export function useHandTracking(mirrorCameraRef, showLandmarksRef, styleSettingsRef = null) {
   // MediaPipe
   let landmarker = null
+
+  // Default styles
+  const defaultStyle = {
+    landmarkColor: '#22d3ee', // teal-400
+    pointColor: '#ffffff',
+    lineWidth: 3,
+    pointRadius: 4
+  }
+
+  const getStyle = () => {
+    if (!styleSettingsRef?.value) return defaultStyle
+    return {
+      landmarkColor: styleSettingsRef.value.landmarkColor || defaultStyle.landmarkColor,
+      pointColor: styleSettingsRef.value.pointColor || defaultStyle.pointColor,
+      lineWidth: styleSettingsRef.value.lineWidth || defaultStyle.lineWidth,
+      pointRadius: styleSettingsRef.value.pointRadius || defaultStyle.pointRadius
+    }
+  }
 
   // DOM
   let videoEl = null
@@ -122,25 +140,27 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef) {
 
     if (showLandmarksRef.value && displayResult?.landmarks) {
       const drawer = new DrawingUtils(ctx)
+      const style = getStyle()
       for (const landmarks of displayResult.landmarks) {
         drawer.drawConnectors(
           landmarks,
           HandLandmarker.HAND_CONNECTIONS,
           {
-            color: 'green',
-            lineWidth: 6
+            color: style.landmarkColor,
+            lineWidth: style.lineWidth
           }
         )
         drawer.drawLandmarks(
           landmarks,
           {
-            color: '#fff700',
-            radius: 6,
-            lineWidth: 2
+            color: style.pointColor,
+            radius: style.pointRadius,
+            lineWidth: 1
           }
         )
       }
     }
+
 
     ctx.restore()
     rafId = requestAnimationFrame(loop)

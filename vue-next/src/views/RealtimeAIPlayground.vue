@@ -33,7 +33,15 @@ let isPredictingFrame = false
 let sensorPollTimer = null
 const cvFrameBuffer = ref([])
 
-const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks)
+const useIntegratedMode = ref(false)
+const styleSettings = ref({
+  landmarkColor: '#22d3ee',
+  pointColor: '#ffffff',
+  lineWidth: 3,
+  pointRadius: 4
+})
+
+const { startHandTracking, stopHandTracking, onFrame } = useHandTracking(mirrorCamera, showLandmarks, styleSettings)
 
 const modelSummary = computed(() => {
   const source = activeModel.value?.metadata
@@ -254,7 +262,7 @@ const drawBoundingBoxes = (results) => {
     const maxX = Math.min(canvas.width, Math.max(...xs))
     const maxY = Math.min(canvas.height, Math.max(...ys))
 
-    ctx.strokeStyle = '#22d3ee'
+    ctx.strokeStyle = styleSettings.value.landmarkColor
     ctx.lineWidth = 2
     ctx.strokeRect(minX, minY, Math.max(1, maxX - minX), Math.max(1, maxY - minY))
     const overlayText = prediction.value?.label
@@ -262,13 +270,12 @@ const drawBoundingBoxes = (results) => {
       : 'Detecting...'
     ctx.fillStyle = 'rgba(2,6,23,0.8)'
     ctx.fillRect(minX, Math.max(0, minY - 24), 220, 20)
-    ctx.fillStyle = '#67e8f9'
+    ctx.fillStyle = styleSettings.value.pointColor
     ctx.font = '12px monospace'
     ctx.fillText(overlayText, minX + 6, Math.max(12, minY - 10))
   })
 }
 
-const useIntegratedMode = ref(false)
 const backendLandmarks = ref(null)
 const activeDetectorId = ref('')
 const isUpdatingDetector = ref(false)
@@ -329,9 +336,9 @@ const drawBackendSkeleton = (landmarks) => {
     [0,17] // palm base
   ]
 
-  ctx.strokeStyle = '#facc15' // teal-400
-  ctx.fillStyle = '#ffffff'
-  ctx.lineWidth = 3
+  ctx.strokeStyle = styleSettings.value.landmarkColor
+  ctx.fillStyle = styleSettings.value.pointColor
+  ctx.lineWidth = styleSettings.value.lineWidth
 
   landmarks.forEach((pt, i) => {
     const x = Number(pt[0]) * canvas.width
@@ -339,7 +346,7 @@ const drawBackendSkeleton = (landmarks) => {
     const actualX = mirrorCamera.value ? canvas.width - x : x
     
     ctx.beginPath()
-    ctx.arc(actualX, y, 4, 0, 2 * Math.PI)
+    ctx.arc(actualX, y, styleSettings.value.pointRadius, 0, 2 * Math.PI)
     ctx.fill()
   })
 
@@ -698,6 +705,49 @@ watch(() => activeModel.value?.id, () => {
         </div>
       </div>
       <p class="mt-2 text-sm text-slate-400">{{ liveStatus }}</p>
+
+      <!-- Customization Settings -->
+      <div class="mt-4 p-4 rounded-xl border border-slate-700 bg-slate-900/30">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-medium text-slate-200 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Visual Customization
+          </h3>
+          <button 
+            @click="styleSettings = { landmarkColor: '#22d3ee', pointColor: '#ffffff', lineWidth: 3, pointRadius: 4 }"
+            class="text-[10px] uppercase font-bold text-slate-500 hover:text-teal-400 transition-colors"
+          >
+            Reset Defaults
+          </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div class="space-y-2">
+            <label class="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Skeleton Color</label>
+            <div class="flex items-center gap-2">
+              <input type="color" v-model="styleSettings.landmarkColor" class="h-8 w-8 rounded cursor-pointer bg-transparent border-none" />
+              <span class="text-xs text-slate-300 font-mono underline decoration-teal-500/30 decoration-2">{{ styleSettings.landmarkColor }}</span>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Joint Color</label>
+            <div class="flex items-center gap-2">
+              <input type="color" v-model="styleSettings.pointColor" class="h-8 w-8 rounded cursor-pointer bg-transparent border-none" />
+              <span class="text-xs text-slate-300 font-mono underline decoration-teal-500/30 decoration-2">{{ styleSettings.pointColor }}</span>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="block text-[10px] text-slate-500 uppercase font-bold tracking-wider text-center">Line Thickness ({{ styleSettings.lineWidth }}px)</label>
+            <input type="range" v-model.number="styleSettings.lineWidth" min="1" max="10" step="1" class="w-full accent-teal-500 bg-slate-800" />
+          </div>
+          <div class="space-y-2">
+            <label class="block text-[10px] text-slate-500 uppercase font-bold tracking-wider text-center">Joint Size ({{ styleSettings.pointRadius }}px)</label>
+            <input type="range" v-model.number="styleSettings.pointRadius" min="1" max="12" step="1" class="w-full accent-teal-500 bg-slate-800" />
+          </div>
+        </div>
+      </div>
 
       <div class="mt-4 relative aspect-video w-full overflow-hidden rounded-xl border border-slate-700 bg-black">
         <video v-show="modelModality !== 'sensor'" ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
