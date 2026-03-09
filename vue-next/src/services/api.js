@@ -201,7 +201,9 @@ export default {
       deletePermanent: (name, confirmName) =>
         api.delete(`/admin/csv-library/files/${name}`, { data: { confirm_name: confirmName } }),
       download: (name) =>
-        api.get(`/admin/csv-library/files/${name}/download`, { responseType: 'blob' })
+        api.get(`/admin/csv-library/files/${name}/download`, { responseType: 'blob' }),
+      getInsights: () =>
+        api.get('/admin/csv-library/insights')
     }
   },
 

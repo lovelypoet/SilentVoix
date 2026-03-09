@@ -1131,3 +1131,118 @@ async def delete_csv_file_permanently(
         "deleted_at": datetime.now(timezone.utc).isoformat(),
         "selection_slots_cleared": keys_to_remove,
     }
+
+
+@router.get("/insights")
+async def get_gesture_insights(
+    _user=Depends(role_or_internal_dep("admin")),
+):
+    """
+    Aggregates CSV metadata by label and joins with feedback statistics.
+    Used by the "Gesture Insights" dashboard.
+    """
+    # 1. Collect all active CSV files and aggregate by label
+    label_map: Dict[str, Dict[str, Any]] = {}
+    
+    for scope, path, rel_name in _collect_csv_paths(include_archived=False):
+        if scope == "archive":
+            continue
+            
+        meta = _scan_csv_file(path)
+        label_summary = meta.get("label_summary", [])
+        
+        for entry in label_summary:
+            label = entry["label"]
+            count = entry["count"]
+            
+            if label not in label_map:
+                label_map[label] = {
+                    "label": label,
+                    "sample_count": 0,
+                    "session_count": 0,
+                    "csv_count": 0,
+                    "modalities": set(),
+                    "health_flags": Counter(),
+                    "last_updated": None,
+                }
+            
+            label_map[label]["sample_count"] += count
+            label_map[label]["csv_count"] += 1
+            label_map[label]["modalities"].add(meta.get("modality", "unknown"))
+            
+            # Aggregate health flags
+            for flag in meta.get("health_flags", []):
+                label_map[label]["health_flags"][flag] += 1
+            
+            # Track last updated
+            mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()
+            if not label_map[label]["last_updated"] or mtime > label_map[label]["last_updated"]:
+                label_map[label]["last_updated"] = mtime
+
+    # 2. Get Active Model Info & Feedback
+    from services.model_library_service import model_library_service
+    from core.database import feedback_collection
+    
+    registry = model_library_service.load_registry()
+    active_id = registry.get("active_model_id")
+    active_model = next((m for m in registry.get("models", []) if m.get("id") == active_id), None)
+    
+    static_accuracy = {}
+    if active_model and "metadata" in active_model:
+        static_accuracy = active_model["metadata"].get("per_label_metrics", {})
+
+    # Fetch feedback stats for active model
+    fb_map = {}
+    if active_id:
+        fb_cursor = feedback_collection.aggregate([
+            {"$match": {"model_id": active_id}},
+            {
+                "$group": {
+                    "_id": "$true_label",
+                    "total": {"$sum": 1},
+                    "correct": {"$sum": {"$cond": ["$is_correct", 1, 0]}}
+                }
+            },
+            {
+                "$project": {
+                    "label": "$_id",
+                    "reliability": {"$divide": ["$correct", "$total"]},
+                    "total_feedback": "$total",
+                    "_id": 0
+                }
+            }
+        ])
+        fb_stats = await fb_cursor.to_list(length=5000)
+        fb_map = {s["label"]: s for s in fb_stats}
+
+    # 3. Final Merge
+    insights = []
+    for label, data in label_map.items():
+        fb = fb_map.get(label, {})
+        
+        # Calculate a quality score based on health flags
+        # Fewer flags = higher score (simplified)
+        flag_count = sum(data["health_flags"].values())
+        quality_score = max(0, 1.0 - (flag_count / (data["sample_count"] * 0.1 + 1)))
+        
+        insights.append({
+            "label": label,
+            "sample_count": data["sample_count"],
+            "csv_count": data["csv_count"],
+            "modalities": sorted(list(data["modalities"])),
+            "quality_score": quality_score,
+            "last_updated": data["last_updated"],
+            "offline_accuracy": static_accuracy.get(label, active_model.get("metadata", {}).get("accuracy") if active_model else 0.0),
+            "live_reliability": fb.get("reliability"),
+            "total_feedback": fb.get("total_feedback", 0),
+        })
+
+    insights.sort(key=lambda x: x["label"])
+    
+    return {
+        "status": "success",
+        "active_model_id": active_id,
+        "active_model_name": active_model.get("display_name") if active_model else None,
+        "data": insights,
+        "message": "Gesture insights retrieved from CSV Library"
+    }

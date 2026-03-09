@@ -89,10 +89,14 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
-            path: '/library',
-            name: 'gesture-library',
-            component: () => import('../views/Library.vue'),
+            path: '/gesture-insights',
+            name: 'gesture-insights',
+            component: () => import('../views/GestureInsights.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/library',
+            redirect: '/gesture-insights'
         },
         {
             path: '/model-library',
