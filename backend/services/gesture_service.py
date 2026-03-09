@@ -11,9 +11,11 @@ from services.model_library_service import model_library_service
 class GestureService:
     def __init__(self):
         # 1. Resolve LSTM model (Classifier)
-        # We still use the default path for now, but we'll try to find it in the registry if possible
+        # We still use the default path for now, but we'll try to find it in the registry if possible.
+        # NOTE: checkpoint is a state_dict saved during training; we reconstruct the nn.Module via AI/models/model.py.
         base_ai_dir = os.path.join(settings.BASE_DIR, "AI", "models")
-        lstm_path = os.path.join(base_ai_dir, "best_model 2.pth")
+        # Match the actual filename in the repo (best_model2.pth).
+        lstm_path = os.path.join(base_ai_dir, "best_model2.pth")
         
         # 2. Resolve YOLO model (Detector)
         # Try to find a YOLO model in the registry, fallback to best.pt
