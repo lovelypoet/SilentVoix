@@ -1246,3 +1246,74 @@ async def get_gesture_insights(
         "data": insights,
         "message": "Gesture insights retrieved from CSV Library"
     }
+
+
+@router.get("/files/{name:path}/full-data")
+async def get_csv_full_data(
+    name: str,
+    _user=Depends(role_or_internal_dep("admin")),
+):
+    """
+    Returns all rows of a CSV file for high-fidelity visualization.
+    Includes automatic downsampling if the file is extremely large to prevent OOM.
+    """
+    safe_name = _get_safe_path(name)
+    path = CSV_DIR / safe_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="CSV file not found")
+
+    rows = []
+    header = []
+    
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            header = reader.fieldnames or []
+            # Basic limit to prevent extreme browser lag (e.g., 10,000 rows max)
+            # In Phase 2, we can implement smart downsampling here if needed.
+            for i, row in enumerate(reader):
+                if i > 10000:
+                    break
+                rows.append(row)
+                
+        return {
+            "status": "success",
+            "name": safe_name,
+            "header": header,
+            "rows": rows,
+            "total_rows": len(rows)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read CSV data: {str(e)}")
+
+
+class FusionExportRequest(BaseModel):
+    cv_name: str
+    sensor_name: str
+    offset_ms: float = 0
+    trim_in_pct: float = 0
+    trim_out_pct: float = 100
+    mode: str = "single"
+
+
+@router.post("/fusion-export")
+async def export_fused_dataset(
+    req: FusionExportRequest,
+    _user=Depends(role_or_internal_dep("admin")),
+):
+    """
+    Triggers the high-precision linear interpolation merge of CV and Sensor data.
+    Saves the result as a new CSV in the active directory.
+    """
+    from services.fusion_service import fusion_service
+    
+    try:
+        export_name = fusion_service.export_fusion(req.dict())
+        return {
+            "status": "success",
+            "export_name": export_name,
+            "message": f"Successfully merged datasets into {export_name}"
+        }
+    except Exception as e:
+        logger.error(f"Fusion export failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))

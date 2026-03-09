@@ -59,20 +59,22 @@ const router = createRouter({
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
-            path: '/fusion/late-module',
-            name: 'fusion-late-module',
-            component: () => import('../views/LateFusionTraining.vue'),
+            path: '/dataset-aligner',
+            name: 'dataset-aligner',
+            component: () => import('../views/DatasetAligner.vue'),
             meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
         },
         {
-            path: '/early-fusion-training',
-            name: 'early-fusion-training',
-            redirect: '/fusion/early-module'
+            path: '/fusion/late-module',
+            redirect: '/dataset-aligner'
         },
         {
             path: '/late-fusion-training',
-            name: 'late-fusion-training',
-            redirect: '/fusion/late-module'
+            redirect: '/dataset-aligner'
+        },
+        {
+            path: '/early-fusion-training',
+            redirect: '/fusion/early-module'
         },
         {
             path: '/fusion-training',

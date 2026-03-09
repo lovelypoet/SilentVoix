@@ -203,7 +203,11 @@ export default {
       download: (name) =>
         api.get(`/admin/csv-library/files/${name}/download`, { responseType: 'blob' }),
       getInsights: () =>
-        api.get('/admin/csv-library/insights')
+        api.get('/admin/csv-library/insights'),
+      getFullData: (name) =>
+        api.get(`/admin/csv-library/files/${name}/full-data`),
+      fusionExport: (payload) =>
+        api.post('/admin/csv-library/fusion-export', payload)
     }
   },
 

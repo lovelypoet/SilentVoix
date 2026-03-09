@@ -21,7 +21,7 @@ const openEarlyCropper = () => {
 }
 
 const openLateModule = () => {
-  router.push('/fusion/late-module')
+  router.push('/dataset-aligner')
 }
 
 const setTab = (tab) => {
@@ -67,12 +67,12 @@ const goTraining = () => {
     </BaseCard>
 
     <BaseCard v-else>
-      <h2 class="text-xl font-semibold text-white">Late Fusion Module</h2>
+      <h2 class="text-xl font-semibold text-white">Dataset Aligner (Late Fusion Prep)</h2>
       <p class="text-slate-400 mt-2">
-        Select paired datasets, run training jobs, monitor status, and test prediction.
+        Visually synchronize CV landmarks and Glove data. Nudge, trim, and export "Golden" fused datasets for external training.
       </p>
       <div class="mt-4">
-        <BaseBtn variant="primary" @click="openLateModule">Open Late Fusion Training</BaseBtn>
+        <BaseBtn variant="primary" @click="openLateModule">Open Dataset Aligner</BaseBtn>
       </div>
     </BaseCard>
   </div>
