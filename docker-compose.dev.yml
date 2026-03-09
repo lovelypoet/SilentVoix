@@ -55,6 +55,7 @@ services:
       - /dev:/dev
       - ./backend/data:/app/data
       - ./backend/AI/model_library:/app/AI/model_library
+      - ./backend/AI/models:/app/AI/models
 
   ml-tensorflow:
     build: ./ml-tensorflow
