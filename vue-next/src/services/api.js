@@ -238,9 +238,17 @@ export default {
 
   // ===================== Realtime AI Playground API =====================
   modelLibrary: {
-    uploadModel: (modelFile, metadataFile, modelClassFile = null, isStateDict = false) => {
+    uploadModel: (modelFileOrFormData, metadataFile, modelClassFile = null, isStateDict = false) => {
+      // Allow callers to either pass a pre-built FormData instance
+      // or raw File objects (modelFile, metadataFile, ...).
+      if (modelFileOrFormData instanceof FormData) {
+        return api.post('/model-library/models/upload', modelFileOrFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+
       const formData = new FormData();
-      formData.append('model_file', modelFile);
+      formData.append('model_file', modelFileOrFormData);
       formData.append('metadata_file', metadataFile);
       if (isStateDict) {
         formData.append('is_state_dict', 'true');

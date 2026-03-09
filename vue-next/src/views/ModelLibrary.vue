@@ -316,14 +316,27 @@ const runtimeCheckModel = async (modelId) => {
   runtimeCheckState.value = { ...runtimeCheckState.value, [modelId]: null }
   try {
     const res = await api.modelLibrary.runtimeCheckModel(modelId)
+    const exportFormat = String(res?.export_format || '').toLowerCase()
+    const isYolo = exportFormat === 'yolo'
+    const successMessage = isYolo
+      ? (res?.message || 'YOLO model checked successfully.')
+      : `OK: in ${res?.input_dim ?? '--'} -> out ${res?.output_dim ?? '--'}`
+
     runtimeCheckState.value = {
       ...runtimeCheckState.value,
       [modelId]: {
         ok: true,
-        message: `OK: in ${res?.input_dim ?? '--'} -> out ${res?.output_dim ?? '--'}`
+        message: successMessage
       }
     }
-    toast.add({ severity: 'success', summary: 'Runtime Check Passed', detail: `Checked successfully: in ${res?.input_dim ?? '--'} -> out ${res?.output_dim ?? '--'}`, life: 3000 })
+    toast.add({
+      severity: 'success',
+      summary: 'Runtime Check Passed',
+      detail: isYolo
+        ? (res?.message || 'Checked successfully: YOLO model (no input/output dim).')
+        : `Checked successfully: in ${res?.input_dim ?? '--'} -> out ${res?.output_dim ?? '--'}`,
+      life: 3000
+    })
   } catch (e) {
     const errDetail = e?.response?.data?.detail || 'Runtime check failed.'
     runtimeCheckState.value = {

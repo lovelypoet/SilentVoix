@@ -376,6 +376,21 @@ class ModelLibraryService:
         return self.call_runtime_service(entry, "/v1/predict", payload)
 
     def perform_runtime_check(self, entry: Dict[str, Any]) -> Dict[str, Any]:
+        export_format = str(entry.get("metadata", {}).get("export_format", "")).lower()
+
+        # YOLO detectors do not use a flat input_dim; just verify the model loads.
+        if export_format == "yolo":
+            self.load_model_runtime(entry)
+            return {
+                "status": "success",
+                "model_id": str(entry.get("id", "")),
+                "model_name": entry.get("display_name"),
+                "export_format": "yolo",
+                "input_dim": 0,
+                "output_dim": 0,
+                "message": "YOLO model loaded successfully",
+            }
+
         expected_dim = int(entry.get("input_dim") or 0)
         if expected_dim <= 0:
             raise ValueError("Invalid model input dimension")
@@ -397,17 +412,6 @@ class ModelLibraryService:
 
         runtime = self.load_model_runtime(entry)
         
-        if str(entry.get("metadata", {}).get("export_format")).lower() == "yolo":
-            return {
-                "status": "success",
-                "model_id": str(entry.get("id", "")),
-                "model_name": entry.get("display_name"),
-                "export_format": "yolo",
-                "input_dim": 0,
-                "output_dim": 0,
-                "message": "YOLO model loaded successfully",
-            }
-            
         probe = np.zeros((expected_dim,), dtype=np.float32)
         probs = self.predict_with_runtime(runtime, probe)
         probs = np.asarray(probs, dtype=np.float32).reshape(-1)

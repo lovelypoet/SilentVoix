@@ -30,17 +30,31 @@ class GestureService:
         print(f"Loading YOLO model from: {self.yolo_path}")
         self.detector = YOLO(self.yolo_path)
         
-        print(f"Loading LSTM model from: {lstm_path}")
-        self.lstm_runtime = load_runtime(
-            model_path=lstm_path,
-            export_format="pytorch",
-            is_state_dict=True,
-            has_model_class=True
-        )
-        self.classifier = self.lstm_runtime["model"]
-        self.torch = self.lstm_runtime["torch"]
+        # LSTM classifier is optional; if it fails to load we still allow YOLO-only flows.
+        self.lstm_runtime = None
+        self.classifier = None
+        self.torch = None
         self.device = "cpu"
-        self.classifier.to(self.device)
+
+        try:
+            if os.path.exists(lstm_path):
+                print(f"Loading LSTM model from: {lstm_path}")
+                self.lstm_runtime = load_runtime(
+                    model_path=lstm_path,
+                    export_format="pytorch",
+                    is_state_dict=True,
+                    has_model_class=True
+                )
+                self.classifier = self.lstm_runtime["model"]
+                self.torch = self.lstm_runtime["torch"]
+                self.classifier.to(self.device)
+            else:
+                print(f"Warning: LSTM model not found at {lstm_path}. Integrated predictor will run without classification.")
+        except Exception as e:
+            print(f"Warning: Failed to load LSTM classifier from {lstm_path}: {e}")
+            self.lstm_runtime = None
+            self.classifier = None
+            self.torch = None
         
         # 4. Config & Metadata
         self.metadata = {}
@@ -97,8 +111,8 @@ class GestureService:
             # If no hand, append zeros to keep temporal consistency
             self.frame_buffer.append(np.zeros(self.feature_dim))
 
-        # Step 2: Classify if buffer is full
-        if len(self.frame_buffer) == self.sequence_length:
+        # Step 2: Classify if buffer is full and classifier is available
+        if len(self.frame_buffer) == self.sequence_length and self.lstm_runtime is not None:
             # Prepare data
             sequence_np = np.array(list(self.frame_buffer), dtype=np.float32)
             
