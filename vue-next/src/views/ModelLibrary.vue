@@ -732,8 +732,65 @@ onMounted(() => {
       </div>
     </BaseCard>
 
-    <div v-if="deleteConfirmOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closeDeleteConfirm">
-      <!-- ... existing delete modal ... -->
+    <div
+      v-if="deleteConfirmOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
+      @click.self="closeDeleteConfirm"
+    >
+      <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-950 p-6 shadow-2xl relative">
+        <button
+          type="button"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white"
+          @click="closeDeleteConfirm"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h2 class="text-xl font-semibold text-white mb-2">
+          Delete Model
+        </h2>
+        <p class="text-sm text-slate-300 mb-4">
+          You are about to permanently delete
+          <span class="font-semibold text-white">{{ deleteConfirmModelName }}</span>.
+          This action cannot be undone.
+        </p>
+
+        <p class="text-xs text-slate-400 mb-2">
+          To confirm, type the model name exactly as shown:
+        </p>
+        <p class="text-xs font-mono text-slate-200 bg-slate-900/80 border border-slate-700 rounded px-2 py-1 mb-3 break-all">
+          {{ deleteConfirmModelName || '—' }}
+        </p>
+
+        <input
+          v-model="deleteConfirmTypedName"
+          type="text"
+          class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-400 mb-4"
+          placeholder="Type the model name to confirm..."
+          autocomplete="off"
+        >
+
+        <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <BaseBtn variant="secondary" @click="closeDeleteConfirm">
+            Cancel
+          </BaseBtn>
+          <BaseBtn
+            variant="danger"
+            :disabled="!deleteConfirmTypedName"
+            @click="submitDeleteConfirm"
+          >
+            Delete Model
+          </BaseBtn>
+        </div>
+      </div>
     </div>
 
     <!-- Upload Model Modal -->
