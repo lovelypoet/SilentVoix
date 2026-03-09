@@ -61,11 +61,16 @@ async def export_gestures(request: Request):
     writer = csv.writer(output)
     writer.writerow([f"flexSensor{i+1}" for i in range(11)] + ["label", "source", "timestamp"])
     for row in rows:
-        values = row.get("values", [])
-        label = row.get("label", "")
+        label = row.get("gesture_label", row.get("label", "unknown"))
         source = row.get("source", "")
         ts = row.get("timestamp", "")
-        writer.writerow(values + [label, source, ts])
+        
+        # Handle both single 'values' and batch 'sensor_values'
+        if "sensor_values" in row and isinstance(row["sensor_values"], list):
+            for sample in row["sensor_values"]:
+                writer.writerow(sample + [label, source, ts])
+        elif "values" in row and isinstance(row["values"], list):
+            writer.writerow(row["values"] + [label, source, ts])
     output.seek(0)
     logger.info(f"[trace={get_trace_id(request)}] Exported {len(rows)} gesture rows.")
     from utils.cache import cache
@@ -98,13 +103,108 @@ async def list_gestures(request: Request) -> Dict[str, Any]:
     }
     """
     trace_id = get_trace_id(request)
-    cursor = sensor_collection.find({}, {"_id": 0, "session_id": 1, "gesture_label": 1})
+    cursor = sensor_collection.find({}, {"_id": 0, "session_id": 1, "gesture_label": 1, "timestamp": 1})
     gestures = await cursor.to_list(length=1000)
     logger.info(f"[trace={trace_id}] Listed {len(gestures)} gestures.")
     return {
         "status": "success",
         "data": gestures,
         "message": "All gestures retrieved"
+    }
+
+@router.get(
+    "/summary",
+    summary="Get aggregate gesture statistics",
+    description="Groups all sensor data by gesture_label and returns counts and performance metrics."
+)
+async def get_gestures_summary(request: Request) -> Dict[str, Any]:
+    trace_id = get_trace_id(request)
+    
+    # 1. Get Base Counts (Samples & Sessions)
+    cursor = sensor_collection.aggregate([
+        {
+            "$group": {
+                "_id": "$gesture_label",
+                "sample_count": { 
+                    "$sum": {
+                        "$cond": [
+                            { "$isArray": "$sensor_values" },
+                            { "$size": "$sensor_values" },
+                            { "$cond": [{ "$isArray": "$values" }, 1, 0] }
+                        ]
+                    }
+                },
+                "session_count": { "$addToSet": "$session_id" },
+                "last_updated": { "$max": "$timestamp" }
+            }
+        },
+        {
+            "$project": {
+                "label": "$_id",
+                "sample_count": 1,
+                "session_count": { "$size": "$session_count" },
+                "last_updated": 1,
+                "_id": 0
+            }
+        }
+    ])
+    counts = await cursor.to_list(length=1000)
+    counts_map = {c["label"]: c for c in counts if c["label"]}
+
+    # 2. Get Active Model Info (for Offline Accuracy)
+    from services.model_library_service import model_library_service
+    registry = model_library_service.load_registry()
+    active_id = registry.get("active_model_id")
+    active_model = next((m for m in registry.get("models", []) if m.get("id") == active_id), None)
+    
+    # Simple mock for per-gesture static accuracy if not present in metadata
+    # In a real scenario, this would be a JSON object like {"Hello": 0.95, ...}
+    static_accuracy = {}
+    if active_model and "metadata" in active_model:
+        # Check if the model has per-label breakdown
+        static_accuracy = active_model["metadata"].get("per_label_metrics", {})
+
+    # 3. Get Live Feedback Stats
+    from core.database import feedback_collection
+    fb_cursor = feedback_collection.aggregate([
+        {
+            "$group": {
+                "_id": { "label": "$true_label", "model_id": "$model_id" },
+                "total": { "$sum": 1 },
+                "correct": { "$sum": { "$cond": ["$is_correct", 1, 0] } }
+            }
+        },
+        {
+            "$project": {
+                "label": "$_id.label",
+                "model_id": "$_id.model_id",
+                "reliability": { "$divide": ["$correct", "$total"] },
+                "total_feedback": "$total",
+                "_id": 0
+            }
+        }
+    ])
+    fb_stats = await fb_cursor.to_list(length=5000)
+    
+    # Filter feedback to only include the active model
+    fb_map = {s["label"]: s for s in fb_stats if s["model_id"] == active_id}
+
+    # 4. Merge Results
+    summary = []
+    for label, data in counts_map.items():
+        fb = fb_map.get(label, {})
+        data["offline_accuracy"] = static_accuracy.get(label, active_model.get("metadata", {}).get("accuracy") if active_model else 0.0)
+        data["live_reliability"] = fb.get("reliability")
+        data["total_feedback"] = fb.get("total_feedback", 0)
+        summary.append(data)
+
+    summary.sort(key=lambda x: x["label"])
+    
+    logger.info(f"[trace={trace_id}] Retrieved enriched summary for {len(summary)} gesture classes.")
+    return {
+        "status": "success",
+        "data": summary,
+        "message": "Enriched gesture summary retrieved"
     }
 
 @router.get(

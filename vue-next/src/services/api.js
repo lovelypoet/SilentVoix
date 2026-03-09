@@ -50,6 +50,7 @@ export default {
   // ===================== Gesture API =====================
   gestures: {
     getAll: () => api.get('/gestures'),
+    getSummary: () => api.get('/gestures/summary'),
     create: (payload) => api.post('/gestures/', payload),
     delete: (sessionId) => api.delete(`/gestures/${sessionId}`),
     update: (sessionId, label) => api.put(`/gestures/${sessionId}?label=${label}`),
@@ -263,5 +264,10 @@ export default {
       api.get('/predict/integrated/detector'),
     setIntegratedDetector: (modelId) =>
       api.post(`/predict/integrated/detector/${modelId}`)
+  },
+  // ===================== Model Feedback API =====================
+  modelFeedback: {
+    submit: (payload) => api.post('/model-library/feedback', payload),
+    getStats: (modelId) => api.get(`/model-library/feedback/stats/${modelId}`),
   }
 };

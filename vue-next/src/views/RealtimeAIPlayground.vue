@@ -5,6 +5,10 @@ import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import { useHandTracking } from '../composables/useHandTracking.js'
 import api from '../services/api'
+import { useToast } from 'primevue/usetoast'
+import Dialog from 'primevue/dialog'
+
+const toast = useToast()
 
 const router = useRouter()
 
@@ -147,6 +151,16 @@ const loadActiveModel = async () => {
   }
 }
 
+const backendLandmarks = ref(null)
+const activeDetectorId = ref('')
+const isUpdatingDetector = ref(false)
+
+// Performance Feedback State
+const feedbackSent = ref(false)
+const showCorrectionDialog = ref(false)
+const correctedLabel = ref('')
+const isSubmittingFeedback = ref(false)
+
 const loadSavedModels = async () => {
   try {
     const res = await api.modelLibrary.listModels()
@@ -235,6 +249,9 @@ const buildCvPayloadForModel = (results) => {
   return { sequence: cvFrameBuffer.value }
 }
 
+const availableDetectors = computed(() => {
+  return savedModels.value.filter(m => m.metadata?.export_format === 'yolo')
+})
 
 const drawBoundingBoxes = (results) => {
   const canvas = bboxCanvasEl.value
@@ -276,14 +293,6 @@ const drawBoundingBoxes = (results) => {
   })
 }
 
-const backendLandmarks = ref(null)
-const activeDetectorId = ref('')
-const isUpdatingDetector = ref(false)
-
-const availableDetectors = computed(() => {
-  return savedModels.value.filter(m => m.metadata?.export_format === 'yolo')
-})
-
 const loadActiveDetector = async () => {
   try {
     const res = await api.modelLibrary.getIntegratedDetector()
@@ -299,7 +308,6 @@ const switchDetector = async (modelId) => {
   try {
     await api.modelLibrary.setIntegratedDetector(modelId)
     activeDetectorId.value = modelId
-    
   } catch (e) {
     uploadError.value = e?.response?.data?.detail || 'Failed to switch detector.'
   } finally {
@@ -404,6 +412,33 @@ const predictFromIntegratedService = async () => {
   } finally {
     isPredictingFrame = false
   }
+}
+
+const submitFeedback = async (correct, trueLabel = null) => {
+  if (!prediction.value || !activeModel.value || feedbackSent.value) return
+  
+  isSubmittingFeedback.value = true
+  try {
+    const payload = {
+      model_id: activeModel.value.id,
+      predicted_label: prediction.value.label,
+      true_label: trueLabel || (correct ? prediction.value.label : 'unknown'),
+      confidence: prediction.value.confidence,
+    }
+    await api.modelFeedback.submit(payload)
+    feedbackSent.value = true
+    toast.add({ severity: 'success', summary: 'Feedback Recorded', detail: 'Thank you for helping improve the model!', life: 3000 })
+    showCorrectionDialog.value = false
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Feedback Failed', detail: 'Could not record feedback.' })
+  } finally {
+    isSubmittingFeedback.value = false
+  }
+}
+
+const openCorrectionDialog = () => {
+  correctedLabel.value = ''
+  showCorrectionDialog.value = true
 }
 
 const predictFromResults = async (results) => {
@@ -584,6 +619,13 @@ onMounted(() => {
 watch(() => activeModel.value?.id, () => {
   cvFrameBuffer.value = []
   lastPredictTs = 0
+  feedbackSent.value = false
+})
+
+watch(() => prediction.value?.label, (newLabel, oldLabel) => {
+  if (newLabel !== oldLabel) {
+    feedbackSent.value = false
+  }
 })
 </script>
 
@@ -786,7 +828,64 @@ watch(() => activeModel.value?.id, () => {
         <p v-if="prediction?.top3?.length" class="text-xs text-slate-400 mt-2">
           Top-3: {{ prediction.top3.map((x) => `${x.label} ${(x.confidence * 100).toFixed(1)}%`).join(' | ') }}
         </p>
+
+        <!-- Feedback UI -->
+        <div v-if="prediction && prediction.label !== 'Waiting...' && prediction.label !== 'error'" class="mt-4 pt-3 border-t border-slate-800/50 flex items-center justify-between">
+           <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Was this correct?</span>
+           <div class="flex gap-2">
+              <template v-if="!feedbackSent">
+                <button 
+                  @click="submitFeedback(true)"
+                  class="flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Correct
+                </button>
+                <button 
+                  @click="openCorrectionDialog"
+                  class="flex items-center gap-1.5 px-2 py-1 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  Wrong
+                </button>
+              </template>
+              <div v-else class="flex items-center gap-1.5 text-xs text-teal-400 font-medium italic opacity-80">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                 Feedback saved
+              </div>
+           </div>
+        </div>
       </div>
+
+      <Dialog v-model:visible="showCorrectionDialog" modal header="Correct Prediction" :style="{ width: '25rem' }">
+        <div class="space-y-4 py-2">
+          <p class="text-sm text-slate-400">
+            Current prediction for the model is <span class="text-white font-bold">"{{ prediction?.label }}"</span>.
+            What was the actual gesture?
+          </p>
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-slate-500 uppercase">Select True Gesture</label>
+            <select 
+              v-model="correctedLabel"
+              class="w-full bg-slate-900 text-white rounded border border-slate-700 px-3 py-2 outline-none"
+            >
+              <option value="" disabled>-- Select Gesture --</option>
+              <option v-for="l in activeModel?.metadata?.labels || []" :key="l" :value="l">{{ l }}</option>
+              <option value="Unknown">Other / Not in list</option>
+            </select>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <BaseBtn variant="secondary" @click="showCorrectionDialog = false">Cancel</BaseBtn>
+            <BaseBtn 
+              variant="primary" 
+              :disabled="!correctedLabel || isSubmittingFeedback" 
+              @click="submitFeedback(false, correctedLabel)"
+            >
+              {{ isSubmittingFeedback ? 'Submitting...' : 'Submit Correction' }}
+            </BaseBtn>
+          </div>
+        </div>
+      </Dialog>
 
       <p class="mt-3 text-xs text-slate-500 flex justify-end">
         Supported inference adapters in this phase: exported `.tflite`, `.keras`, `.h5`, `.pth`, `.pt` with valid metadata contract.

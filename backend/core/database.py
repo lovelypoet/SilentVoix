@@ -25,6 +25,7 @@ gesture_collection = db.gestures
 training_collection = db.training_sessions
 users_collection = db.users
 voice_collection = db.voice_data
+feedback_collection = db.feedback
 
 """
     Test the MongoDB connection by sending a ping command.

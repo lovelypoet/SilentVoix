@@ -8,7 +8,7 @@ from fastapi.exception_handlers import RequestValidationError
 from routes import sensor_routes, admin_routes, dashboard_routes, gestures_predict
 from routes import utils_routes, auth_routes, voice_routes, sync_routes, liveWS, capture_controls_routes, admin_csv_library_routes, model_library_routes, fusion_preprocess_routes
 from routes import model_status
-from routes import audio_files_routes, predict_integrated_routes
+from routes import audio_files_routes, predict_integrated_routes, model_feedback_routes
 from ingestion.streaming.live_data import get_latest_data
 from core.indexes import create_indexes 
 from core.database import client, test_connection
@@ -113,6 +113,7 @@ app.include_router(admin_csv_library_routes.router)
 app.include_router(model_library_routes.router)
 app.include_router(fusion_preprocess_routes.router)
 app.include_router(predict_integrated_routes.router)
+app.include_router(model_feedback_routes.router)
 
 # Mount models directory for static files if needed
 app.mount("/models", StaticFiles(directory=settings.DATA_DIR), name="models")
