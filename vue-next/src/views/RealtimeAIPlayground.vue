@@ -18,6 +18,18 @@ const savedModels = ref([])
 const selectedSavedModelId = ref('')
 const isSwitchingSavedModel = ref(false)
 
+// --- Dual-Model Late Fusion State ---
+const isFusionMode = ref(false)
+const selectedCvModelId = ref('')
+const selectedSensorModelId = ref('')
+const activeCvModel = ref(null)
+const activeSensorModel = ref(null)
+const gloveWeight = ref(0.8)
+const fusionPrediction = ref(null)
+const cvPrediction = ref(null)
+const sensorPrediction = ref(null)
+const isFusionPredicting = ref(false)
+
 const mirrorCamera = ref(true)
 const showLandmarks = ref(true)
 const videoEl = ref(null)
@@ -191,6 +203,21 @@ const activateSavedModel = async () => {
     uploadError.value = e?.response?.data?.detail || 'Failed to activate saved model.'
   } finally {
     isSwitchingSavedModel.value = false
+  }
+}
+
+const activateFusionModels = () => {
+  uploadError.value = ''
+  if (!selectedCvModelId.value || !selectedSensorModelId.value) {
+    uploadError.value = 'Select both CV and Sensor models for Late Fusion.'
+    return
+  }
+  
+  activeCvModel.value = savedModels.value.find(m => m.id === selectedCvModelId.value) || null
+  activeSensorModel.value = savedModels.value.find(m => m.id === selectedSensorModelId.value) || null
+  
+  if (activeCvModel.value && activeSensorModel.value) {
+    toast.add({ severity: 'success', summary: 'Fusion Activated', detail: 'Ready for Dual-Model Late Fusion.', life: 3000 })
   }
 }
 
@@ -484,6 +511,7 @@ const normalizeSensorVectorForModel = (values) => {
 }
 
 const predictFromLatestSensor = async () => {
+  if (isFusionMode.value) return // Handled by predictFusion
   if (!activeModel.value || modelModality.value !== 'sensor') return
   if (isPredictingFrame) return
   const now = Date.now()
@@ -528,6 +556,64 @@ const predictFromLatestSensor = async () => {
   }
 }
 
+const predictFusion = async (cvResults) => {
+  if (!activeCvModel.value || !activeSensorModel.value || isFusionPredicting.value) return
+  
+  const now = Date.now()
+  if (now - lastPredictTs < 300) return
+  lastPredictTs = now
+  isFusionPredicting.value = true
+
+  try {
+    // 1. Prepare Data
+    const cvPayload = buildCvPayloadForModel(cvResults)
+    const sensorRaw = await api.utils.latestSensorFrame()
+    sensorSnapshot.value = {
+      values: Array.isArray(sensorRaw?.values) ? sensorRaw.values : [],
+      realSensor: Boolean(sensorRaw?.real_sensor),
+      updatedAt: Date.now()
+    }
+    
+    // 2. Parallel Inference
+    const [cvRes, sensorRes] = await Promise.all([
+       api.modelLibrary.predictCv({ ...cvPayload, model_id: activeCvModel.value.id }),
+       api.modelLibrary.predictSensor({ sensor_values: sensorSnapshot.value.values, model_id: activeSensorModel.value.id })
+    ])
+
+    const cvProbs = cvRes?.prediction?.probabilities || {}
+    const sensorProbs = sensorRes?.prediction?.probabilities || {}
+    
+    cvPrediction.value = cvRes.prediction
+    sensorPrediction.value = sensorRes.prediction
+
+    // 3. Merge Logic (Weighted Average)
+    const labels = Array.from(new Set([...Object.keys(cvProbs), ...Object.keys(sensorProbs)]))
+    const fusedProbs = {}
+    
+    labels.forEach(label => {
+       const vProb = Number(cvProbs[label] || 0)
+       const sProb = Number(sensorProbs[label] || 0)
+       fusedProbs[label] = (vProb * (1 - gloveWeight.value)) + (sProb * gloveWeight.value)
+    })
+
+    // 4. Find Winner
+    const sorted = Object.entries(fusedProbs).sort((a, b) => b[1] - a[1])
+    const winner = sorted[0]
+
+    prediction.value = {
+       label: winner ? winner[0] : 'Unknown',
+       confidence: winner ? winner[1] : 0,
+       note: `Fusion: ${activeCvModel.value.display_name} + ${activeSensorModel.value.display_name}`,
+       top3: sorted.slice(0, 3).map(([label, conf]) => ({ label, confidence: conf }))
+    }
+
+  } catch (e) {
+    prediction.value = { label: 'error', confidence: 0, note: 'Fusion failed: ' + (e.message || 'Check logs') }
+  } finally {
+    isFusionPredicting.value = false
+  }
+}
+
 const stopLive = () => {
   if (sensorPollTimer) {
     clearInterval(sensorPollTimer)
@@ -550,15 +636,25 @@ const stopLive = () => {
 }
 
 const startLive = async () => {
-  if (!activeModel.value) {
-    liveStatus.value = 'Upload and activate a model first.'
-    return
+  if (isFusionMode.value) {
+    if (!activeCvModel.value || !activeSensorModel.value) {
+       liveStatus.value = 'Activate a fusion pair first.'
+       return
+    }
+    // Fusion mode always starts camera and lets predictFusion handle sensor polling
+    liveStatus.value = 'Starting Fusion Streams (CV + Sensor)...'
+  } else {
+    if (!activeModel.value) {
+      liveStatus.value = 'Upload and activate a model first.'
+      return
+    }
+    if (activeRuntimeState.value === 'fail') {
+      liveStatus.value = 'Active model runtime-check is failing. Fix model package or run Runtime Check in Model Library.'
+      return
+    }
   }
-  if (activeRuntimeState.value === 'fail') {
-    liveStatus.value = 'Active model runtime-check is failing. Fix model package or run Runtime Check in Model Library.'
-    return
-  }
-  if (modelModality.value === 'sensor') {
+
+  if (modelModality.value === 'sensor' && !isFusionMode.value) {
     stopLive()
     isLive.value = true
     liveStatus.value = 'Starting realtime sensor polling...'
@@ -567,9 +663,6 @@ const startLive = async () => {
     }, 250)
     void predictFromLatestSensor()
     return
-  }
-  if (cvUsesSequence.value && !cvCanFlattenSequence.value && modelInputDim.value !== cvFeatureDim.value) {
-    liveStatus.value = `Sequence preprocess enabled (${cvSequenceLength.value}x${cvFeatureDim.value}), but model input_dim=${modelInputDim.value}. Using best-effort mapping.`
   }
 
   liveStatus.value = 'Requesting camera...'
@@ -582,26 +675,19 @@ const startLive = async () => {
     mediaStream.value = stream
     await startHandTracking(videoEl.value, landmarkCanvasEl.value, stream)
     onFrame((results) => {
-      if (!useIntegratedMode.value) {
-        drawBoundingBoxes(results)
+      if (isFusionMode.value) {
+         void predictFusion(results)
       } else {
-        // In integrated mode, we don't draw bounding boxes from mediapipe
-        // because we will draw the skeleton from YOLO keypoints
-        const canvas = bboxCanvasEl.value
-        if (canvas) {
-          const ctx = canvas.getContext('2d')
-          ctx.clearRect(0, 0, canvas.width, canvas.height)
+        if (!useIntegratedMode.value) {
+          drawBoundingBoxes(results)
         }
-      }
-      
-      // If no landmarks from mediapipe but we are in integrated mode, 
-      // we still want to trigger the loop (YOLO will find its own hands)
-      if (results?.landmarks?.length || useIntegratedMode.value) {
-        void predictFromResults(results)
+        if (results?.landmarks?.length || useIntegratedMode.value) {
+          void predictFromResults(results)
+        }
       }
     })
     isLive.value = true
-    liveStatus.value = 'Live camera running.'
+    liveStatus.value = isFusionMode.value ? 'Fusion Mode Active.' : 'Live camera running.'
   } catch (e) {
     liveStatus.value = e?.message || 'Failed to start camera.'
     stopLive()
@@ -645,9 +731,25 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
     </section>
 
     <BaseCard>
-      <h2 class="text-xl text-white font-semibold">Active Model</h2>
-      <p class="text-xs text-slate-400 mt-1">Select a model from your library to use in the playground. Manage your models in the <router-link to="/model-library" class="text-teal-400 hover:underline">Model Library</router-link>.</p>
-      <div class="mt-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl text-white font-semibold">Active Model</h2>
+          <p class="text-xs text-slate-400 mt-1">Select a model from your library to use in the playground. Manage your models in the <router-link to="/model-library" class="text-teal-400 hover:underline">Model Library</router-link>.</p>
+        </div>
+        <div class="flex items-center gap-2">
+           <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Late Fusion Mode:</span>
+           <button 
+             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+             :class="isFusionMode ? 'bg-teal-500' : 'bg-slate-700'"
+             @click="isFusionMode = !isFusionMode; stopLive()"
+           >
+             <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="isFusionMode ? 'translate-x-6' : 'translate-x-1'"></span>
+           </button>
+        </div>
+      </div>
+      
+      <!-- Standard Mode Model Selection -->
+      <div v-if="!isFusionMode" class="mt-4">
         <label class="text-sm text-slate-300">
           Switch Classifier
           <div class="mt-1 flex flex-col gap-2 md:flex-row">
@@ -664,11 +766,53 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
         </label>
       </div>
 
+      <!-- Fusion Mode Model Selection -->
+      <div v-else class="mt-4 space-y-4">
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1">
+               <label class="text-xs font-bold text-slate-500 uppercase">Vision (CV) Model</label>
+               <select v-model="selectedCvModelId" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm">
+                 <option value="">Select CV model...</option>
+                 <option v-for="model in savedModels.filter(m => m.metadata?.modality === 'cv')" :key="model.id" :value="model.id">
+                   {{ model.display_name || model.id }}
+                 </option>
+               </select>
+            </div>
+            <div class="space-y-1">
+               <label class="text-xs font-bold text-slate-500 uppercase">Glove (Sensor) Model</label>
+               <select v-model="selectedSensorModelId" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm">
+                 <option value="">Select Sensor model...</option>
+                 <option v-for="model in savedModels.filter(m => m.metadata?.modality === 'sensor')" :key="model.id" :value="model.id">
+                   {{ model.display_name || model.id }}
+                 </option>
+               </select>
+            </div>
+         </div>
+
+         <!-- Fusion Slider -->
+         <div class="p-3 bg-slate-900 rounded-lg border border-slate-800">
+            <div class="flex items-center justify-between mb-2">
+               <span class="text-xs font-bold text-slate-500 uppercase">Glove vs. Vision Weight (Slider)</span>
+               <div class="flex gap-4">
+                  <span class="text-[10px] text-teal-400 font-bold uppercase tracking-widest">Vision: {{ (1 - gloveWeight).toFixed(2) }}</span>
+                  <span class="text-[10px] text-amber-400 font-bold uppercase tracking-widest">Glove: {{ gloveWeight.toFixed(2) }}</span>
+               </div>
+            </div>
+            <input type="range" v-model.number="gloveWeight" min="0" max="1" step="0.05" class="w-full accent-teal-500 bg-slate-800 h-2 rounded-lg cursor-pointer" />
+         </div>
+
+         <div class="flex justify-end">
+            <BaseBtn variant="primary" :disabled="!selectedCvModelId || !selectedSensorModelId" @click="activateFusionModels">
+               Activate Fusion Pair
+            </BaseBtn>
+         </div>
+      </div>
+
       <div v-if="uploadError" class="mt-4 p-3 rounded bg-rose-400/10 text-rose-300 border border-rose-400/20 text-sm italic">
         {{ uploadError }}
       </div>
 
-      <div v-if="modelSummary" class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 p-4 shadow-inner">
+      <div v-if="modelSummary && !isFusionMode" class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 p-4 shadow-inner">
         <div class="flex items-start justify-between">
           <div>
             <h3 class="text-slate-100 font-bold text-lg">{{ modelSummary.name }}</h3>
@@ -792,42 +936,66 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
       </div>
 
       <div class="mt-4 relative aspect-video w-full overflow-hidden rounded-xl border border-slate-700 bg-black">
-        <video v-show="modelModality !== 'sensor'" ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
-        <canvas v-show="modelModality !== 'sensor'" ref="landmarkCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
-        <canvas v-show="modelModality !== 'sensor'" ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
-        <div v-if="modelModality === 'sensor'" class="absolute inset-0 overflow-auto bg-slate-950/70 p-4">
-          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p class="text-sm text-slate-200 font-medium">Realtime Sensor Telemetry</p>
-            <div class="text-xs text-slate-400">
-              <span class="mr-3">Source: {{ sensorSnapshot.realSensor ? 'real sensor' : 'snapshot/fallback' }}</span>
-              <span>Updated: {{ sensorUpdatedAtText }}</span>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2">
+        <video v-show="!isFusionMode && modelModality !== 'sensor' || isFusionMode" ref="videoEl" autoplay playsinline muted :class="videoClasses"></video>
+        <canvas v-show="!isFusionMode && modelModality !== 'sensor' || isFusionMode" ref="landmarkCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
+        <canvas v-show="!isFusionMode && modelModality !== 'sensor' || isFusionMode" ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
+        
+        <!-- Sensor Overlay (Always visible in Fusion or Sensor Mode) -->
+        <div v-if="isFusionMode || modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-48 overflow-auto bg-slate-950/80 p-3 border-l border-slate-700 backdrop-blur-sm">
+          <p class="text-[10px] text-amber-500 font-bold uppercase mb-2">Sensor Stream</p>
+          <div class="space-y-1">
             <div
               v-for="item in sensorDisplayRows"
               :key="item.label"
-              class="rounded border border-slate-800 bg-slate-900/70 px-2 py-2"
+              class="flex justify-between text-[10px] border-b border-slate-800 pb-1"
             >
-              <p class="text-[11px] text-slate-400">{{ item.label }}</p>
-              <p class="text-sm text-slate-100 font-semibold">{{ Number(item.value).toFixed(3) }}</p>
+              <span class="text-slate-500">{{ item.label }}</span>
+              <span class="text-slate-200 font-mono">{{ Number(item.value).toFixed(2) }}</span>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- Prediction Output -->
       <div class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm">
-        <p class="text-slate-400">Prediction</p>
-        <p v-if="prediction" class="text-slate-100 mt-1">
-          {{ prediction.label }} ({{ (prediction.confidence * 100).toFixed(2) }}%)
-        </p>
-        <p v-else class="text-slate-500 mt-1">No hand detected.</p>
-        <p class="text-xs text-slate-500 mt-2">
-          {{ prediction?.note || (activeModel ? 'Start real inference.' : 'Upload & activate a model first.') }}
-        </p>
-        <p v-if="prediction?.top3?.length" class="text-xs text-slate-400 mt-2">
-          Top-3: {{ prediction.top3.map((x) => `${x.label} ${(x.confidence * 100).toFixed(1)}%`).join(' | ') }}
-        </p>
+        <div class="flex items-center justify-between mb-2">
+           <p class="text-slate-400">Final Prediction</p>
+           <span v-if="isFusionMode" class="text-[10px] bg-teal-500/20 text-teal-400 px-2 py-0.5 rounded font-bold uppercase">Weighted Fusion</span>
+        </div>
+
+        <div v-if="prediction" class="flex items-end justify-between">
+           <div>
+              <p class="text-2xl font-bold text-white">
+                {{ prediction.label }}
+              </p>
+              <p class="text-xs text-slate-500 mt-1">
+                Confidence: {{ (prediction.confidence * 100).toFixed(2) }}% | {{ prediction.note }}
+              </p>
+           </div>
+           <div v-if="prediction.top3" class="text-right">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Top Alternatives</p>
+              <div class="flex flex-col gap-1">
+                 <div v-for="alt in prediction.top3.slice(1)" :key="alt.label" class="text-[11px] text-slate-400">
+                    {{ alt.label }} ({{ (alt.confidence * 100).toFixed(1) }}%)
+                 </div>
+              </div>
+           </div>
+        </div>
+        <p v-else class="text-slate-500 mt-1">Ready to predict...</p>
+
+        <!-- Fusion Breakdown -->
+        <div v-if="isFusionMode && (cvPrediction || sensorPrediction)" class="mt-4 pt-4 border-t border-slate-800 grid grid-cols-2 gap-4">
+           <div class="p-2 rounded bg-blue-500/5 border border-blue-500/10">
+              <p class="text-[9px] text-blue-400 font-bold uppercase mb-1">Vision Contribution ({{ ((1 - gloveWeight) * 100).toFixed(0) }}%)</p>
+              <p v-if="cvPrediction" class="text-xs font-semibold text-slate-200">{{ cvPrediction.label }} ({{ (cvPrediction.confidence * 100).toFixed(1) }}%)</p>
+              <p v-else class="text-xs text-slate-600 italic">Waiting...</p>
+           </div>
+           <div class="p-2 rounded bg-amber-500/5 border border-amber-500/10">
+              <p class="text-[9px] text-amber-400 font-bold uppercase mb-1">Glove Contribution ({{ (gloveWeight * 100).toFixed(0) }}%)</p>
+              <p v-if="sensorPrediction" class="text-xs font-semibold text-slate-200">{{ sensorPrediction.label }} ({{ (sensorPrediction.confidence * 100).toFixed(1) }}%)</p>
+              <p v-else class="text-xs text-slate-600 italic">Waiting...</p>
+           </div>
+        </div>
 
         <!-- Feedback UI -->
         <div v-if="prediction && prediction.label !== 'Waiting...' && prediction.label !== 'error'" class="mt-4 pt-3 border-t border-slate-800/50 flex items-center justify-between">
