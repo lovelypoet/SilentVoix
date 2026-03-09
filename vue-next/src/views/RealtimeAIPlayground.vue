@@ -48,6 +48,7 @@ let lastPredictTs = 0
 let isPredictingFrame = false
 let sensorPollTimer = null
 const cvFrameBuffer = ref([])
+let integratedPredictTimer = null
 
 const useIntegratedMode = ref(false)
 const styleSettings = ref({
@@ -441,6 +442,21 @@ const predictFromIntegratedService = async () => {
   }
 }
 
+const startIntegratedLoop = () => {
+  if (integratedPredictTimer !== null) return
+  integratedPredictTimer = window.setInterval(() => {
+    if (!useIntegratedMode.value || !isLive.value) return
+    void predictFromIntegratedService()
+  }, 250)
+}
+
+const stopIntegratedLoop = () => {
+  if (integratedPredictTimer !== null) {
+    clearInterval(integratedPredictTimer)
+    integratedPredictTimer = null
+  }
+}
+
 const submitFeedback = async (correct, trueLabel = null) => {
   if (!prediction.value || !activeModel.value || feedbackSent.value) return
   
@@ -470,7 +486,6 @@ const openCorrectionDialog = () => {
 
 const predictFromResults = async (results) => {
   if (useIntegratedMode.value) {
-    void predictFromIntegratedService()
     return
   }
   if (!activeModel.value) return
@@ -619,6 +634,7 @@ const stopLive = () => {
     clearInterval(sensorPollTimer)
     sensorPollTimer = null
   }
+  stopIntegratedLoop()
   stopHandTracking()
   if (mediaStream.value) {
     mediaStream.value.getTracks().forEach((t) => t.stop())
@@ -688,6 +704,9 @@ const startLive = async () => {
     })
     isLive.value = true
     liveStatus.value = isFusionMode.value ? 'Fusion Mode Active.' : 'Live camera running.'
+    if (useIntegratedMode.value) {
+      startIntegratedLoop()
+    }
   } catch (e) {
     liveStatus.value = e?.message || 'Failed to start camera.'
     stopLive()
