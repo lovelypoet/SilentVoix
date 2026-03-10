@@ -24,3 +24,5 @@ override.tf.json
 terraform.rc
 
 terraform/
+
+metrics/*

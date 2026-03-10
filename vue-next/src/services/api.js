@@ -218,6 +218,18 @@ export default {
       api.get('/dashboard/monitoring', window ? { params: { window } } : undefined),
   },
 
+  // ===================== Video Library API =====================
+  videoLibrary: {
+    upload: (formData) =>
+      api.post('/video-library/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      }),
+    list: () => api.get('/video-library'),
+    get: (jobId) => api.get(`/video-library/${jobId}`),
+    delete: (jobId) => api.delete(`/video-library/${jobId}`),
+    downloadUrl: (jobId) => `${BASE_URL}/video-library/${jobId}/download`
+  },
+
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');

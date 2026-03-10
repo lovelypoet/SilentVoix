@@ -7,6 +7,7 @@ from ultralytics import YOLO
 from core.settings import settings
 from AI.runtime_adapter import load_runtime, predict as predict_runtime
 from services.model_library_service import model_library_service
+from AI.pipelines.yolo_mediapipe_lstm import YoloMediapipeSequence
 
 class GestureService:
     def __init__(self):
@@ -70,6 +71,27 @@ class GestureService:
         self.frame_buffer = deque(maxlen=self.sequence_length)
         self.labels = self.metadata.get("labels", ["Goodbye", "Hello", "No", "Thank you", "Yes"])
 
+        # 5. MediaPipe Hands (for YOLO -> crop -> MediaPipe -> LSTM pipeline)
+        self.mp_hands = None
+        self.sequence_pipeline = None
+        try:
+            import mediapipe as mp
+            self.mp_hands = mp.solutions.hands.Hands(
+                static_image_mode=False,
+                max_num_hands=1,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5
+            )
+            self.sequence_pipeline = YoloMediapipeSequence(
+                self.detector,
+                self.mp_hands,
+                sequence_length=self.sequence_length,
+                feature_dim=self.feature_dim
+            )
+            self.frame_buffer = self.sequence_pipeline.buffer
+        except Exception as e:
+            print(f"Warning: MediaPipe Hands init failed. Integrated pipeline degraded: {e}")
+
     def preprocess_landmarks(self, landmarks):
         """
         landmarks: (21, 3) from YOLO (x, y, conf)
@@ -95,23 +117,33 @@ class GestureService:
         """
         Processes a single frame and returns the prediction result and landmarks.
         """
-        # Step 1: Detect Hand Keypoints
-        results = self.detector(frame, verbose=False, conf=0.5)[0]
-        
         found_hand = False
         current_landmarks = None
-        if results.keypoints is not None and len(results.keypoints.data) > 0:
-            # Get first hand detected
-            raw_kp = results.keypoints.data[0].cpu().numpy() # (21, 3)
-            if raw_kp.shape == (21, 3):
-                current_landmarks = raw_kp.tolist() # Convert to list for JSON serialization
-                processed_kp = self.preprocess_landmarks(raw_kp)
-                self.frame_buffer.append(processed_kp)
-                found_hand = True
-        
-        if not found_hand:
-            # If no hand, append zeros to keep temporal consistency
-            self.frame_buffer.append(np.zeros(self.feature_dim))
+
+        # Preferred pipeline: YOLO bbox -> crop -> MediaPipe -> preprocess
+        if self.sequence_pipeline is not None:
+            result = self.sequence_pipeline.process_frame(frame)
+            found_hand = bool(result.get("hand_detected"))
+            current_landmarks = result.get("landmarks")
+            current_bbox = result.get("bbox")
+        else:
+            # Fallback: YOLO keypoints path (pose-only). Kept for compatibility.
+            current_bbox = None
+            results = self.detector(frame, verbose=False, conf=0.5)[0]
+            if results.keypoints is not None and len(results.keypoints.data) > 0:
+                raw_kp = results.keypoints.data[0].cpu().numpy() # (21, 3)
+                if raw_kp.shape == (21, 3):
+                    current_landmarks = raw_kp.tolist()
+                    processed_kp = self.preprocess_landmarks(raw_kp)
+                    self.frame_buffer.append(processed_kp)
+                    found_hand = True
+                    # In fallback mode, use keypoints to estimate a rough bbox
+                    x1, y1 = np.min(raw_kp[:, :2], axis=0)
+                    x2, y2 = np.max(raw_kp[:, :2], axis=0)
+                    current_bbox = [int(x1), int(y1), int(x2), int(y2)]
+
+            if not found_hand:
+                self.frame_buffer.append(np.zeros(self.feature_dim))
 
         # Step 2: Classify if buffer is full and classifier is available
         if len(self.frame_buffer) == self.sequence_length and self.lstm_runtime is not None:
@@ -140,7 +172,8 @@ class GestureService:
                     "gesture": self.labels[class_idx] if class_idx < len(self.labels) else "Unknown",
                     "confidence": float(probs[class_idx]),
                     "hand_detected": found_hand,
-                    "landmarks": current_landmarks
+                    "landmarks": current_landmarks,
+                    "bbox": current_bbox
                 }
             except Exception as e:
                 print(f"Prediction error: {e}")
@@ -148,14 +181,16 @@ class GestureService:
                     "gesture": "Error",
                     "confidence": 0.0,
                     "hand_detected": found_hand,
-                    "landmarks": current_landmarks
+                    "landmarks": current_landmarks,
+                    "bbox": current_bbox
                 }
         
         return {
             "gesture": "Waiting...",
             "confidence": 0.0,
             "hand_detected": found_hand,
-            "landmarks": current_landmarks
+            "landmarks": current_landmarks,
+            "bbox": current_bbox
         }
 
     def reload_detector_by_id(self, model_id: str):

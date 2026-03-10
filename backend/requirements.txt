@@ -25,6 +25,7 @@ h5py==3.14.0
 ultralytics==8.3.0
 opencv-python==4.11.0.86
 pillow==11.2.1
+mediapipe==0.10.14
 
 # ===============================
 # Packaging (CRITICAL PIN)

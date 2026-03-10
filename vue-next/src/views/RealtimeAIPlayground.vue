@@ -746,7 +746,9 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
         <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Realtime AI Playground</h1>
         <p class="text-slate-400">Upload exported model package metadata and test live CV or sensor inference.</p>
       </div>
-      <div class="hidden md:block"></div>
+      <div class="hidden md:flex justify-end">
+        <BaseBtn variant="secondary" @click="router.push('/video-library')">Video Library</BaseBtn>
+      </div>
     </section>
 
     <BaseCard>

@@ -123,6 +123,12 @@ const router = createRouter({
             name: 'csv-library',
             component: () => import('../views/CsvLibrary.vue'),
             meta: { requiresAuth: true, allowedRoles: ['admin'] }
+        },
+        {
+            path: '/video-library',
+            name: 'video-library',
+            component: () => import('../views/VideoLibrary.vue'),
+            meta: { requiresAuth: true, allowedRoles: ['editor', 'admin'] }
         }
     ]
 })
