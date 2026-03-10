@@ -177,6 +177,7 @@ const integratedWsPending = ref(false)
 const useHybridIntegrated = ref(true)
 const integratedFeatureDim = ref(63)
 let integratedLastTs = 0
+let integratedErrorResetting = false
 
 // Performance Feedback State
 const feedbackSent = ref(false)
@@ -528,6 +529,7 @@ const startIntegratedSocket = () => {
     try {
       const res = JSON.parse(event.data)
       if (res.status !== 'success') {
+        void resetIntegratedBuffer()
         prediction.value = {
           label: 'error',
           confidence: 0,
@@ -591,6 +593,9 @@ const predictFromIntegratedService = async () => {
         confidence: res.confidence,
         note: `Integrated YOLO+LSTM Loop. Buffer: ${res.buffer_status}`
       }
+      if (res.gesture === 'Error') {
+        void resetIntegratedBuffer()
+      }
       backendLandmarks.value = res.landmarks
       backendBbox.value = res.bbox
       if (res.landmarks) {
@@ -604,6 +609,7 @@ const predictFromIntegratedService = async () => {
       confidence: 0,
       note: e?.response?.data?.detail || 'Integrated inference failed.'
     }
+    void resetIntegratedBuffer()
   } finally {
     isPredictingFrame = false
   }
@@ -625,6 +631,9 @@ const predictFromIntegratedFeatures = async (results) => {
         confidence: res.confidence,
         note: `Hybrid Loop. Buffer: ${res.buffer_status}`
       }
+      if (res.gesture === 'Error') {
+        void resetIntegratedBuffer()
+      }
     }
   } catch (e) {
     prediction.value = {
@@ -632,6 +641,7 @@ const predictFromIntegratedFeatures = async (results) => {
       confidence: 0,
       note: e?.response?.data?.detail || 'Hybrid inference failed.'
     }
+    void resetIntegratedBuffer()
   } finally {
     isPredictingFrame = false
   }
@@ -1328,3 +1338,14 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
     </BaseCard>
   </div>
 </template>
+const resetIntegratedBuffer = async () => {
+  if (integratedErrorResetting) return
+  integratedErrorResetting = true
+  try {
+    await api.modelLibrary.resetIntegrated()
+  } catch {
+    // ignore
+  } finally {
+    integratedErrorResetting = false
+  }
+}

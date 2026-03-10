@@ -183,6 +183,7 @@ class GestureService:
                 }
             except Exception as e:
                 print(f"Prediction error: {e}")
+                self.reset_buffer()
                 return {
                     "gesture": "Error",
                     "confidence": 0.0,
@@ -280,6 +281,7 @@ class GestureService:
                 }
             except Exception as e:
                 print(f"Prediction error: {e}")
+                self.reset_buffer()
                 return {
                     "gesture": "Error",
                     "confidence": 0.0,

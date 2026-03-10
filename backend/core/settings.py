@@ -104,6 +104,7 @@ class Settings(BaseSettings):
     LOG_FILE: str = Field("logs/app.log")
     MAX_REQUEST_SIZE: int = Field(10 * 1024 * 1024)  # 10MB
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(60)
+    RATE_LIMIT_EXCLUDE_PREFIXES: List[str] = Field(["/predict/integrated"])
     
     # API configuration
     API_V1_STR: str = "/api/v1"
@@ -150,6 +151,13 @@ class Settings(BaseSettings):
     def parse_allowed_file_types(cls, v):
         if isinstance(v, str):
             return [file_type.strip() for file_type in v.split(",")]
+        return v
+
+    @field_validator("RATE_LIMIT_EXCLUDE_PREFIXES", mode="before")
+    @classmethod
+    def parse_rate_limit_excludes(cls, v):
+        if isinstance(v, str):
+            return [path.strip() for path in v.split(",") if path.strip()]
         return v
     
     @field_validator("JWT_SECRET_KEY")

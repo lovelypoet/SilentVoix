@@ -276,6 +276,8 @@ export default {
       api.post('/predict/integrated', { image_data: imageData }),
     predictIntegratedFeatures: (features) =>
       api.post('/predict/integrated/features', { features }),
+    resetIntegrated: () =>
+      api.post('/predict/integrated/reset'),
     getIntegratedDetector: () =>
       api.get('/predict/integrated/detector'),
     setIntegratedDetector: (modelId) =>

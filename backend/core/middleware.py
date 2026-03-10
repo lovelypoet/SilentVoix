@@ -81,13 +81,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple rate limiting middleware."""
     
-    def __init__(self, app, requests_per_minute: int = 60):
+    def __init__(self, app, requests_per_minute: int = 60, exclude_prefixes=None):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.request_counts = {}
+        self.exclude_prefixes = exclude_prefixes or []
     
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         client_ip = request.client.host if request.client else "unknown"
+        path = request.url.path or ""
+        for prefix in self.exclude_prefixes:
+            if path.startswith(prefix):
+                return await call_next(request)
         current_time = time.time()
         
         # Clean old entries (older than 1 minute)
@@ -149,5 +154,10 @@ def setup_middleware(app):
     app.add_middleware(PerformanceMiddleware)
     app.add_middleware(SecurityMiddleware)
     app.add_middleware(LoggingMiddleware)
-    app.add_middleware(RateLimitMiddleware)
+    from core.settings import settings
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_per_minute=settings.RATE_LIMIT_REQUESTS_PER_MINUTE,
+        exclude_prefixes=settings.RATE_LIMIT_EXCLUDE_PREFIXES
+    )
     app.add_middleware(AuthenticationMiddleware) 
