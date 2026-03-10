@@ -263,6 +263,38 @@ const flattenHand63 = (hand) => {
   return values
 }
 
+const buildHybridHand63 = (hand) => {
+  if (!Array.isArray(hand) || hand.length !== 21) {
+    return Array.from({ length: 63 }, () => 0)
+  }
+  const kp = []
+  for (let i = 0; i < 21; i++) {
+    kp.push([
+      Number(hand[i]?.x ?? 0),
+      Number(hand[i]?.y ?? 0),
+      Number(hand[i]?.z ?? 0)
+    ])
+  }
+  const wrist = kp[0]
+  const centered = kp.map((p) => [p[0] - wrist[0], p[1] - wrist[1], p[2] - wrist[2]])
+  const ref = centered[9] || [0, 0, 0]
+  const scale = Math.hypot(ref[0], ref[1], ref[2]) || 1e-6
+  const values = []
+  for (let i = 0; i < 21; i++) {
+    values.push(centered[i][0] / scale, centered[i][1] / scale, centered[i][2] / scale)
+  }
+  return values
+}
+
+const buildHybridFeatureVector = (results, targetDim) => {
+  const dim = Number(targetDim || 63)
+  const { left, right, first } = pickHands(results)
+  const base = buildHybridHand63(left || right || first)
+  if (dim < 63) return base.slice(0, dim)
+  if (dim === 63) return base
+  return [...base, ...Array.from({ length: dim - 63 }, () => 0)]
+}
+
 const buildCvFeatureVector = (results, featureDim) => {
   const dim = Number(featureDim || modelInputDim.value)
   const { left, right, first } = pickHands(results)
@@ -629,7 +661,7 @@ const predictFromIntegratedFeatures = async (results) => {
   integratedLastTs = now
   isPredictingFrame = true
   try {
-    const featureVector = buildCvFeatureVector(results, integratedFeatureDim.value)
+    const featureVector = buildHybridFeatureVector(results, integratedFeatureDim.value)
     const res = await api.modelLibrary.predictIntegratedFeatures(featureVector)
     if (res.status === 'success') {
       prediction.value = {
