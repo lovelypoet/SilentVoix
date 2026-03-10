@@ -117,6 +117,25 @@ services:
       retries: 3
       start_period: 5s
 
+  worker-early-fusion:
+    build: ./worker-early-fusion
+    ports:
+      - "8095:8095"
+    environment:
+      - EARLY_FUSION_SEQUENCE_LENGTH=30
+      - EARLY_FUSION_FEATURE_DIM=74
+      - EARLY_FUSION_LABELS=rest,hello,thank_you,yes,no,bye
+      # Mount or bake a model to this path when ready.
+      - EARLY_FUSION_MODEL_PATH=/app/models/sign_lstm_model.keras
+    volumes:
+      - ./backend/AI/models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8095/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
   mongo:
     image: mongo:7
     ports:
