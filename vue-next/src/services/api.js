@@ -277,7 +277,11 @@ export default {
     getIntegratedDetector: () =>
       api.get('/predict/integrated/detector'),
     setIntegratedDetector: (modelId) =>
-      api.post(`/predict/integrated/detector/${modelId}`)
+      api.post(`/predict/integrated/detector/${modelId}`),
+    getIntegratedConfig: () =>
+      api.get('/predict/integrated/config'),
+    setIntegratedConfig: (payload) =>
+      api.post('/predict/integrated/config', payload)
   },
   // ===================== Model Feedback API =====================
   modelFeedback: {

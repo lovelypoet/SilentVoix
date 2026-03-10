@@ -46,6 +46,7 @@ async def predict_integrated(
             "confidence": result["confidence"],
             "hand_detected": result["hand_detected"],
             "landmarks": result["landmarks"],
+            "bbox": result.get("bbox"),
             "buffer_status": f"{len(service.frame_buffer)}/{service.sequence_length}",
             "detector": os.path.basename(service.yolo_path)
         }
@@ -81,3 +82,16 @@ async def set_active_detector(model_id: str, service = Depends(get_gesture_servi
 async def reset_integrated(service = Depends(get_gesture_service)) -> Dict[str, Any]:
     service.reset_buffer()
     return {"status": "success", "message": "Buffer cleared"}
+
+@router.get("/config", summary="Get integrated pipeline config")
+async def get_integrated_config(service = Depends(get_gesture_service)) -> Dict[str, Any]:
+    return {"status": "success", "config": service.get_integrated_config()}
+
+@router.post("/config", summary="Update integrated pipeline config")
+async def update_integrated_config(
+    payload: Dict[str, Any] = Body(...),
+    service = Depends(get_gesture_service)
+) -> Dict[str, Any]:
+    min_frames = payload.get("min_frames")
+    service.set_min_sequence_frames(min_frames)
+    return {"status": "success", "config": service.get_integrated_config()}

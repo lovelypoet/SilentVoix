@@ -124,6 +124,7 @@ class Settings(BaseSettings):
     WORKER_LIBRARY_URL: str = Field("http://worker-library:8093")
     USE_FUSION_PREPROCESS_WORKER: bool = Field(False)
     FUSION_PREPROCESS_WORKER_URL: str = Field("http://worker-fusion-preprocess:8094")
+    INTEGRATED_MIN_FRAMES: int = Field(5)
 
     # Monitoring thresholds (dashboard alerts)
     MONITORING_WINDOW_SECONDS: int = Field(300)

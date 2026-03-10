@@ -167,6 +167,9 @@ const loadActiveModel = async () => {
 const backendLandmarks = ref(null)
 const activeDetectorId = ref('')
 const isUpdatingDetector = ref(false)
+const integratedMinFrames = ref(5)
+const integratedConfigLoading = ref(false)
+const integratedConfigDirty = ref(false)
 
 // Performance Feedback State
 const feedbackSent = ref(false)
@@ -330,6 +333,39 @@ const loadActiveDetector = async () => {
   }
 }
 
+const loadIntegratedConfig = async () => {
+  integratedConfigLoading.value = true
+  try {
+    const res = await api.modelLibrary.getIntegratedConfig()
+    const minFrames = Number(res?.config?.min_frames)
+    if (Number.isFinite(minFrames) && minFrames > 0) {
+      integratedMinFrames.value = minFrames
+      integratedConfigDirty.value = false
+    }
+  } catch (e) {
+    console.error('Failed to load integrated config:', e)
+  } finally {
+    integratedConfigLoading.value = false
+  }
+}
+
+const saveIntegratedConfig = async () => {
+  integratedConfigLoading.value = true
+  try {
+    const payload = { min_frames: Math.max(1, Math.floor(Number(integratedMinFrames.value) || 1)) }
+    const res = await api.modelLibrary.setIntegratedConfig(payload)
+    const minFrames = Number(res?.config?.min_frames)
+    if (Number.isFinite(minFrames) && minFrames > 0) {
+      integratedMinFrames.value = minFrames
+    }
+    integratedConfigDirty.value = false
+  } catch (e) {
+    uploadError.value = e?.response?.data?.detail || 'Failed to update integrated config.'
+  } finally {
+    integratedConfigLoading.value = false
+  }
+}
+
 const switchDetector = async (modelId) => {
   if (modelId === activeDetectorId.value) return
   isUpdatingDetector.value = true
@@ -346,7 +382,13 @@ const switchDetector = async (modelId) => {
 watch(useIntegratedMode, (val) => {
   if (val) {
     loadActiveDetector()
+    loadIntegratedConfig()
   }
+})
+watch(integratedMinFrames, (val) => {
+  if (!useIntegratedMode.value) return
+  if (!Number.isFinite(Number(val))) return
+  integratedConfigDirty.value = true
 })
 
 const drawBackendSkeleton = (landmarks) => {
@@ -898,6 +940,20 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
             <span v-else-if="!activeDetectorId && availableDetectors.length === 0" class="text-[10px] text-amber-400/80">
               No YOLO models in library.
             </span>
+          </div>
+
+          <!-- Integrated Config (Min Frames) -->
+          <div v-if="useIntegratedMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
+            <span class="text-xs font-medium text-slate-400">Min Frames:</span>
+            <input
+              v-model.number="integratedMinFrames"
+              type="number"
+              min="1"
+              class="w-16 bg-slate-900 text-xs text-white rounded border border-slate-700 px-2 py-1 outline-none"
+            />
+            <BaseBtn variant="secondary" :disabled="integratedConfigLoading || !integratedConfigDirty" @click="saveIntegratedConfig">
+              {{ integratedConfigLoading ? 'Saving...' : 'Save' }}
+            </BaseBtn>
           </div>
 
           <div class="flex gap-2">

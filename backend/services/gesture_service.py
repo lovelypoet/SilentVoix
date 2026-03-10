@@ -70,6 +70,7 @@ class GestureService:
         self.feature_dim = self.metadata.get("input_spec", {}).get("feature_dim", 63)
         self.frame_buffer = deque(maxlen=self.sequence_length)
         self.labels = self.metadata.get("labels", ["Goodbye", "Hello", "No", "Thank you", "Yes"])
+        self.min_sequence_frames = max(1, min(int(getattr(settings, "INTEGRATED_MIN_FRAMES", 5)), self.sequence_length))
 
         # 5. MediaPipe Hands (for YOLO -> crop -> MediaPipe -> LSTM pipeline)
         self.mp_hands = None
@@ -146,9 +147,14 @@ class GestureService:
                 self.frame_buffer.append(np.zeros(self.feature_dim))
 
         # Step 2: Classify if buffer is full and classifier is available
-        if len(self.frame_buffer) == self.sequence_length and self.lstm_runtime is not None:
+        if len(self.frame_buffer) >= self.min_sequence_frames and self.lstm_runtime is not None:
             # Prepare data
-            sequence_np = np.array(list(self.frame_buffer), dtype=np.float32)
+            sequence_list = list(self.frame_buffer)
+            if len(sequence_list) < self.sequence_length:
+                pad_count = self.sequence_length - len(sequence_list)
+                pad = [np.zeros(self.feature_dim, dtype=np.float32) for _ in range(pad_count)]
+                sequence_list = sequence_list + pad
+            sequence_np = np.array(sequence_list, dtype=np.float32)
             
             # Use runtime_adapter for prediction
             # We need to inject sequence_length and feature_dim into runtime metadata for predict()
@@ -217,6 +223,21 @@ class GestureService:
     def reset_buffer(self):
         """Resets the temporal buffer."""
         self.frame_buffer.clear()
+
+    def set_min_sequence_frames(self, min_frames: int):
+        """Adjust minimum frames required before running LSTM, clamped to sequence length."""
+        try:
+            value = int(min_frames)
+        except (TypeError, ValueError):
+            value = self.min_sequence_frames
+        self.min_sequence_frames = max(1, min(value, self.sequence_length))
+
+    def get_integrated_config(self):
+        return {
+            "min_frames": self.min_sequence_frames,
+            "sequence_length": self.sequence_length,
+            "feature_dim": self.feature_dim
+        }
 
 # Singleton instance
 _gesture_service = None
