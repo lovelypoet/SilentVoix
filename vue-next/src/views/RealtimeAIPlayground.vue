@@ -747,7 +747,6 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
         <p class="text-slate-400">Upload exported model package metadata and test live CV or sensor inference.</p>
       </div>
       <div class="hidden md:flex justify-end">
-        <BaseBtn variant="secondary" @click="router.push('/video-library')">Video Library</BaseBtn>
       </div>
     </section>
 

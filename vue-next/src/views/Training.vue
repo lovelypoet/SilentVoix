@@ -175,17 +175,6 @@ const trainingCards = computed(() => {
       onClick: startRealtimePlayground
     },
     {
-      id: 'video-library',
-      icon: '▣',
-      title: 'Video Library',
-      description: 'Upload a video, process it, and keep up to 5 results for the playground.',
-      buttonLabel: 'Open Video Library',
-      buttonVariant: 'primary',
-      disabled: false,
-      locked: false,
-      onClick: startVideoLibrary
-    },
-    {
       id: 'advanced-practice',
       icon: '★',
       title: 'Advanced Practice',
@@ -252,10 +241,6 @@ const startSensorTraining = () => {
 
 const startRealtimePlayground = () => {
   router.push('/realtime-ai-playground')
-}
-
-const startVideoLibrary = () => {
-  router.push('/video-library')
 }
 
 const startAdvancedTraining = async () => {

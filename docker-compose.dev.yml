@@ -40,8 +40,6 @@ services:
       - WORKER_LIBRARY_URL=${WORKER_LIBRARY_URL:-http://worker-library:8093}
       - USE_FUSION_PREPROCESS_WORKER=${USE_FUSION_PREPROCESS_WORKER:-true}
       - FUSION_PREPROCESS_WORKER_URL=${FUSION_PREPROCESS_WORKER_URL:-http://worker-fusion-preprocess:8094}
-      - USE_VIDEO_PROCESSOR_WORKER=${USE_VIDEO_PROCESSOR_WORKER:-true}
-      - VIDEO_PROCESSOR_WORKER_URL=${VIDEO_PROCESSOR_WORKER_URL:-http://worker-video-processor:8000}
     depends_on:
       mongo:
         condition: service_healthy
@@ -52,8 +50,6 @@ services:
       worker-library:
         condition: service_healthy
       worker-fusion-preprocess:
-        condition: service_healthy
-      worker-video-processor:
         condition: service_healthy
     volumes:
       - /dev:/dev
@@ -116,24 +112,6 @@ services:
       - ./backend/data:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8094/health', timeout=5)"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-
-  worker-video-processor:
-    build: ./worker-video-processor
-    ports:
-      - "8095:8000"
-    environment:
-      - VIDEO_PROCESS_JOB_DIR=/app/data/video_process_jobs
-      - VIDEO_PROCESS_OUTPUT_DIR=/app/data/video_process_outputs
-      - MODEL_DIR=/app/AI/models
-    volumes:
-      - ./backend/data:/app/data
-      - ./backend/AI/models:/app/AI/models
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
