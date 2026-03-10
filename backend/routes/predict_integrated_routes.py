@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import os
 from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import WebSocket, WebSocketDisconnect
 from services.gesture_service import get_gesture_service
 from services.model_library_service import model_library_service
 from typing import Dict, Any
@@ -11,6 +12,49 @@ import logging
 logger = logging.getLogger("signglove.predict")
 
 router = APIRouter(prefix="/predict/integrated", tags=["Prediction"])
+
+@router.websocket("/ws")
+async def predict_integrated_ws(ws: WebSocket):
+    await ws.accept()
+    service = get_gesture_service()
+    try:
+        while True:
+            payload = await ws.receive_json()
+            image_data = payload.get("image_data")
+            if not image_data:
+                await ws.send_json({"status": "error", "detail": "Missing image_data"})
+                continue
+
+            if "," in image_data:
+                _, encoded = image_data.split(",", 1)
+            else:
+                encoded = image_data
+
+            try:
+                nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if frame is None:
+                    raise ValueError("Invalid image data")
+            except Exception as exc:
+                await ws.send_json({"status": "error", "detail": str(exc)})
+                continue
+
+            result = service.predict_frame(frame)
+            await ws.send_json({
+                "status": "success",
+                "gesture": result["gesture"],
+                "confidence": result["confidence"],
+                "hand_detected": result["hand_detected"],
+                "landmarks": result["landmarks"],
+                "bbox": result.get("bbox"),
+                "buffer_status": f"{len(service.frame_buffer)}/{service.sequence_length}",
+                "detector": os.path.basename(service.yolo_path)
+            })
+    except WebSocketDisconnect:
+        return
+    except Exception as exc:
+        logger.error(f"WS prediction failed: {exc}")
+        await ws.close(code=1011)
 
 @router.post("", summary="Predict gesture using YOLOv8-Pose + LSTM")
 async def predict_integrated(

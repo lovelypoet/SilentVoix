@@ -171,6 +171,9 @@ const isUpdatingDetector = ref(false)
 const integratedMinFrames = ref(5)
 const integratedConfigLoading = ref(false)
 const integratedConfigDirty = ref(false)
+const integratedWs = ref(null)
+const integratedWsReady = ref(false)
+const integratedWsPending = ref(false)
 
 // Performance Feedback State
 const feedbackSent = ref(false)
@@ -384,6 +387,11 @@ watch(useIntegratedMode, (val) => {
   if (val) {
     loadActiveDetector()
     loadIntegratedConfig()
+    if (isLive.value) {
+      startIntegratedSocket()
+    }
+  } else {
+    stopIntegratedSocket()
   }
 })
 watch(integratedMinFrames, (val) => {
@@ -469,6 +477,81 @@ const drawBackendBbox = (bbox) => {
   ctx.strokeRect(drawX, y1, width, height)
 }
 
+const resolveIntegratedWsUrl = () => {
+  const base = import.meta.env.VITE_API_URL || '/api'
+  let httpBase = base
+  if (!/^https?:\/\//i.test(httpBase)) {
+    const prefix = httpBase.startsWith('/') ? '' : '/'
+    httpBase = `${window.location.origin}${prefix}${httpBase}`
+  }
+  const wsBase = httpBase.replace(/^http/i, 'ws').replace(/\/+$/, '')
+  return `${wsBase}/predict/integrated/ws`
+}
+
+const startIntegratedSocket = () => {
+  const url = resolveIntegratedWsUrl()
+  const ws = new WebSocket(url)
+  integratedWs.value = ws
+  integratedWsReady.value = false
+  integratedWsPending.value = false
+
+  ws.onopen = () => {
+    integratedWsReady.value = true
+  }
+  ws.onclose = () => {
+    integratedWsReady.value = false
+    integratedWsPending.value = false
+  }
+  ws.onerror = () => {
+    integratedWsReady.value = false
+    integratedWsPending.value = false
+  }
+  ws.onmessage = (event) => {
+    integratedWsPending.value = false
+    try {
+      const res = JSON.parse(event.data)
+      if (res.status !== 'success') {
+        prediction.value = {
+          label: 'error',
+          confidence: 0,
+          note: res?.detail || 'Integrated WS inference failed.'
+        }
+        return
+      }
+      prediction.value = {
+        label: res.gesture,
+        confidence: res.confidence,
+        note: `Integrated YOLO+LSTM Loop. Buffer: ${res.buffer_status}`
+      }
+      backendLandmarks.value = res.landmarks
+      backendBbox.value = res.bbox
+      if (res.landmarks) {
+        drawBackendSkeleton(res.landmarks)
+      }
+      drawBackendBbox(res.bbox)
+    } catch (e) {
+      prediction.value = {
+        label: 'error',
+        confidence: 0,
+        note: 'Failed to parse integrated response.'
+      }
+    }
+  }
+}
+
+const stopIntegratedSocket = () => {
+  if (integratedWs.value) {
+    try {
+      integratedWs.value.close()
+    } catch {
+      // ignore
+    }
+  }
+  integratedWs.value = null
+  integratedWsReady.value = false
+  integratedWsPending.value = false
+}
+
 const predictFromIntegratedService = async () => {
   if (isPredictingFrame) return
   if (!videoEl.value || videoEl.value.readyState < 2) return
@@ -513,6 +596,19 @@ const startIntegratedLoop = () => {
   if (integratedPredictTimer !== null) return
   integratedPredictTimer = window.setInterval(() => {
     if (!useIntegratedMode.value || !isLive.value) return
+    if (integratedWsReady.value && integratedWs.value) {
+      if (integratedWsPending.value) return
+      if (!videoEl.value || videoEl.value.readyState < 2) return
+      const canvas = document.createElement('canvas')
+      canvas.width = videoEl.value.videoWidth
+      canvas.height = videoEl.value.videoHeight
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(videoEl.value, 0, 0)
+      const base64 = canvas.toDataURL('image/jpeg', 0.7)
+      integratedWsPending.value = true
+      integratedWs.value.send(JSON.stringify({ image_data: base64 }))
+      return
+    }
     void predictFromIntegratedService()
   }, 50)
 }
@@ -702,6 +798,7 @@ const stopLive = () => {
     sensorPollTimer = null
   }
   stopIntegratedLoop()
+  stopIntegratedSocket()
   stopHandTracking()
   if (mediaStream.value) {
     mediaStream.value.getTracks().forEach((t) => t.stop())
@@ -772,6 +869,7 @@ const startLive = async () => {
     isLive.value = true
     liveStatus.value = isFusionMode.value ? 'Fusion Mode Active.' : 'Live camera running.'
     if (useIntegratedMode.value) {
+      startIntegratedSocket()
       startIntegratedLoop()
     }
   } catch (e) {
