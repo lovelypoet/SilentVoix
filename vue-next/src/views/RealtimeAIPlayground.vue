@@ -165,6 +165,7 @@ const loadActiveModel = async () => {
 }
 
 const backendLandmarks = ref(null)
+const backendBbox = ref(null)
 const activeDetectorId = ref('')
 const isUpdatingDetector = ref(false)
 const integratedMinFrames = ref(5)
@@ -446,6 +447,28 @@ const drawBackendSkeleton = (landmarks) => {
   ctx.stroke()
 }
 
+const drawBackendBbox = (bbox) => {
+  const canvas = bboxCanvasEl.value
+  const video = videoEl.value
+  if (!canvas || !video) return
+  const ctx = canvas.getContext('2d')
+  canvas.width = video.videoWidth || 640
+  canvas.height = video.videoHeight || 480
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  if (!Array.isArray(bbox) || bbox.length !== 4) {
+    return
+  }
+  const [x1, y1, x2, y2] = bbox.map((v) => Number(v || 0))
+  const width = Math.max(1, x2 - x1)
+  const height = Math.max(1, y2 - y1)
+  const drawX = mirrorCamera.value ? canvas.width - x2 : x1
+
+  ctx.strokeStyle = styleSettings.value.landmarkColor
+  ctx.lineWidth = 2
+  ctx.strokeRect(drawX, y1, width, height)
+}
+
 const predictFromIntegratedService = async () => {
   if (isPredictingFrame) return
   if (!videoEl.value || videoEl.value.readyState < 2) return
@@ -469,9 +492,11 @@ const predictFromIntegratedService = async () => {
         note: `Integrated YOLO+LSTM Loop. Buffer: ${res.buffer_status}`
       }
       backendLandmarks.value = res.landmarks
+      backendBbox.value = res.bbox
       if (res.landmarks) {
         drawBackendSkeleton(res.landmarks)
       }
+      drawBackendBbox(res.bbox)
     }
   } catch (e) {
     prediction.value = {
