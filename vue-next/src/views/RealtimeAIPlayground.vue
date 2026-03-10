@@ -178,6 +178,8 @@ const useHybridIntegrated = ref(true)
 const integratedFeatureDim = ref(63)
 let integratedLastTs = 0
 let integratedErrorResetting = false
+const integratedImageScale = ref(0.5)
+const integratedJpegQuality = ref(0.6)
 
 // Performance Feedback State
 const feedbackSent = ref(false)
@@ -579,11 +581,15 @@ const predictFromIntegratedService = async () => {
   try {
     // Capture frame from video element
     const canvas = document.createElement('canvas')
-    canvas.width = videoEl.value.videoWidth
-    canvas.height = videoEl.value.videoHeight
+    const baseW = videoEl.value.videoWidth
+    const baseH = videoEl.value.videoHeight
+    const scale = Math.max(0.2, Math.min(1, Number(integratedImageScale.value) || 1))
+    canvas.width = Math.max(1, Math.floor(baseW * scale))
+    canvas.height = Math.max(1, Math.floor(baseH * scale))
     const ctx = canvas.getContext('2d')
-    ctx.drawImage(videoEl.value, 0, 0)
-    const base64 = canvas.toDataURL('image/jpeg', 0.7)
+    ctx.drawImage(videoEl.value, 0, 0, canvas.width, canvas.height)
+    const quality = Math.max(0.1, Math.min(0.95, Number(integratedJpegQuality.value) || 0.7))
+    const base64 = canvas.toDataURL('image/jpeg', quality)
 
     const res = await api.modelLibrary.predictIntegrated(base64)
     
@@ -655,11 +661,15 @@ const startIntegratedLoop = () => {
       if (integratedWsPending.value) return
       if (!videoEl.value || videoEl.value.readyState < 2) return
       const canvas = document.createElement('canvas')
-      canvas.width = videoEl.value.videoWidth
-      canvas.height = videoEl.value.videoHeight
+      const baseW = videoEl.value.videoWidth
+      const baseH = videoEl.value.videoHeight
+      const scale = Math.max(0.2, Math.min(1, Number(integratedImageScale.value) || 1))
+      canvas.width = Math.max(1, Math.floor(baseW * scale))
+      canvas.height = Math.max(1, Math.floor(baseH * scale))
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(videoEl.value, 0, 0)
-      const base64 = canvas.toDataURL('image/jpeg', 0.7)
+      ctx.drawImage(videoEl.value, 0, 0, canvas.width, canvas.height)
+      const quality = Math.max(0.1, Math.min(0.95, Number(integratedJpegQuality.value) || 0.7))
+      const base64 = canvas.toDataURL('image/jpeg', quality)
       integratedWsPending.value = true
       integratedWs.value.send(JSON.stringify({ image_data: base64 }))
       return
@@ -1155,6 +1165,28 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
             <BaseBtn variant="secondary" :disabled="integratedConfigLoading || !integratedConfigDirty" @click="saveIntegratedConfig">
               {{ integratedConfigLoading ? 'Saving...' : 'Save' }}
             </BaseBtn>
+          </div>
+
+          <!-- Integrated Image Quality -->
+          <div v-if="useIntegratedMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
+            <span class="text-xs font-medium text-slate-400">Scale:</span>
+            <input
+              v-model.number="integratedImageScale"
+              type="number"
+              min="0.2"
+              max="1"
+              step="0.1"
+              class="w-16 bg-slate-900 text-xs text-white rounded border border-slate-700 px-2 py-1 outline-none"
+            />
+            <span class="text-xs font-medium text-slate-400">JPEG:</span>
+            <input
+              v-model.number="integratedJpegQuality"
+              type="number"
+              min="0.1"
+              max="0.95"
+              step="0.05"
+              class="w-16 bg-slate-900 text-xs text-white rounded border border-slate-700 px-2 py-1 outline-none"
+            />
           </div>
 
           <div class="flex gap-2">
