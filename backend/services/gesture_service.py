@@ -239,6 +239,59 @@ class GestureService:
             "feature_dim": self.feature_dim
         }
 
+    def predict_features(self, feature_vec):
+        """Predict using precomputed feature vector (e.g., client-side MediaPipe)."""
+        try:
+            vec = np.array(feature_vec, dtype=np.float32).flatten()
+        except Exception:
+            vec = np.zeros(self.feature_dim, dtype=np.float32)
+
+        if vec.size > self.feature_dim:
+            vec = vec[:self.feature_dim]
+        elif vec.size < self.feature_dim:
+            vec = np.pad(vec, (0, self.feature_dim - vec.size))
+
+        self.frame_buffer.append(vec)
+        found_hand = bool(np.any(vec))
+
+        if len(self.frame_buffer) >= self.min_sequence_frames and self.lstm_runtime is not None:
+            sequence_list = list(self.frame_buffer)
+            if len(sequence_list) < self.sequence_length:
+                pad_count = self.sequence_length - len(sequence_list)
+                pad = [np.zeros(self.feature_dim, dtype=np.float32) for _ in range(pad_count)]
+                sequence_list = sequence_list + pad
+            sequence_np = np.array(sequence_list, dtype=np.float32)
+            self.lstm_runtime["metadata"] = {
+                "input_spec": {
+                    "sequence_length": self.sequence_length,
+                    "feature_dim": self.feature_dim
+                }
+            }
+
+            try:
+                logits = predict_runtime(self.lstm_runtime, sequence_np)
+                exp_logits = np.exp(logits - np.max(logits))
+                probs = exp_logits / exp_logits.sum()
+                class_idx = np.argmax(probs)
+                return {
+                    "gesture": self.labels[class_idx] if class_idx < len(self.labels) else "Unknown",
+                    "confidence": float(probs[class_idx]),
+                    "hand_detected": found_hand
+                }
+            except Exception as e:
+                print(f"Prediction error: {e}")
+                return {
+                    "gesture": "Error",
+                    "confidence": 0.0,
+                    "hand_detected": found_hand
+                }
+
+        return {
+            "gesture": "Waiting...",
+            "confidence": 0.0,
+            "hand_detected": found_hand
+        }
+
 # Singleton instance
 _gesture_service = None
 

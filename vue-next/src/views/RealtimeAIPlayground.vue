@@ -174,6 +174,9 @@ const integratedConfigDirty = ref(false)
 const integratedWs = ref(null)
 const integratedWsReady = ref(false)
 const integratedWsPending = ref(false)
+const useHybridIntegrated = ref(true)
+const integratedFeatureDim = ref(63)
+let integratedLastTs = 0
 
 // Performance Feedback State
 const feedbackSent = ref(false)
@@ -346,6 +349,10 @@ const loadIntegratedConfig = async () => {
       integratedMinFrames.value = minFrames
       integratedConfigDirty.value = false
     }
+    const featureDim = Number(res?.config?.feature_dim)
+    if (Number.isFinite(featureDim) && featureDim > 0) {
+      integratedFeatureDim.value = featureDim
+    }
   } catch (e) {
     console.error('Failed to load integrated config:', e)
   } finally {
@@ -388,10 +395,20 @@ watch(useIntegratedMode, (val) => {
     loadActiveDetector()
     loadIntegratedConfig()
     if (isLive.value) {
-      startIntegratedSocket()
+      if (!useHybridIntegrated.value) {
+        startIntegratedSocket()
+      }
     }
   } else {
     stopIntegratedSocket()
+  }
+})
+watch(useHybridIntegrated, (val) => {
+  if (!useIntegratedMode.value) return
+  if (val) {
+    stopIntegratedSocket()
+  } else if (isLive.value) {
+    startIntegratedSocket()
   }
 })
 watch(integratedMinFrames, (val) => {
@@ -586,6 +603,34 @@ const predictFromIntegratedService = async () => {
       label: 'error',
       confidence: 0,
       note: e?.response?.data?.detail || 'Integrated inference failed.'
+    }
+  } finally {
+    isPredictingFrame = false
+  }
+}
+
+const predictFromIntegratedFeatures = async (results) => {
+  if (!useIntegratedMode.value || !useHybridIntegrated.value) return
+  if (isPredictingFrame) return
+  const now = Date.now()
+  if (now - integratedLastTs < 50) return
+  integratedLastTs = now
+  isPredictingFrame = true
+  try {
+    const featureVector = buildCvFeatureVector(results, integratedFeatureDim.value)
+    const res = await api.modelLibrary.predictIntegratedFeatures(featureVector)
+    if (res.status === 'success') {
+      prediction.value = {
+        label: res.gesture,
+        confidence: res.confidence,
+        note: `Hybrid Loop. Buffer: ${res.buffer_status}`
+      }
+    }
+  } catch (e) {
+    prediction.value = {
+      label: 'error',
+      confidence: 0,
+      note: e?.response?.data?.detail || 'Hybrid inference failed.'
     }
   } finally {
     isPredictingFrame = false
@@ -858,19 +903,24 @@ const startLive = async () => {
       if (isFusionMode.value) {
          void predictFusion(results)
       } else {
-        if (!useIntegratedMode.value) {
+        if (!useIntegratedMode.value || useHybridIntegrated.value) {
           drawBoundingBoxes(results)
         }
         if (results?.landmarks?.length || useIntegratedMode.value) {
           void predictFromResults(results)
+        }
+        if (useIntegratedMode.value && useHybridIntegrated.value) {
+          void predictFromIntegratedFeatures(results)
         }
       }
     })
     isLive.value = true
     liveStatus.value = isFusionMode.value ? 'Fusion Mode Active.' : 'Live camera running.'
     if (useIntegratedMode.value) {
-      startIntegratedSocket()
-      startIntegratedLoop()
+      if (!useHybridIntegrated.value) {
+        startIntegratedSocket()
+        startIntegratedLoop()
+      }
     }
   } catch (e) {
     liveStatus.value = e?.message || 'Failed to start camera.'
@@ -1042,6 +1092,24 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
               @click="useIntegratedMode = true"
             >
               YOLO+LSTM (Server)
+            </button>
+          </div>
+
+          <div v-if="useIntegratedMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
+            <span class="text-xs font-medium text-slate-400">Mode:</span>
+            <button
+              class="px-2 py-1 text-xs rounded transition-colors"
+              :class="useHybridIntegrated ? 'bg-teal-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+              @click="useHybridIntegrated = true"
+            >
+              Hybrid
+            </button>
+            <button
+              class="px-2 py-1 text-xs rounded transition-colors"
+              :class="!useHybridIntegrated ? 'bg-teal-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+              @click="useHybridIntegrated = false"
+            >
+              Server
             </button>
           </div>
 

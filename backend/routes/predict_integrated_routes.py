@@ -139,3 +139,22 @@ async def update_integrated_config(
     min_frames = payload.get("min_frames")
     service.set_min_sequence_frames(min_frames)
     return {"status": "success", "config": service.get_integrated_config()}
+
+@router.post("/features", summary="Predict gesture using precomputed feature vector")
+async def predict_integrated_features(
+    payload: Dict[str, Any] = Body(...),
+    service = Depends(get_gesture_service)
+) -> Dict[str, Any]:
+    features = payload.get("features")
+    if not isinstance(features, list):
+        raise HTTPException(status_code=400, detail="Missing features")
+
+    result = service.predict_features(features)
+    return {
+        "status": "success",
+        "gesture": result["gesture"],
+        "confidence": result["confidence"],
+        "hand_detected": result["hand_detected"],
+        "buffer_status": f"{len(service.frame_buffer)}/{service.sequence_length}",
+        "detector": os.path.basename(service.yolo_path)
+    }

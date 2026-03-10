@@ -274,6 +274,8 @@ export default {
       api.post('/model-library/predict/sensor', payload),
     predictIntegrated: (imageData) =>
       api.post('/predict/integrated', { image_data: imageData }),
+    predictIntegratedFeatures: (features) =>
+      api.post('/predict/integrated/features', { features }),
     getIntegratedDetector: () =>
       api.get('/predict/integrated/detector'),
     setIntegratedDetector: (modelId) =>
