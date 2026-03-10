@@ -291,5 +291,10 @@ export default {
   modelFeedback: {
     submit: (payload) => api.post('/model-library/feedback', payload),
     getStats: (modelId) => api.get(`/model-library/feedback/stats/${modelId}`),
+  },
+  earlyFusion: {
+    health: () => api.get('/early-fusion/health'),
+    predict: (payload) => api.post('/early-fusion/predict', payload),
+    reset: (sessionId = 'default') => api.post('/early-fusion/reset', { session_id: sessionId })
   }
 };

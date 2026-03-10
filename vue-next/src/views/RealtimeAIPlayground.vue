@@ -20,6 +20,7 @@ const isSwitchingSavedModel = ref(false)
 
 // --- Dual-Model Late Fusion State ---
 const isFusionMode = ref(false)
+const isEarlyFusionMode = ref(false)
 const selectedCvModelId = ref('')
 const selectedSensorModelId = ref('')
 const activeCvModel = ref(null)
@@ -29,6 +30,9 @@ const fusionPrediction = ref(null)
 const cvPrediction = ref(null)
 const sensorPrediction = ref(null)
 const isFusionPredicting = ref(false)
+const isEarlyFusionPredicting = ref(false)
+const earlyFusionSource = ref('cv')
+const earlyFusionSessionId = ref('realtime-playground')
 
 const mirrorCamera = ref(true)
 const showLandmarks = ref(true)
@@ -49,6 +53,7 @@ let isPredictingFrame = false
 let sensorPollTimer = null
 const cvFrameBuffer = ref([])
 let integratedPredictTimer = null
+let earlyFusionLastTs = 0
 
 const useIntegratedMode = ref(false)
 const styleSettings = ref({
@@ -540,6 +545,18 @@ const resolveIntegratedWsUrl = () => {
   return `${wsBase}/predict/integrated/ws`
 }
 
+const resetIntegratedBuffer = async () => {
+  if (integratedErrorResetting) return
+  integratedErrorResetting = true
+  try {
+    await api.modelLibrary.resetIntegrated()
+  } catch {
+    // ignore
+  } finally {
+    integratedErrorResetting = false
+  }
+}
+
 const startIntegratedSocket = () => {
   const url = resolveIntegratedWsUrl()
   const ws = new WebSocket(url)
@@ -889,6 +906,69 @@ const predictFusion = async (cvResults) => {
   }
 }
 
+const predictEarlyFusion = async (cvResults) => {
+  if (!isEarlyFusionMode.value || isEarlyFusionPredicting.value) return
+  const now = Date.now()
+  if (now - earlyFusionLastTs < 100) return
+  earlyFusionLastTs = now
+  isEarlyFusionPredicting.value = true
+
+  try {
+    const sensorRaw = await api.utils.latestSensorFrame()
+    const rawValues = Array.isArray(sensorRaw?.values) ? sensorRaw.values : []
+    sensorSnapshot.value = {
+      values: rawValues,
+      realSensor: Boolean(sensorRaw?.real_sensor),
+      updatedAt: Date.now()
+    }
+
+    const cvFeatures = buildCvFeatureVector(cvResults, 63)
+    const sensorDim = rawValues.length >= 11 ? 11 : rawValues.length
+    const sensorValues = rawValues.slice(0, sensorDim).map((v) => Number(v ?? 0))
+    const paddedSensor = sensorDim < 11
+      ? [...sensorValues, ...Array.from({ length: 11 - sensorDim }, () => 0)]
+      : sensorValues
+
+    const useCvOnly = earlyFusionSource.value === 'cv'
+    const useSensorOnly = earlyFusionSource.value === 'sensor'
+
+    const payload = {
+      session_id: earlyFusionSessionId.value,
+      cv_features: useSensorOnly ? Array.from({ length: 63 }, () => 0) : cvFeatures,
+      sensor_features: useCvOnly ? Array.from({ length: 11 }, () => 0) : paddedSensor
+    }
+
+    const res = await api.earlyFusion.predict(payload)
+    if (res.status === 'success') {
+      prediction.value = {
+        label: res.gesture,
+        confidence: res.confidence,
+        note: `Early Fusion (${earlyFusionSource.value}). Buffer: ${res.buffer_status}`
+      }
+    } else if (res.status === 'waiting') {
+      prediction.value = {
+        label: 'Waiting...',
+        confidence: 0,
+        note: `Early Fusion (${earlyFusionSource.value}). Buffer: ${res.buffer_status}`
+      }
+    } else {
+      prediction.value = {
+        label: 'error',
+        confidence: 0,
+        note: res.detail || 'Early fusion failed.'
+      }
+    }
+  } catch (e) {
+    prediction.value = {
+      label: 'error',
+      confidence: 0,
+      note: e?.response?.data?.detail || 'Early fusion failed.'
+    }
+  } finally {
+    isEarlyFusionPredicting.value = false
+  }
+}
+
 const stopLive = () => {
   if (sensorPollTimer) {
     clearInterval(sensorPollTimer)
@@ -913,7 +993,9 @@ const stopLive = () => {
 }
 
 const startLive = async () => {
-  if (isFusionMode.value) {
+  if (isEarlyFusionMode.value) {
+    liveStatus.value = 'Starting Early Fusion stream...'
+  } else if (isFusionMode.value) {
     if (!activeCvModel.value || !activeSensorModel.value) {
        liveStatus.value = 'Activate a fusion pair first.'
        return
@@ -931,7 +1013,7 @@ const startLive = async () => {
     }
   }
 
-  if (modelModality.value === 'sensor' && !isFusionMode.value) {
+  if (modelModality.value === 'sensor' && !isFusionMode.value && !isEarlyFusionMode.value) {
     stopLive()
     isLive.value = true
     liveStatus.value = 'Starting realtime sensor polling...'
@@ -952,6 +1034,11 @@ const startLive = async () => {
     mediaStream.value = stream
     await startHandTracking(videoEl.value, landmarkCanvasEl.value, stream)
     onFrame((results) => {
+      if (isEarlyFusionMode.value) {
+        drawBoundingBoxes(results)
+        void predictEarlyFusion(results)
+        return
+      }
       if (isFusionMode.value) {
          void predictFusion(results)
       } else {
@@ -999,6 +1086,19 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
     feedbackSent.value = false
   }
 })
+
+watch(isEarlyFusionMode, (val) => {
+  if (val) {
+    isFusionMode.value = false
+    useIntegratedMode.value = false
+    stopLive()
+  }
+})
+watch(isFusionMode, (val) => {
+  if (val) {
+    isEarlyFusionMode.value = false
+  }
+})
 </script>
 
 <template>
@@ -1024,6 +1124,16 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
           <p class="text-xs text-slate-400 mt-1">Select a model from your library to use in the playground. Manage your models in the <router-link to="/model-library" class="text-teal-400 hover:underline">Model Library</router-link>.</p>
         </div>
         <div class="flex items-center gap-2">
+           <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Early Fusion:</span>
+           <button 
+             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+             :class="isEarlyFusionMode ? 'bg-teal-500' : 'bg-slate-700'"
+             @click="isEarlyFusionMode = !isEarlyFusionMode"
+           >
+             <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="isEarlyFusionMode ? 'translate-x-6' : 'translate-x-1'"></span>
+           </button>
+        </div>
+        <div class="flex items-center gap-2">
            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Late Fusion Mode:</span>
            <button 
              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
@@ -1036,7 +1146,7 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
       </div>
       
       <!-- Standard Mode Model Selection -->
-      <div v-if="!isFusionMode" class="mt-4">
+      <div v-if="!isFusionMode && !isEarlyFusionMode" class="mt-4">
         <label class="text-sm text-slate-300">
           Switch Classifier
           <div class="mt-1 flex flex-col gap-2 md:flex-row">
@@ -1054,7 +1164,7 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
       </div>
 
       <!-- Fusion Mode Model Selection -->
-      <div v-else class="mt-4 space-y-4">
+      <div v-else-if="isFusionMode" class="mt-4 space-y-4">
          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1">
                <label class="text-xs font-bold text-slate-500 uppercase">Vision (CV) Model</label>
@@ -1099,7 +1209,7 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
         {{ uploadError }}
       </div>
 
-      <div v-if="modelSummary && !isFusionMode" class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 p-4 shadow-inner">
+      <div v-if="modelSummary && !isFusionMode && !isEarlyFusionMode" class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 p-4 shadow-inner">
         <div class="flex items-start justify-between">
           <div>
             <h3 class="text-slate-100 font-bold text-lg">{{ modelSummary.name }}</h3>
@@ -1282,7 +1392,7 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
         <canvas v-show="!isFusionMode && modelModality !== 'sensor' || isFusionMode" ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
         
         <!-- Sensor Overlay (Always visible in Fusion or Sensor Mode) -->
-        <div v-if="isFusionMode || modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-48 overflow-auto bg-slate-950/80 p-3 border-l border-slate-700 backdrop-blur-sm">
+        <div v-if="isFusionMode || isEarlyFusionMode || modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-48 overflow-auto bg-slate-950/80 p-3 border-l border-slate-700 backdrop-blur-sm">
           <p class="text-[10px] text-amber-500 font-bold uppercase mb-2">Sensor Stream</p>
           <div class="space-y-1">
             <div
@@ -1402,14 +1512,3 @@ watch(() => prediction.value?.label, (newLabel, oldLabel) => {
     </BaseCard>
   </div>
 </template>
-const resetIntegratedBuffer = async () => {
-  if (integratedErrorResetting) return
-  integratedErrorResetting = true
-  try {
-    await api.modelLibrary.resetIntegrated()
-  } catch {
-    // ignore
-  } finally {
-    integratedErrorResetting = false
-  }
-}

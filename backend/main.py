@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from routes import sensor_routes, admin_routes, dashboard_routes, gestures_predict
-from routes import utils_routes, auth_routes, voice_routes, sync_routes, liveWS, capture_controls_routes, admin_csv_library_routes, model_library_routes, fusion_preprocess_routes
+from routes import utils_routes, auth_routes, voice_routes, sync_routes, liveWS, capture_controls_routes, admin_csv_library_routes, model_library_routes, fusion_preprocess_routes, early_fusion_routes
 from routes import model_status
 from routes import audio_files_routes, predict_integrated_routes, model_feedback_routes
 from ingestion.streaming.live_data import get_latest_data
@@ -41,9 +41,10 @@ async def lifespan(app: FastAPI):
     await ensure_default_users()
     logging.info("Indexes created. App is starting...")
     logging.info(
-        "Runtime flags | USE_RUNTIME_SERVICES=%s USE_WORKER_LIBRARY=%s USE_FUSION_PREPROCESS_WORKER=%s RUNTIME_PREFLIGHT_ON_STARTUP=%s MODEL_LIBRARY_DIR=%s",
+        "Runtime flags | USE_RUNTIME_SERVICES=%s USE_WORKER_LIBRARY=%s USE_EARLY_FUSION_WORKER=%s USE_FUSION_PREPROCESS_WORKER=%s RUNTIME_PREFLIGHT_ON_STARTUP=%s MODEL_LIBRARY_DIR=%s",
         settings.USE_RUNTIME_SERVICES,
         settings.USE_WORKER_LIBRARY,
+        settings.USE_EARLY_FUSION_WORKER,
         settings.USE_FUSION_PREPROCESS_WORKER,
         settings.RUNTIME_PREFLIGHT_ON_STARTUP,
         settings.MODEL_LIBRARY_DIR,
@@ -112,6 +113,7 @@ app.include_router(model_status.router)
 app.include_router(admin_csv_library_routes.router)
 app.include_router(model_library_routes.router)
 app.include_router(fusion_preprocess_routes.router)
+app.include_router(early_fusion_routes.router)
 app.include_router(predict_integrated_routes.router)
 app.include_router(model_feedback_routes.router)
 
