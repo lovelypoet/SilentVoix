@@ -514,7 +514,7 @@ const startIntegratedLoop = () => {
   integratedPredictTimer = window.setInterval(() => {
     if (!useIntegratedMode.value || !isLive.value) return
     void predictFromIntegratedService()
-  }, 250)
+  }, 50)
 }
 
 const stopIntegratedLoop = () => {
