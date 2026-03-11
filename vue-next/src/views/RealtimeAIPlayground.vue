@@ -48,6 +48,8 @@ const sensorSnapshot = ref({
   realSensor: false,
   updatedAt: null
 })
+const sensorStreamWs = ref(null)
+const sensorStreamConnected = ref(false)
 let lastPredictTs = 0
 let isPredictingFrame = false
 let sensorPollTimer = null
@@ -974,6 +976,7 @@ const stopLive = () => {
     clearInterval(sensorPollTimer)
     sensorPollTimer = null
   }
+  stopSensorStream()
   stopIntegratedLoop()
   stopIntegratedSocket()
   stopHandTracking()
@@ -990,6 +993,63 @@ const stopLive = () => {
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
   }
+}
+
+const startSensorStream = () => {
+  if (sensorStreamWs.value) return
+  const ws = api.createWebSocket('/ws/stream')
+  sensorStreamWs.value = ws
+  sensorStreamConnected.value = false
+
+  ws.onopen = () => {
+    sensorStreamConnected.value = true
+    try {
+      ws.send(JSON.stringify({ type: 'subscribe' }))
+    } catch {
+      // ignore
+    }
+  }
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data)
+      if (msg?.type === 'sensor_frame' && Array.isArray(msg.values)) {
+        sensorSnapshot.value = {
+          values: msg.values,
+          realSensor: true,
+          updatedAt: Date.now()
+        }
+      }
+    } catch {
+      // ignore malformed frames
+    }
+  }
+
+  ws.onerror = () => {
+    sensorStreamConnected.value = false
+  }
+
+  ws.onclose = () => {
+    sensorStreamConnected.value = false
+    if (sensorSnapshot.value?.realSensor) {
+      sensorSnapshot.value = {
+        ...sensorSnapshot.value,
+        realSensor: false
+      }
+    }
+  }
+}
+
+const stopSensorStream = () => {
+  if (sensorStreamWs.value) {
+    try {
+      sensorStreamWs.value.close()
+    } catch {
+      // ignore
+    }
+  }
+  sensorStreamWs.value = null
+  sensorStreamConnected.value = false
 }
 
 const startLive = async () => {
@@ -1011,6 +1071,10 @@ const startLive = async () => {
       liveStatus.value = 'Active model runtime-check is failing. Fix model package or run Runtime Check in Model Library.'
       return
     }
+  }
+
+  if (isFusionMode.value || isEarlyFusionMode.value || modelModality.value === 'sensor') {
+    startSensorStream()
   }
 
   if (modelModality.value === 'sensor' && !isFusionMode.value && !isEarlyFusionMode.value) {
@@ -1240,7 +1304,7 @@ watch(isFusionMode, (val) => {
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-xl text-white font-semibold">Live Preview</h2>
         <div class="flex flex-wrap items-center gap-4">
-          <div class="flex items-center gap-2 bg-slate-800/50 p-1 rounded-lg border border-slate-700">
+          <div v-if="!isEarlyFusionMode" class="flex items-center gap-2 bg-slate-800/50 p-1 rounded-lg border border-slate-700">
             <button 
               class="px-3 py-1 text-xs rounded transition-colors"
               :class="!useIntegratedMode ? 'bg-teal-500 text-white' : 'text-slate-400 hover:text-slate-200'"
@@ -1257,7 +1321,7 @@ watch(isFusionMode, (val) => {
             </button>
           </div>
 
-          <div v-if="useIntegratedMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
+          <div v-if="useIntegratedMode && !isEarlyFusionMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
             <span class="text-xs font-medium text-slate-400">Mode:</span>
             <button
               class="px-2 py-1 text-xs rounded transition-colors"
@@ -1276,7 +1340,7 @@ watch(isFusionMode, (val) => {
           </div>
 
           <!-- YOLO Detector Management (Integrated Mode Only) -->
-          <div v-if="useIntegratedMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
+          <div v-if="useIntegratedMode && !isEarlyFusionMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
             <span class="text-xs font-medium text-slate-400">Detector:</span>
             <select 
               :value="activeDetectorId"
@@ -1296,7 +1360,7 @@ watch(isFusionMode, (val) => {
           </div>
 
           <!-- Integrated Config (Min Frames) -->
-          <div v-if="useIntegratedMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
+          <div v-if="useIntegratedMode && !isEarlyFusionMode" class="flex items-center gap-2 bg-slate-800/30 p-2 rounded-lg border border-slate-700/50">
             <span class="text-xs font-medium text-slate-400">Min Frames:</span>
             <input
               v-model.number="integratedMinFrames"
@@ -1394,6 +1458,24 @@ watch(isFusionMode, (val) => {
         <!-- Sensor Overlay (Always visible in Fusion or Sensor Mode) -->
         <div v-if="isFusionMode || isEarlyFusionMode || modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-48 overflow-auto bg-slate-950/80 p-3 border-l border-slate-700 backdrop-blur-sm">
           <p class="text-[10px] text-amber-500 font-bold uppercase mb-2">Sensor Stream</p>
+          <div class="mb-2 rounded border border-slate-800 bg-slate-900/60 px-2 py-1">
+            <div class="flex items-center justify-between text-[10px]">
+              <span class="text-slate-500">Status</span>
+              <span :class="sensorSnapshot.realSensor ? 'text-teal-400' : 'text-amber-300'">
+                {{ sensorSnapshot.realSensor ? 'Live' : 'No Signal' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-[10px]">
+              <span class="text-slate-500">WS</span>
+              <span :class="sensorStreamConnected ? 'text-teal-400' : 'text-slate-400'">
+                {{ sensorStreamConnected ? 'Connected' : 'Disconnected' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-[10px]">
+              <span class="text-slate-500">Updated</span>
+              <span class="text-slate-300">{{ sensorUpdatedAtText }}</span>
+            </div>
+          </div>
           <div class="space-y-1">
             <div
               v-for="item in sensorDisplayRows"

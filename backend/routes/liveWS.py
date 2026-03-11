@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Set, Tuple
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ingestion.streaming.live_data import update_data
+
 logger = logging.getLogger("signglove")
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
 
@@ -165,6 +167,8 @@ async def websocket_stream(websocket: WebSocket):
                     continue
 
                 normalized = _normalize_payload(payload)
+                # Keep latest sensor values for /gesture/latest polling.
+                update_data(normalized["values"])
                 await _broadcast_json(normalized)
             except Exception as exc:
                 await websocket.send_json({"type": "error", "message": str(exc)})
