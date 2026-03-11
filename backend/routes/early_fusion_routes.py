@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import logging
+import os
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +12,33 @@ from core.settings import settings
 from routes.auth_routes import role_or_internal_dep
 
 router = APIRouter(prefix="/early-fusion", tags=["Early Fusion"])
+logger = logging.getLogger("signglove.early_fusion")
+_DEBUG_EARLY_FUSION = os.getenv("EARLY_FUSION_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _summarize_vec(vec: Optional[List[float]]) -> Dict[str, float]:
+    if not vec:
+        return {"len": 0, "zeros": 0, "min": 0.0, "max": 0.0, "mean": 0.0}
+    zeros = 0
+    min_v = float("inf")
+    max_v = float("-inf")
+    total = 0.0
+    for v in vec:
+        num = float(v or 0.0)
+        if num == 0.0:
+            zeros += 1
+        if num < min_v:
+            min_v = num
+        if num > max_v:
+            max_v = num
+        total += num
+    return {
+        "len": len(vec),
+        "zeros": zeros,
+        "min": min_v if min_v != float("inf") else 0.0,
+        "max": max_v if max_v != float("-inf") else 0.0,
+        "mean": total / len(vec),
+    }
 
 
 class EarlyFusionPredictRequest(BaseModel):
@@ -57,15 +86,24 @@ def _call_worker(method: str, path: str, payload: Dict[str, Any] | None = None) 
 
 
 @router.get("/health")
-def early_fusion_health(_user=Depends(role_or_internal_dep("viewer"))) -> Dict[str, Any]:
+def early_fusion_health(_user=Depends(role_or_internal_dep("guest"))) -> Dict[str, Any]:
     return _call_worker("GET", "/health")
 
 
 @router.post("/predict")
 def early_fusion_predict(
     req: EarlyFusionPredictRequest,
-    _user=Depends(role_or_internal_dep("viewer")),
+    _user=Depends(role_or_internal_dep("guest")),
 ) -> Dict[str, Any]:
+    if _DEBUG_EARLY_FUSION:
+        cv_stats = _summarize_vec(req.cv_features)
+        sensor_stats = _summarize_vec(req.sensor_features)
+        logger.info(
+            "early-fusion input session=%s cv=%s sensor=%s",
+            req.session_id,
+            cv_stats,
+            sensor_stats,
+        )
     payload = req.model_dump()
     return _call_worker("POST", "/predict", payload)
 
@@ -73,7 +111,7 @@ def early_fusion_predict(
 @router.post("/reset")
 def early_fusion_reset(
     req: EarlyFusionResetRequest,
-    _user=Depends(role_or_internal_dep("viewer")),
+    _user=Depends(role_or_internal_dep("guest")),
 ) -> Dict[str, Any]:
     payload = {"session_id": req.session_id, "reset": True}
     return _call_worker("POST", "/predict", payload)
