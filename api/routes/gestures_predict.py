@@ -12,16 +12,16 @@ Endpoints:
 """
 from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
-from models.sensor_models import SensorData
-from core.database import sensor_collection
+from api.models.sensor_models import SensorData
+from api.core.database import sensor_collection
 from datetime import datetime, timezone
 import logging
 import csv
 import io
 import pandas as pd
-from utils.cache import cacheable, get_or_set_cache
+from api.utils.cache import cacheable, get_or_set_cache
 from typing import List, Dict, Any
-from routes.auth_routes import role_required_dep
+from api.routes.auth_routes import role_required_dep
 
 logger = logging.getLogger("signglove")
 
@@ -73,7 +73,7 @@ async def export_gestures(request: Request):
             writer.writerow(row["values"] + [label, source, ts])
     output.seek(0)
     logger.info(f"[trace={get_trace_id(request)}] Exported {len(rows)} gesture rows.")
-    from utils.cache import cache
+    from api.utils.cache import cache
     cache.set("gestures_export_csv", output.getvalue(), 30)
     return StreamingResponse(output, media_type="text/csv", headers={
         "Content-Disposition": "attachment; filename=gesture_data.csv"
@@ -165,7 +165,7 @@ async def get_gestures_summary(request: Request) -> Dict[str, Any]:
         static_accuracy = active_model["metadata"].get("per_label_metrics", {})
 
     # 3. Get Live Feedback Stats
-    from core.database import feedback_collection
+    from api.core.database import feedback_collection
     fb_cursor = feedback_collection.aggregate([
         {
             "$group": {

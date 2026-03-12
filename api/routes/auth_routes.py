@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Literal, List
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from core.settings import settings
-from core.database import users_collection
+from api.core.settings import settings
+from api.core.database import users_collection
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 

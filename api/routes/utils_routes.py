@@ -8,16 +8,16 @@ Endpoints:
 """
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from datetime import datetime
-from core.database import db
-from core.settings import settings
+from api.core.database import db
+from api.core.settings import settings
 import requests
 from services.tts_service import tts_service, IDLE_GESTURES
 from pydantic import BaseModel
 import os
-from utils.cache import cacheable
+from api.utils.cache import cacheable
 from typing import Dict, Any, Optional
 from serial.tools import list_ports
-from routes.auth_routes import get_current_user
+from api.routes.auth_routes import get_current_user
 from update_env import upsert_env_values, detect_serial_ports
 
 router = APIRouter(prefix="/utils", tags=["Utilities"])

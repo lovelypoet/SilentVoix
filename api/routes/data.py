@@ -8,7 +8,7 @@ Endpoint:
 
 from fastapi import APIRouter, HTTPException
 from db.mongo import get_sensor_collection
-from models.sensor_models import SensorData
+from api.models.sensor_models import SensorData
 from datetime import datetime, timezone
 
 router = APIRouter()

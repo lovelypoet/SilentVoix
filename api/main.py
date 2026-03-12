@@ -1,31 +1,35 @@
-from routes import gestures_predict
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
-from routes import sensor_routes, admin_routes, dashboard_routes, gestures_predict
-from routes import utils_routes, auth_routes, voice_routes, sync_routes, liveWS, capture_controls_routes, admin_csv_library_routes, model_library_routes, fusion_preprocess_routes, early_fusion_routes
-from routes import model_status
-from routes import audio_files_routes, predict_integrated_routes, model_feedback_routes
-from ingestion.streaming.live_data import get_latest_data
-from core.indexes import create_indexes 
-from core.database import client, test_connection
-from core.settings import settings
-from core.runtime_preflight import run_runtime_preflight
-from core.model import model, predict_gesture  # Ensure H5 model is loaded
-from routes.auth_routes import (
+
+from api.routes import (
+    sensor_routes, admin_routes, dashboard_routes, gestures_predict,
+    utils_routes, auth_routes, voice_routes, sync_routes, liveWS, 
+    capture_controls_routes, admin_csv_library_routes, model_library_routes, 
+    fusion_preprocess_routes, early_fusion_routes, model_status,
+    audio_files_routes, predict_integrated_routes, model_feedback_routes
+)
+
+from api.ingestion.streaming.live_data import get_latest_data
+from api.core.indexes import create_indexes 
+from api.core.database import client, test_connection
+from api.core.settings import settings
+from api.core.runtime_preflight import run_runtime_preflight
+from api.core.model import model, predict_gesture
+from api.routes.auth_routes import (
     role_required_dep as role_required,
     role_or_internal_dep as role_or_internal,
+    ensure_default_users
 )
-from core.middleware import setup_middleware
-from core.error_handler import create_error_response, error_tracker, performance_monitor
+from api.core.middleware import setup_middleware
+from api.core.error_handler import create_error_response, error_tracker, performance_monitor
 from contextlib import asynccontextmanager
 import logging
 import asyncio
 import os
-from routes.auth_routes import ensure_default_users
 
 # Improved logging configuration
 logging.basicConfig(
@@ -57,8 +61,6 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logging.warning("Runtime preflight failed: %s", exc)
 
-    # Legacy model check – the model object will be None when TF is unavailable
-    # (expected in the API-only Docker image where USE_RUNTIME_SERVICES=true).
     if model is None:
         logging.info("Local TFLite model is not loaded; predictions will be forwarded to ml-tensorflow service.")
     else:
@@ -86,10 +88,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def generic_exception_handler(request: Request, exc: Exception):
     return create_error_response(exc, request)
 
-# Use CORS origins from settings
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"], # Simplified for testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,79 +101,26 @@ app.add_middleware(
 app.include_router(auth_routes.router)
 app.include_router(gestures_predict.router)
 app.include_router(sensor_routes.router)
-app.include_router(gestures_predict.router)
 app.include_router(admin_routes.router)
 app.include_router(dashboard_routes.router)
 app.include_router(utils_routes.router)
-app.include_router(capture_controls_routes.router)
-app.include_router(audio_files_routes.router)
 app.include_router(voice_routes.router)
+app.include_router(sync_routes.router)
 app.include_router(liveWS.router)
-app.include_router(sync_routes.ws_router)
-app.include_router(sync_routes.http_router)
-app.include_router(model_status.router)
+app.include_router(capture_controls_routes.router)
 app.include_router(admin_csv_library_routes.router)
 app.include_router(model_library_routes.router)
 app.include_router(fusion_preprocess_routes.router)
 app.include_router(early_fusion_routes.router)
+app.include_router(model_status.router)
+app.include_router(audio_files_routes.router)
 app.include_router(predict_integrated_routes.router)
 app.include_router(model_feedback_routes.router)
 
-# Mount models directory for static files if needed
-app.mount("/models", StaticFiles(directory=settings.DATA_DIR), name="models")
-app.mount("/static/tts", StaticFiles(directory=settings.TTS_CACHE_DIR), name="tts")
-app.mount("/pics", StaticFiles(directory=os.path.join(settings.BASE_DIR, "pics")), name="pics")
-
-@app.get("/")
-def root():
-    return {"message": "Backend is running"}
-
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for Docker containers"""
-    try:
-        # Test database connection
-        await test_connection()
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "timestamp": "2024-01-01T00:00:00Z"
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=503, detail="Service unhealthy")
+    return {"status": "healthy", "version": "v3-refactored"}
 
-@app.get("/metrics")
-async def get_metrics():
-    """Get performance metrics."""
-    return {
-        "performance": performance_monitor.get_performance_stats(),
-        "errors": len(error_tracker.error_log)
-    }
-@app.get("/gesture/latest")
-async def latest_sensor():
-    data = get_latest_data()
-    if data is None:
-        return {"values": [], "real_sensor": False}
-    return {"values": data, "real_sensor": True}
-
-@app.websocket("/gesture/predict_ws")
-async def predict_ws(ws: WebSocket):
-    await ws.accept()
-    try:
-        while True:
-            data = await ws.receive_json()
-            values = data.get("values", [])
-            
-            if not values:
-                await ws.send_json({"status": "error", "message": "No input values"})
-                continue
-            
-            result = predict_gesture(values)
-            await ws.send_json(result)
-
-    except WebSocketDisconnect:
-        logging.info("WebSocket client disconnected")
-    except Exception as e:
-        logging.error(f"WebSocket prediction error: {e}")
-        await ws.close()
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

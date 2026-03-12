@@ -5,7 +5,7 @@ Database connection and collection setup for the sign glove system.
 - Provides async test_connection function to verify MongoDB connectivity.
 """
 from motor.motor_asyncio import AsyncIOMotorClient
-from core.settings import settings
+from api.core.settings import settings
 import logging
 
 logger = logging.getLogger(__name__)

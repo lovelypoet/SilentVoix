@@ -4,8 +4,8 @@ import os
 import csv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi import HTTPException, Query
-from core.settings import settings
-from ingestion.sync_stream import SyncStreamBuffer, load_sensor_samples
+from api.core.settings import settings
+from api.ingestion.sync_stream import SyncStreamBuffer, load_sensor_samples
 
 ws_router = APIRouter(prefix="/ws", tags=["WebSocket"])
 http_router = APIRouter(prefix="/sync", tags=["Sync"])

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Response, Depends
 from fastapi.responses import FileResponse
-from core.settings import settings
-from core.database import db
+from api.core.settings import settings
+from api.core.database import db
 import os
 from datetime import datetime
 from typing import List
@@ -10,7 +10,7 @@ import requests
 import pygame
 import threading
 import asyncio
-from routes.auth_routes import role_required_dep
+from api.routes.auth_routes import role_required_dep
 
 router = APIRouter(prefix="/audio-files", tags=["Audio Files"])
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), '..', 'audio_files')

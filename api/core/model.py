@@ -13,7 +13,7 @@ import numpy as np
 import os
 import logging
 import httpx
-from core.settings import settings
+from api.core.settings import settings
 
 logger = logging.getLogger("signglove")
 

@@ -7,10 +7,10 @@ Endpoints:
 - DELETE /admin/csv-data: Delete all CSV data files.
 """
 from fastapi import APIRouter, HTTPException, Depends
-from core.database import sensor_collection
+from api.core.database import sensor_collection
 import logging
 from pathlib import Path
-from routes.auth_routes import role_or_internal_dep
+from api.routes.auth_routes import role_or_internal_dep
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 

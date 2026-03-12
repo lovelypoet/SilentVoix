@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
-from core.database import feedback_collection
+from api.core.database import feedback_collection
 from datetime import datetime, timezone
 import logging
 

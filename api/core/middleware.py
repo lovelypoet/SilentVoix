@@ -7,8 +7,8 @@ from typing import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.base import RequestResponseEndpoint
-from core.error_handler import performance_monitor, log_request_performance
-from core.auth import get_required_role_for_path
+from api.core.error_handler import performance_monitor, log_request_performance
+from api.core.auth import get_required_role_for_path
 
 logger = logging.getLogger("signglove")
 
@@ -127,7 +127,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         except Exception as e:
-            from core.error_handler import create_error_response
+            from api.core.error_handler import create_error_response
             return create_error_response(e, request)
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
@@ -154,7 +154,7 @@ def setup_middleware(app):
     app.add_middleware(PerformanceMiddleware)
     app.add_middleware(SecurityMiddleware)
     app.add_middleware(LoggingMiddleware)
-    from core.settings import settings
+    from api.core.settings import settings
     app.add_middleware(
         RateLimitMiddleware,
         requests_per_minute=settings.RATE_LIMIT_REQUESTS_PER_MINUTE,

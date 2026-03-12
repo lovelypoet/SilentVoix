@@ -8,8 +8,8 @@ import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from core.settings import settings
-from routes.auth_routes import role_or_internal_dep
+from api.core.settings import settings
+from api.routes.auth_routes import role_or_internal_dep
 
 router = APIRouter(prefix="/fusion-preprocess", tags=["Fusion Preprocess"])
 

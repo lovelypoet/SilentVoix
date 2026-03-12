@@ -6,7 +6,7 @@ import statistics
 import os
 from collections import deque
 
-# Define constants locally instead of importing from core
+# Define constants locally instead of importing from api.core
 WINDOW_SIZE = 5
 THRESHOLD = 2.0
 

@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import httpx
 
-from core.settings import settings
+from api.core.settings import settings
 
 
 def _import_version(module_name: str, attr_name: str = "__version__") -> Dict[str, Any]:

@@ -3,7 +3,7 @@ Indexes setup for MongoDB collections in the sign glove system.
 
 - create_indexes: Ensures indexes exist for efficient queries on sensor, model, training, and gesture collections.
 """
-from core.database import (
+from api.core.database import (
     sensor_collection,
     model_collection,
     gesture_collection,

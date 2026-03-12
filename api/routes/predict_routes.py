@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
-from core.model import predict_gesture
-from models.sensor_models import SensorData
-from routes.auth_routes import role_or_internal_dep
+from api.core.model import predict_gesture
+from api.models.sensor_models import SensorData
+from api.routes.auth_routes import role_or_internal_dep
 
 router = APIRouter(prefix="/predict", tags=["Prediction"])
 
@@ -33,7 +33,7 @@ async def get_latest_model_info(_user=Depends(role_or_internal_dep("viewer"))):
     Return info about the latest trained model (timestamp, accuracy, etc.).
     """
     try:
-        from core.database import model_collection
+        from api.core.database import model_collection
         doc = await model_collection.find_one(sort=[("timestamp", -1)])
         if not doc:
             return {"status": "success", "data": None}

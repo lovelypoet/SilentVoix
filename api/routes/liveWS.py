@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Set, Tuple
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from ingestion.streaming.live_data import update_data
+from api.ingestion.streaming.live_data import update_data
 
 logger = logging.getLogger("signglove")
 router = APIRouter(prefix="/ws", tags=["WebSocket"])

@@ -23,8 +23,8 @@ backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-from core.database import sensor_collection
-from core.settings import settings as app_settings
+from api.core.database import sensor_collection
+from api.core.settings import settings as app_settings
 
 # ========= DUAL HAND CONFIG =========
 # Read serial ports from backend settings/env to avoid hardcoded Windows COM defaults.

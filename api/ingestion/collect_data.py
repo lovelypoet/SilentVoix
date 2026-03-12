@@ -24,8 +24,8 @@ if backend_path not in sys.path:
 if '.' not in sys.path:
     sys.path.append('.')
 
-from core.database import sensor_collection  # MongoDB collection
-from core.settings import settings as app_settings
+from api.core.database import sensor_collection  # MongoDB collection
+from api.core.settings import settings as app_settings
 
 # ========= CONFIG =========
 # Read serial port from backend settings/env to avoid hardcoded Windows COM defaults.

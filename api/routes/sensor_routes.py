@@ -8,12 +8,12 @@ Endpoints:
 - DELETE /sensor-data/{session_id}: Delete sensor data by session ID.
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
-from models.sensor_models import SensorData
-from core.database import sensor_collection
+from api.models.sensor_models import SensorData
+from api.core.database import sensor_collection
 from bson import ObjectId
 from typing import List
 from fastapi.encoders import jsonable_encoder
-from routes.auth_routes import role_required_dep
+from api.routes.auth_routes import role_required_dep
 
 router = APIRouter()
 
