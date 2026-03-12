@@ -537,6 +537,47 @@ pipeline orchestration
 
 ---
 
+---
+
+# Target V3 Architecture (Mermaid)
+
+```mermaid
+graph TD
+    %% Client Layer
+    Client[Frontend / Vue-Next] -->|HTTP/WS| API[API Gateway - FastAPI]
+
+    %% API / Service Layer
+    subgraph "SignGlove V3 Core"
+        API -->|Delegates| Services[Service Layer]
+        Services --> DB[(Metadata DB - MongoDB)]
+        Services --> Storage[Artifact Storage - storage/]
+    end
+
+    %% Async Layer
+    subgraph "Asynchronous Workers"
+        Services -->|Enqueue| Queue[Task Queue - Redis/Celery]
+        Queue --> Worker[Background Worker]
+        Worker -->|Update| DB
+        Worker -->|Process| Storage
+    end
+
+    %% ML Runtime Layer
+    subgraph "ML Runtime Services"
+        Services -->|Proxy Inference| ML_TF[ML TensorFlow Service]
+        Services -->|Proxy Inference| ML_PT[ML PyTorch Service]
+        ML_TF -->|Read Models| Storage
+        ML_PT -->|Read Models| Storage
+    end
+
+    %% Styling
+    style API fill:#f9f,stroke:#333,stroke-width:2px
+    style Worker fill:#bbf,stroke:#333,stroke-width:2px
+    style ML_TF fill:#bfb,stroke:#333,stroke-width:2px
+    style ML_PT fill:#bfb,stroke:#333,stroke-width:2px
+```
+
+---
+
 # Summary
 
 SignGlove V3 becomes:

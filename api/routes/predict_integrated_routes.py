@@ -1,7 +1,8 @@
 import base64
-import cv2
 import numpy as np
 import os
+import io
+from PIL import Image
 from fastapi import APIRouter, HTTPException, Depends, Body
 from fastapi import WebSocket, WebSocketDisconnect
 from services.gesture_service import get_gesture_service
@@ -31,8 +32,11 @@ async def predict_integrated_ws(ws: WebSocket):
                 encoded = image_data
 
             try:
-                nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
-                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                decoded = base64.b64decode(encoded)
+                image = Image.open(io.BytesIO(decoded))
+                # Convert to RGB (standard for remote services) or BGR if needed.
+                # GestureService will handle conversion if it specifically needs BGR for local fallback.
+                frame = np.array(image.convert("RGB"))
                 if frame is None:
                     raise ValueError("Invalid image data")
             except Exception as exc:
@@ -75,8 +79,9 @@ async def predict_integrated(
         else:
             encoded = image_data
             
-        nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        decoded = base64.b64decode(encoded)
+        image = Image.open(io.BytesIO(decoded))
+        frame = np.array(image.convert("RGB"))
         
         if frame is None:
             raise ValueError("Invalid image data")

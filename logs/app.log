@@ -1,1 +1,30 @@
 2026-03-12 21:04:32,872 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 00:06:16,477 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 00:35:16,286 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 00:42:23,364 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 01:22:56,420 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 01:22:56,524 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-13 01:22:56,524 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-13 01:23:36,236 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 01:23:36,333 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-13 01:23:36,333 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-13 01:27:10,784 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 01:27:10,898 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-13 01:27:10,899 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-13 01:27:11,593 - api.core.database - INFO - Connected to MongoDB Atlas!
+2026-03-13 01:27:12,554 - root - INFO - Indexes created. App is starting...
+2026-03-13 01:27:12,554 - root - INFO - Runtime flags | USE_RUNTIME_SERVICES=False USE_WORKER_LIBRARY=False USE_EARLY_FUSION_WORKER=False USE_FUSION_PREPROCESS_WORKER=False RUNTIME_PREFLIGHT_ON_STARTUP=True MODEL_LIBRARY_DIR=/home/lystiger/Documents/SilentVoix/api/AI/model_library
+2026-03-13 01:27:12,555 - root - INFO - Runtime preflight: {'use_runtime_services': False, 'ml_tensorflow_url': 'http://ml-tensorflow:8091', 'ml_pytorch_url': 'http://ml-pytorch:8092', 'use_worker_library': False, 'worker_library_url': 'http://worker-library:8093', 'runtime_services': {'enabled': False}, 'worker_library': {'enabled': False}, 'tensorflow': {'ok': False, 'error': "No module named 'tensorflow'"}, 'torch': {'ok': False, 'error': "No module named 'torch'"}, 'model_library': {'ok': True, 'path': '/home/lystiger/Documents/SilentVoix/api/AI/model_library/registry.json', 'exists': False, 'model_count': 0, 'active_model_id': None, 'runtime_status_counts': {'pass': 0, 'fail': 0, 'untested': 0}}}
+2026-03-13 01:27:12,555 - root - INFO - Local TFLite model is not loaded; predictions will be forwarded to ml-tensorflow service.
+2026-03-13 01:27:20,045 - signglove - INFO - Request: GET /health
+2026-03-13 01:27:20,047 - signglove - INFO - Response: GET /health - 200
+2026-03-13 01:27:45,347 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-13 01:27:45,443 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-13 01:27:45,444 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-13 01:27:46,134 - api.core.database - INFO - Connected to MongoDB Atlas!
+2026-03-13 01:27:46,138 - root - INFO - Indexes created. App is starting...
+2026-03-13 01:27:46,138 - root - INFO - Runtime flags | USE_RUNTIME_SERVICES=True USE_WORKER_LIBRARY=False USE_EARLY_FUSION_WORKER=False USE_FUSION_PREPROCESS_WORKER=False RUNTIME_PREFLIGHT_ON_STARTUP=True MODEL_LIBRARY_DIR=/home/lystiger/Documents/SilentVoix/api/AI/model_library
+2026-03-13 01:27:46,175 - root - INFO - Runtime preflight: {'use_runtime_services': True, 'ml_tensorflow_url': 'http://ml-tensorflow:8091', 'ml_pytorch_url': 'http://ml-pytorch:8092', 'use_worker_library': False, 'worker_library_url': 'http://worker-library:8093', 'runtime_services': {'enabled': True, 'tensorflow': {'ok': False, 'name': 'ml-tensorflow', 'url': 'http://ml-tensorflow:8091/health', 'error': '[Errno -3] Temporary failure in name resolution'}, 'pytorch': {'ok': False, 'name': 'ml-pytorch', 'url': 'http://ml-pytorch:8092/health', 'error': '[Errno -3] Temporary failure in name resolution'}}, 'worker_library': {'enabled': False}, 'tensorflow': {'ok': False, 'error': "No module named 'tensorflow'"}, 'torch': {'ok': False, 'error': "No module named 'torch'"}, 'model_library': {'ok': True, 'path': '/home/lystiger/Documents/SilentVoix/api/AI/model_library/registry.json', 'exists': False, 'model_count': 0, 'active_model_id': None, 'runtime_status_counts': {'pass': 0, 'fail': 0, 'untested': 0}}}
+2026-03-13 01:27:46,175 - root - INFO - Local TFLite model is not loaded; predictions will be forwarded to ml-tensorflow service.
+2026-03-13 01:27:54,626 - signglove - INFO - Request: GET /health
+2026-03-13 01:27:54,629 - signglove - INFO - Response: GET /health - 200
