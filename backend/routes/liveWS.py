@@ -25,6 +25,8 @@ SCHEMA_VERSION = "1.0"
 TOTAL_VALUES = 11
 
 active_connections: Set[WebSocket] = set()
+_frame_count = 0
+_last_log_ts = 0.0
 
 
 def _to_float_list(values: Any) -> List[float]:
@@ -55,7 +57,9 @@ def _from_v1(payload: Dict[str, Any]) -> Tuple[List[float], Dict[str, List[float
         raise ValueError(f"Expected {TOTAL_VALUES} values, got {len(values)}")
     if len(flex) != 5 or len(accel) != 3 or len(gyro) != 3:
         raise ValueError("frame must contain flex(5), accel(3), gyro(3)")
-    return values, {"flex": flex, "accel": accel, "gyro": gyro}
+    # Normalize output order to imu_flex: accel + gyro + flex
+    values_out = accel + gyro + flex
+    return values_out, {"flex": flex, "accel": accel, "gyro": gyro}
 
 
 def _normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -79,7 +83,12 @@ def _normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         values = _to_float_list(payload["values"])
         if len(values) != TOTAL_VALUES:
             raise ValueError(f"values must have {TOTAL_VALUES} entries")
-        channels = {"flex": values[:5], "accel": values[5:8], "gyro": values[8:11]}
+        # Treat incoming flat values as imu_flex.
+        accel = values[0:3]
+        gyro = values[3:6]
+        flex = values[6:11]
+        values = accel + gyro + flex
+        channels = {"flex": flex, "accel": accel, "gyro": gyro}
     elif isinstance(payload.get("sensor_values"), list):
         sensor_values = payload["sensor_values"]
         if not sensor_values:
@@ -88,7 +97,11 @@ def _normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         values = _to_float_list(latest)
         if len(values) != TOTAL_VALUES:
             raise ValueError(f"sensor_values frame must have {TOTAL_VALUES} entries")
-        channels = {"flex": values[:5], "accel": values[5:8], "gyro": values[8:11]}
+        accel = values[0:3]
+        gyro = values[3:6]
+        flex = values[6:11]
+        values = accel + gyro + flex
+        channels = {"flex": flex, "accel": accel, "gyro": gyro}
     else:
         raise ValueError("Unsupported payload shape")
 
@@ -167,6 +180,17 @@ async def websocket_stream(websocket: WebSocket):
                     continue
 
                 normalized = _normalize_payload(payload)
+                global _frame_count, _last_log_ts
+                _frame_count += 1
+                now = time.time()
+                if now - _last_log_ts > 5:
+                    _last_log_ts = now
+                    logger.info(
+                        "livews received frames=%s latest_ts=%s sample=%s",
+                        _frame_count,
+                        normalized.get("timestamp_ms"),
+                        normalized.get("values"),
+                    )
                 # Keep latest sensor values for /gesture/latest polling.
                 update_data(normalized["values"])
                 await _broadcast_json(normalized)

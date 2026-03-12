@@ -31,7 +31,7 @@ const cvPrediction = ref(null)
 const sensorPrediction = ref(null)
 const isFusionPredicting = ref(false)
 const isEarlyFusionPredicting = ref(false)
-const earlyFusionSource = ref('cv')
+const earlyFusionSource = ref('both')
 const earlyFusionSessionId = ref('realtime-playground')
 
 const mirrorCamera = ref(true)
@@ -48,14 +48,19 @@ const sensorSnapshot = ref({
   realSensor: false,
   updatedAt: null
 })
+const earlyFusionInputStats = ref(null)
+const earlyFusionSensorOrder = ref('')
 const sensorStreamWs = ref(null)
 const sensorStreamConnected = ref(false)
+const sensorStreamDesired = ref(false)
 let lastPredictTs = 0
 let isPredictingFrame = false
 let sensorPollTimer = null
 const cvFrameBuffer = ref([])
 let integratedPredictTimer = null
 let earlyFusionLastTs = 0
+const earlyFusionLastCv = ref(Array.from({ length: 63 }, () => 0))
+const earlyFusionVisionLost = ref(false)
 
 const useIntegratedMode = ref(false)
 const styleSettings = ref({
@@ -267,6 +272,31 @@ const flattenHand63 = (hand) => {
   for (let i = 0; i < 21; i++) {
     values.push(Number(hand[i]?.x ?? 0), Number(hand[i]?.y ?? 0), Number(hand[i]?.z ?? 0))
   }
+  return values
+}
+
+const buildEarlyFusionCv63 = (results) => {
+  const { left, right, first } = pickHands(results)
+  const hand = left || right || first
+  if (!Array.isArray(hand) || hand.length !== 21) {
+    earlyFusionVisionLost.value = true
+    return [...earlyFusionLastCv.value]
+  }
+  earlyFusionVisionLost.value = false
+  const wrist = hand[0] || {}
+  const wx = Number(wrist?.x ?? 0)
+  const wy = Number(wrist?.y ?? 0)
+  const wz = Number(wrist?.z ?? 0)
+  const values = []
+  for (let i = 0; i < 21; i++) {
+    const pt = hand[i] || {}
+    values.push(
+      Number(pt?.x ?? 0) - wx,
+      Number(pt?.y ?? 0) - wy,
+      Number(pt?.z ?? 0) - wz
+    )
+  }
+  earlyFusionLastCv.value = values
   return values
 }
 
@@ -916,15 +946,9 @@ const predictEarlyFusion = async (cvResults) => {
   isEarlyFusionPredicting.value = true
 
   try {
-    const sensorRaw = await api.utils.latestSensorFrame()
-    const rawValues = Array.isArray(sensorRaw?.values) ? sensorRaw.values : []
-    sensorSnapshot.value = {
-      values: rawValues,
-      realSensor: Boolean(sensorRaw?.real_sensor),
-      updatedAt: Date.now()
-    }
+    const rawValues = Array.isArray(sensorSnapshot.value?.values) ? sensorSnapshot.value.values : []
 
-    const cvFeatures = buildCvFeatureVector(cvResults, 63)
+    const cvFeatures = buildEarlyFusionCv63(cvResults)
     const sensorDim = rawValues.length >= 11 ? 11 : rawValues.length
     const sensorValues = rawValues.slice(0, sensorDim).map((v) => Number(v ?? 0))
     const paddedSensor = sensorDim < 11
@@ -941,26 +965,30 @@ const predictEarlyFusion = async (cvResults) => {
     }
 
     const res = await api.earlyFusion.predict(payload)
+    earlyFusionInputStats.value = res?.input_stats || null
+    earlyFusionSensorOrder.value = res?.sensor_order || ''
+    const visionNote = earlyFusionVisionLost.value ? ' Vision lost: using last frame.' : ''
     if (res.status === 'success') {
       prediction.value = {
         label: res.gesture,
         confidence: res.confidence,
-        note: `Early Fusion (${earlyFusionSource.value}). Buffer: ${res.buffer_status}`
+        note: `Early Fusion (${earlyFusionSource.value}). Buffer: ${res.buffer_status}.${visionNote}`
       }
     } else if (res.status === 'waiting') {
       prediction.value = {
         label: 'Waiting...',
         confidence: 0,
-        note: `Early Fusion (${earlyFusionSource.value}). Buffer: ${res.buffer_status}`
+        note: `Early Fusion (${earlyFusionSource.value}). Buffer: ${res.buffer_status}.${visionNote}`
       }
     } else {
       prediction.value = {
         label: 'error',
         confidence: 0,
-        note: res.detail || 'Early fusion failed.'
+        note: `${res.detail || 'Early fusion failed.'}${visionNote}`
       }
     }
   } catch (e) {
+    earlyFusionInputStats.value = null
     prediction.value = {
       label: 'error',
       confidence: 0,
@@ -971,12 +999,15 @@ const predictEarlyFusion = async (cvResults) => {
   }
 }
 
-const stopLive = () => {
+const stopLive = (options = {}) => {
+  const keepSensorStream = Boolean(options?.keepSensorStream)
   if (sensorPollTimer) {
     clearInterval(sensorPollTimer)
     sensorPollTimer = null
   }
-  stopSensorStream()
+  if (!keepSensorStream) {
+    stopSensorStream()
+  }
   stopIntegratedLoop()
   stopIntegratedSocket()
   stopHandTracking()
@@ -997,6 +1028,7 @@ const stopLive = () => {
 
 const startSensorStream = () => {
   if (sensorStreamWs.value) return
+  sensorStreamDesired.value = true
   const ws = api.createWebSocket('/ws/stream')
   sensorStreamWs.value = ws
   sensorStreamConnected.value = false
@@ -1027,6 +1059,11 @@ const startSensorStream = () => {
 
   ws.onerror = () => {
     sensorStreamConnected.value = false
+    try {
+      ws.close()
+    } catch {
+      // ignore
+    }
   }
 
   ws.onclose = () => {
@@ -1037,10 +1074,19 @@ const startSensorStream = () => {
         realSensor: false
       }
     }
+    if (sensorStreamDesired.value) {
+      sensorStreamWs.value = null
+      setTimeout(() => {
+        if (sensorStreamDesired.value && !sensorStreamWs.value) {
+          startSensorStream()
+        }
+      }, 1000)
+    }
   }
 }
 
 const stopSensorStream = () => {
+  sensorStreamDesired.value = false
   if (sensorStreamWs.value) {
     try {
       sensorStreamWs.value.close()
@@ -1090,7 +1136,7 @@ const startLive = async () => {
 
   liveStatus.value = 'Requesting camera...'
   try {
-    stopLive()
+    stopLive({ keepSensorStream: isFusionMode.value || isEarlyFusionMode.value || modelModality.value === 'sensor' })
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 640 }, height: { ideal: 480 } },
       audio: false
@@ -1156,11 +1202,14 @@ watch(isEarlyFusionMode, (val) => {
     isFusionMode.value = false
     useIntegratedMode.value = false
     stopLive()
+    startSensorStream()
   }
 })
 watch(isFusionMode, (val) => {
   if (val) {
     isEarlyFusionMode.value = false
+    stopLive()
+    startSensorStream()
   }
 })
 </script>
@@ -1455,12 +1504,12 @@ watch(isFusionMode, (val) => {
         <canvas v-show="!isFusionMode && modelModality !== 'sensor' || isFusionMode" ref="landmarkCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
         <canvas v-show="!isFusionMode && modelModality !== 'sensor' || isFusionMode" ref="bboxCanvasEl" class="absolute inset-0 h-full w-full"></canvas>
         
-        <!-- Sensor Overlay (Always visible in Fusion or Sensor Mode) -->
-        <div v-if="isFusionMode || isEarlyFusionMode || modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-48 overflow-auto bg-slate-950/80 p-3 border-l border-slate-700 backdrop-blur-sm">
-          <p class="text-[10px] text-amber-500 font-bold uppercase mb-2">Sensor Stream</p>
+        <!-- Input Stats Overlay -->
+        <div v-if="isFusionMode || isEarlyFusionMode || modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-56 overflow-auto bg-slate-950/80 p-3 border-l border-slate-700 backdrop-blur-sm">
+          <p class="text-[10px] text-amber-500 font-bold uppercase mb-2">Input Stats</p>
           <div class="mb-2 rounded border border-slate-800 bg-slate-900/60 px-2 py-1">
             <div class="flex items-center justify-between text-[10px]">
-              <span class="text-slate-500">Status</span>
+              <span class="text-slate-500">Sensor</span>
               <span :class="sensorSnapshot.realSensor ? 'text-teal-400' : 'text-amber-300'">
                 {{ sensorSnapshot.realSensor ? 'Live' : 'No Signal' }}
               </span>
@@ -1475,17 +1524,34 @@ watch(isFusionMode, (val) => {
               <span class="text-slate-500">Updated</span>
               <span class="text-slate-300">{{ sensorUpdatedAtText }}</span>
             </div>
-          </div>
-          <div class="space-y-1">
-            <div
-              v-for="item in sensorDisplayRows"
-              :key="item.label"
-              class="flex justify-between text-[10px] border-b border-slate-800 pb-1"
-            >
-              <span class="text-slate-500">{{ item.label }}</span>
-              <span class="text-slate-200 font-mono">{{ Number(item.value).toFixed(2) }}</span>
+            <div v-if="earlyFusionSensorOrder" class="flex items-center justify-between text-[10px]">
+              <span class="text-slate-500">Order</span>
+              <span class="text-slate-300">{{ earlyFusionSensorOrder }}</span>
             </div>
           </div>
+          <div v-if="earlyFusionInputStats" class="space-y-1">
+            <div class="flex justify-between text-[10px] border-b border-slate-800 pb-1">
+              <span class="text-slate-500">Len</span>
+              <span class="text-slate-200 font-mono">{{ earlyFusionInputStats.len }}</span>
+            </div>
+            <div class="flex justify-between text-[10px] border-b border-slate-800 pb-1">
+              <span class="text-slate-500">Zeros</span>
+              <span class="text-slate-200 font-mono">{{ earlyFusionInputStats.zeros }}</span>
+            </div>
+            <div class="flex justify-between text-[10px] border-b border-slate-800 pb-1">
+              <span class="text-slate-500">Min</span>
+              <span class="text-slate-200 font-mono">{{ Number(earlyFusionInputStats.min).toFixed(4) }}</span>
+            </div>
+            <div class="flex justify-between text-[10px] border-b border-slate-800 pb-1">
+              <span class="text-slate-500">Max</span>
+              <span class="text-slate-200 font-mono">{{ Number(earlyFusionInputStats.max).toFixed(4) }}</span>
+            </div>
+            <div class="flex justify-between text-[10px] border-b border-slate-800 pb-1">
+              <span class="text-slate-500">Mean</span>
+              <span class="text-slate-200 font-mono">{{ Number(earlyFusionInputStats.mean).toFixed(4) }}</span>
+            </div>
+          </div>
+          <p v-else class="text-[10px] text-slate-500">Waiting for early-fusion stats...</p>
         </div>
       </div>
 

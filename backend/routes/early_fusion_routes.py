@@ -68,7 +68,7 @@ def _call_worker(method: str, path: str, payload: Dict[str, Any] | None = None) 
         raise HTTPException(status_code=503, detail="Early fusion worker is disabled.")
     url = f"{_worker_base_url()}{path}"
     try:
-        with httpx.Client(timeout=10.0) as client:
+        with httpx.Client(timeout=30.0) as client:
             response = client.request(method, url, json=payload)
     except httpx.TimeoutException as exc:
         raise HTTPException(status_code=504, detail="Early fusion worker timed out.") from exc

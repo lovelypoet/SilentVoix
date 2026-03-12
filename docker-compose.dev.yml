@@ -127,9 +127,12 @@ services:
       - EARLY_FUSION_SEQUENCE_LENGTH=30
       - EARLY_FUSION_FEATURE_DIM=74
       - EARLY_FUSION_LABELS=rest,hello,thank_you,yes,no,bye
+      - EARLY_FUSION_SENSOR_ORDER=imu_flex
+      - EARLY_FUSION_DEBUG=true
       # Mount or bake a model to this path when ready.
       - EARLY_FUSION_MODEL_PATH=/app/models/sign_lstm_model.keras
     volumes:
+      - ./backend/AI:/app/AI:ro
       - ./backend/AI/models:/app/models:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8095/health', timeout=5)"]
