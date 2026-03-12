@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from api.core.settings import settings
 from api.routes.auth_routes import role_or_internal_dep
 from services.datasets.dataset_service import dataset_service, SCHEMA_DIM_MAP
+from celery.result import AsyncResult
 
 router = APIRouter(prefix="/admin/csv-library", tags=["Admin CSV Library"])
 
@@ -36,17 +37,53 @@ class CsvOrderRequest(BaseModel):
 
 # --- Helpers ---
 
+def get_job_status(job_id: str) -> Dict[str, Any]:
+    res = AsyncResult(job_id)
+    return {
+        "job_id": job_id,
+        "status": res.status,
+        "result": res.result if res.ready() else None,
+        "progress": res.info if not res.ready() else None
+    }
+
 def _with_worker_metadata(base: Dict[str, Any], csv_path: Path) -> Dict[str, Any]:
+    """
+    Merges base file info with metadata from the worker-generated sidecar.
+    This replaces synchronous scanning in the API.
+    """
     sidecar = dataset_service.load_sidecar(csv_path)
-    if not sidecar:
-        base["worker_validation"] = None
-        return base
     
-    base["health_flags"] = sorted(set(list(base.get("health_flags", [])) + list(sidecar.get("health_flags", []))))
-    base["worker_validation"] = sidecar.get("validation")
+    # Default status if no scan has been performed
+    base["scan_status"] = sidecar.get("status", "pending")
     base["worker_job_id"] = sidecar.get("job_id")
+    base["processed_at"] = sidecar.get("processed_at")
+    
+    validation = sidecar.get("validation", {})
+    if validation:
+        # Override basic info with detailed scan results
+        base.update({
+            "schema_id": validation.get("schema_id"),
+            "modality": validation.get("modality"),
+            "hand_mode": validation.get("hand_mode"),
+            "feature_dim": validation.get("expected_feature_dim"),
+            "row_count": validation.get("row_count"),
+            "columns": validation.get("columns"),
+            "label_summary": validation.get("label_summary"),
+            "health_flags": sorted(set(list(base.get("health_flags", [])) + list(validation.get("health_flags", [])) + list(sidecar.get("health_flags", []))))
+        })
+    else:
+        # Fallback for unscanned files
+        base.update({
+            "schema_id": "unknown",
+            "row_count": 0,
+            "columns": [],
+            "health_flags": list(set(list(base.get("health_flags", [])) + ["needs_scan"]))
+        })
+
+    base["worker_validation"] = validation
     base["operator_review"] = sidecar.get("operator_review")
     base["review_history"] = sidecar.get("review_history", [])
+    
     return base
 
 # --- Routes ---
@@ -56,17 +93,20 @@ async def list_csv_files(
     include_archived: bool = Query(False),
     _user=Depends(role_or_internal_dep("admin")),
 ):
+    """
+    Returns a list of all CSV datasets. 
+    Synchronous scanning is removed; metadata is pulled from worker sidecars.
+    """
     files = dataset_service.list_datasets(include_archived)
     result = []
     for f in files:
         path = Path(f["path"])
-        meta = dataset_service.scan_csv_file(path)
         item = {
             "name": f["name"],
             "scope": f["source"],
             "size_bytes": f["size_bytes"],
             "modified_at": f["modified"],
-            **meta
+            "health_flags": []
         }
         result.append(_with_worker_metadata(item, path))
     
@@ -77,6 +117,18 @@ async def list_csv_files(
         result.sort(key=lambda x: pos.get(x["name"], 999999))
         
     return {"status": "success", "files": result}
+
+@router.post("/files/scan-all")
+async def trigger_all_scans(_user=Depends(role_or_internal_dep("admin"))):
+    """
+    Triggers a background scan for all datasets that don't have up-to-date metadata.
+    """
+    files = dataset_service.list_datasets(include_archived=True)
+    job_ids = []
+    for f in files:
+        job_id = dataset_service.trigger_scan(f["name"])
+        job_ids.append(job_id)
+    return {"status": "success", "triggered_count": len(job_ids), "job_ids": job_ids}
 
 @router.get("/selection")
 async def get_selected_dataset(
@@ -95,14 +147,15 @@ async def set_selected_dataset(
     _user=Depends(role_or_internal_dep("admin")),
 ):
     scope, path, safe_name = dataset_service.resolve_csv_path(req.name)
-    meta = dataset_service.scan_csv_file(path)
+    sidecar = dataset_service.load_sidecar(path)
+    validation = sidecar.get("validation", {})
     
     key = f"{req.pipeline}:{req.mode}" + (f":{req.modality}" if req.modality else "")
     store = dataset_service.load_selection_store()
     store[key] = {
         "name": safe_name,
         "scope": scope,
-        "schema_id": meta.get("schema_id"),
+        "schema_id": validation.get("schema_id", "unknown"),
         "selected_at": datetime.now(timezone.utc).isoformat(),
     }
     dataset_service.save_selection_store(store)
@@ -115,8 +168,11 @@ async def preview_csv_file(
     offset: int = Query(0, ge=0),
     _user=Depends(role_or_internal_dep("admin")),
 ):
+    """
+    Returns a preview of the CSV rows. 
+    Metadata is pulled from sidecar; if file isn't scanned, it might be incomplete.
+    """
     scope, path, safe_name = dataset_service.resolve_csv_path(name)
-    meta = dataset_service.scan_csv_file(path)
     
     rows = []
     with path.open("r", encoding="utf-8", errors="ignore") as f:
@@ -126,13 +182,13 @@ async def preview_csv_file(
             if len(rows) >= limit: break
             rows.append(row)
             
-    return _with_worker_metadata({
+    base_info = {
         "status": "success",
         "name": safe_name,
         "rows": rows,
-        "header": meta.get("columns"),
-        **meta
-    }, path)
+        "health_flags": []
+    }
+    return _with_worker_metadata(base_info, path)
 
 @router.get("/files/{name:path}/download")
 async def download_csv_file(name: str, _user=Depends(role_or_internal_dep("admin"))):
@@ -148,3 +204,12 @@ async def delete_csv_file(name: str, req: DeleteCsvRequest, _user=Depends(role_o
     path.unlink()
     dataset_service.sidecar_path(path).unlink(missing_ok=True)
     return {"status": "success", "message": f"Deleted {safe_name}"}
+
+@router.post("/files/{name:path}/scan")
+async def trigger_dataset_scan(name: str, _user=Depends(role_or_internal_dep("admin"))):
+    job_id = dataset_service.trigger_scan(name)
+    return {"status": "success", "job_id": job_id, "message": "Scan task triggered in background"}
+
+@router.get("/jobs/{job_id}")
+async def get_dataset_job_status(job_id: str, _user=Depends(role_or_internal_dep("admin"))):
+    return {"status": "success", "job": get_job_status(job_id)}

@@ -212,4 +212,10 @@ class DatasetService:
         p = self.sidecar_path(csv_path)
         p.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
 
+    def trigger_scan(self, csv_name: str, include_archived: bool = True) -> str:
+        """Triggers a background scan task and returns the job ID."""
+        from workers.tasks.dataset_tasks import scan_dataset_task
+        task = scan_dataset_task.delay(csv_name, include_archived)
+        return task.id
+
 dataset_service = DatasetService()
