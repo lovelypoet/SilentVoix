@@ -7,7 +7,7 @@ import logging
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any, Optional
-from core.settings import settings
+from api.core.settings import settings
 import pygame
 import threading
 import sys

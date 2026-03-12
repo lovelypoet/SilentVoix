@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from collections import deque
-from core.settings import settings
+from api.core.settings import settings
 from AI.runtime_adapter import load_runtime, predict as predict_runtime
 from services.model_library_service import model_library_service
 

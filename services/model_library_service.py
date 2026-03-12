@@ -20,7 +20,7 @@ from AI.runtime_adapter import (
     predict as predict_runtime,
     validate_export_and_extension,
 )
-from core.settings import settings
+from api.core.settings import settings
 
 logger = logging.getLogger("signglove.playground")
 

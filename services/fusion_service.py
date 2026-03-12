@@ -133,5 +133,5 @@ class FusionService:
         return export_name
 
 # Singleton instance
-from core.settings import settings
+from api.core.settings import settings
 fusion_service = FusionService(Path(settings.DATA_DIR) / "active")
