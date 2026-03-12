@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     MONGO_URI: str = Field("mongodb://localhost:27017")
     DB_NAME: str = Field("signglove")
     TEST_DB_NAME: str = "test_signglove"
+    DATABASE_URL: str = Field("postgresql+asyncpg://postgres:postgres@localhost:5432/signglove")
     # Legacy duplicates removed (ENVIRONMENT/SECRET_KEY/ALGORITHM/ACCESS_TOKEN_EXPIRE_MINUTES)
 
     
