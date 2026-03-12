@@ -3,12 +3,15 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+import logging
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from api.core.settings import settings
+
+logger = logging.getLogger("signglove.dataset_service")
 
 # --- Constants & Schemas ---
 
@@ -115,6 +118,18 @@ class DatasetService:
         if self.data_dir.exists(): roots.append(("legacy", self.data_dir))
         return roots
 
+    def resolve_csv_path(self, name: str, include_archived: bool = True) -> Tuple[str, Path, str]:
+        val = (name or "").strip().replace("\\", "/")
+        p = Path(val)
+        if p.is_absolute() or ".." in p.parts:
+            raise ValueError("Invalid filename path")
+        
+        for scope, root in self.get_roots(include_archived):
+            candidate = (root / p).resolve()
+            if candidate.exists() and candidate.is_file():
+                return scope, candidate, val
+        raise FileNotFoundError(f"CSV {val} not found")
+
     def scan_csv_file(self, path: Path) -> Dict[str, Any]:
         try:
             with path.open("r", encoding="utf-8", errors="ignore", newline="") as f:
@@ -144,22 +159,57 @@ class DatasetService:
                     "schema_id": schema_id,
                     "modality": modality,
                     "hand_mode": hand_mode,
+                    "expected_feature_dim": SCHEMA_DIM_MAP.get(schema_id),
+                    "schema_version": "v1",
                     "health_flags": [] if schema_id != "unknown" else ["unknown_schema"]
                 }
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def list_datasets(self, include_archived: bool = False) -> List[Dict[str, Any]]:
-        datasets = []
-        for root_name, root_path in self.get_roots(include_archived):
-            for csv_path in root_path.glob("*.csv"):
-                datasets.append({
-                    "name": csv_path.name,
-                    "path": str(csv_path),
-                    "source": root_name,
-                    "size_bytes": csv_path.stat().st_size,
-                    "modified": datetime.fromtimestamp(csv_path.stat().st_mtime, tz=timezone.utc).isoformat()
-                })
-        return datasets
+    # --- Storage & Selection ---
+
+    def load_selection_store(self) -> Dict[str, Dict[str, Any]]:
+        if not self.selection_file.exists(): return {}
+        try:
+            with self.selection_file.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except Exception: return {}
+
+    def save_selection_store(self, data: Dict[str, Dict[str, Any]]):
+        tmp = self.selection_file.with_suffix(".json.tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=True, indent=2)
+        tmp.replace(self.selection_file)
+
+    def load_order_store(self) -> List[str]:
+        if not self.order_file.exists(): return []
+        try:
+            with self.order_file.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            return [str(x).strip() for x in data if x] if isinstance(data, list) else []
+        except Exception: return []
+
+    def save_order_store(self, data: List[str]):
+        tmp = self.order_file.with_suffix(".json.tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=True, indent=2)
+        tmp.replace(self.order_file)
+
+    # --- Sidecar Metadata ---
+
+    def sidecar_path(self, csv_path: Path) -> Path:
+        return csv_path.with_suffix(".metadata.json")
+
+    def load_sidecar(self, csv_path: Path) -> Dict[str, Any]:
+        p = self.sidecar_path(csv_path)
+        if not p.exists(): return {}
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception: return {}
+
+    def save_sidecar(self, csv_path: Path, data: Dict[str, Any]):
+        p = self.sidecar_path(csv_path)
+        p.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
 
 dataset_service = DatasetService()
