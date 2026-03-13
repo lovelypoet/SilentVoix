@@ -9,11 +9,12 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && apt-get clean
 
-COPY requirements.txt ./
+COPY worker-early-fusion/requirements.txt ./
 RUN pip install --upgrade pip \
   && pip install -r requirements.txt
 
-COPY app.py ./
+COPY worker-early-fusion/app.py ./
+COPY AI/ /app/AI/
 
 EXPOSE 8095
 

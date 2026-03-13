@@ -18,7 +18,7 @@ from api.utils.cache import cacheable
 from typing import Dict, Any, Optional
 from serial.tools import list_ports
 from api.routes.auth_routes import get_current_user
-from update_env import upsert_env_values, detect_serial_ports
+from api.utils.update_env import upsert_env_values, detect_serial_ports
 
 router = APIRouter(prefix="/utils", tags=["Utilities"])
 

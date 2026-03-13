@@ -9,7 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from api.core.settings import settings
 import logging
 from sqlalchemy import text
-from db.base import engine as pg_engine
+from db.base import engine as pg_engine, AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 

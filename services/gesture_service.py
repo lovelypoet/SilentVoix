@@ -1,9 +1,11 @@
+from __future__ import annotations
 import os
 import json
 import numpy as np
 import httpx
 import logging
 from collections import deque
+from typing import Dict, Any, List, Optional
 from api.core.settings import settings
 from AI.runtime_adapter import normalize_export_format
 from services.model_library_service import model_library_service
@@ -222,14 +224,6 @@ class GestureService:
             self.yolo_path = model_entry["model_path"]
             if YOLO:
                 self.detector = YOLO(self.yolo_path)
-
-# Singleton
-_gesture_service = None
-def get_gesture_service():
-    global _gesture_service
-    if _gesture_service is None:
-        _gesture_service = GestureService()
-    return _gesture_service
 
 # Singleton instance
 _gesture_service = None

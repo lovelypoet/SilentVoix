@@ -4,18 +4,20 @@ services:
       context: ./vue-next
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
-      backend:
+      api:
         condition: service_healthy
 
-  backend:
-    build: ./backend
+  api:
+    build: 
+      context: .
+      dockerfile: api/Dockerfile
     env_file:
       - ./backend/.env
     privileged: true
     ports:
-      - "8000:8080"
+      - "8000:8000"
     user: "0:0"
     device_cgroup_rules:
       - "c 166:* rmw"
@@ -23,15 +25,74 @@ services:
     environment:
       - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017}
       - DB_NAME=${DB_NAME:-sign_glove}
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/signglove
       - TTS_PROVIDER=gtts
-      - BACKEND_BASE_URL=http://localhost:8080
+      - BACKEND_BASE_URL=http://localhost:8000
       - SERIAL_PORT_SINGLE=/dev/ttyACM0
+      - REDIS_URL=redis://redis:6379/0
+      - USE_RUNTIME_SERVICES=true
+      - MODEL_LIBRARY_DIR=/app/storage/models
+      - ML_TENSORFLOW_URL=http://ml-tensorflow:8091
+      - ML_PYTORCH_URL=http://ml-pytorch:8092
+      - WORKER_LIBRARY_URL=http://worker-library:8093
+      - EARLY_FUSION_WORKER_URL=http://worker-early-fusion:8095
+      - FUSION_PREPROCESS_WORKER_URL=http://worker-fusion-preprocess:8094
     depends_on:
       mongo:
         condition: service_healthy
+      redis:
+        condition: service_started
+      ml-tensorflow:
+        condition: service_started
+      ml-pytorch:
+        condition: service_started
+      worker-library:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     volumes:
       - /dev:/dev
-      - ./backend/data:/app/data
+      - ./storage:/app/storage
+
+  worker:
+    build: 
+      context: .
+      dockerfile: api/Dockerfile
+    command: celery -A workers.tasks.celery_app worker --loglevel=info
+    healthcheck:
+      disable: true
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017}
+      - DB_NAME=${DB_NAME:-sign_glove}
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/signglove
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+      - MODEL_LIBRARY_DIR=/app/storage/models
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 
   mongo:
     image: mongo:7
@@ -62,6 +123,68 @@ services:
       timeout: 5s
       retries: 5
 
+  ml-tensorflow:
+    build:
+      context: .
+      dockerfile: ml-tensorflow/Dockerfile
+    ports:
+      - "8091:8091"
+    environment:
+      - LEGACY_TFLITE_MODEL_PATH=/app/AI/gesture_model.tflite
+    volumes:
+      - ./AI:/app/AI
+      - ./storage:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8091/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  ml-pytorch:
+    build:
+      context: .
+      dockerfile: ml-pytorch/Dockerfile
+    ports:
+      - "8092:8092"
+    volumes:
+      - ./storage:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8092/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  worker-library:
+    build:
+      context: .
+      dockerfile: worker-library/Dockerfile
+    ports:
+      - "8093:8093"
+    environment:
+      - MODEL_LIBRARY_DIR=/app/storage/models
+    volumes:
+      - ./storage:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8093/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  worker-early-fusion:
+    build:
+      context: .
+      dockerfile: worker-early-fusion/Dockerfile
+    ports:
+      - "8095:8095"
+
+  worker-fusion-preprocess:
+    build:
+      context: .
+      dockerfile: worker-fusion-preprocess/Dockerfile
+    ports:
+      - "8094:8094"
+
 volumes:
   mongo_data:
   postgres_data:
+  redis_data:

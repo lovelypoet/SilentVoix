@@ -1,0 +1,17 @@
+{
+    "model_name": "SilentVoix-YOLO-Hand",
+    "model_family": "yolo",
+    "export_format": "yolo",
+    "modality": "cv",
+    "version": "1.0.0",
+    "labels": ["hand"],
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "input_spec": {
+      "width": 640,
+      "height": 640,
+      "channels": 3,
+      "preprocess_profile": "yolo_hand_keypoints_v1"
+    }
+  }

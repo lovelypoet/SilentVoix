@@ -1,0 +1,25 @@
+{
+  "model_name": "best_model_processed_sensor",
+  "model_family": "pytorch",
+  "input_spec": {
+    "input_dim": 11,
+    "shape": [
+      1,
+      11
+    ]
+  },
+  "labels": [
+    "Hello",
+    "Yes",
+    "No",
+    "We",
+    "Are",
+    "Students",
+    "Rest"
+  ],
+  "export_format": "pytorch",
+  "version": "imported-local-1",
+  "precision": 0.0,
+  "recall": 0.0,
+  "f1": 0.0
+}

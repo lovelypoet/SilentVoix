@@ -1,0 +1,30 @@
+{
+  "model_name": "SilentVoix-V2-Temporal",
+  "model_family": "lstm",
+  "export_format": "pytorch",
+  "modality": "cv",
+  "version": "2.0",
+  "labels": [
+    "HELLO",
+    "I",
+    "NULL",
+    "SORRY",
+    "VIETNAM",
+    "YES"
+  ],
+  "precision": 0.388,
+  "recall": 0.478,
+  "f1": 0.414,
+  "input_spec": {
+    "input_dim": 3780,
+    "feature_dim": 63,
+    "sequence_length": 60,
+    "shape": [
+      1,
+      60,
+      63
+    ],
+    "preprocess_profile": "cv_wrist_center_v1",
+    "interpolation_type": "linear_temporal"
+  }
+}

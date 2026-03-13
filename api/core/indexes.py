@@ -6,7 +6,7 @@ Indexes setup for MongoDB collections in the sign glove system.
 from api.core.database import (
     sensor_collection,
     model_collection,
-    gesture_collection,
+    gestures_collection,
     training_collection
 )
 
@@ -27,5 +27,5 @@ async def create_indexes():
     await training_collection.create_index("started_at")
 
     # Gestures (optional — only if needed)
-    await gesture_collection.create_index("session_id")
-    await gesture_collection.create_index("label")
+    await gestures_collection.create_index("session_id")
+    await gestures_collection.create_index("label")

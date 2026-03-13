@@ -5,7 +5,12 @@ from typing import Optional, Literal, List
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from api.core.settings import settings
-from api.core.database import users_collection
+from api.core.database import AsyncSessionLocal
+from db.models import User
+from sqlalchemy import select, update, insert
+import logging
+
+logger = logging.getLogger("signglove.auth")
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -80,20 +85,24 @@ def _normalized_access_scope(raw: Optional[dict]) -> dict:
             pass
     return AccessScope().model_dump()
 
-async def get_user_by_email(email: str) -> Optional[dict]:
-    return await users_collection.find_one({"email": email})
+async def get_user_by_email(email: str) -> Optional[User]:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).where(User.email == email))
+        return result.scalars().first()
 
 async def create_user(email: str, password: str, role: str = "editor") -> str:
     hashed = pwd_context.hash(password)
-    doc = {"email": email, "password_hash": hashed, "role": role, "created_at": datetime.now(timezone.utc)}
-    result = await users_collection.insert_one(doc)
-    return str(result.inserted_id)
-
-async def ensure_default_editor():
-    if settings.DEFAULT_EDITOR_EMAIL and settings.DEFAULT_EDITOR_PASSWORD:
-        existing = await users_collection.find_one({"email": settings.DEFAULT_EDITOR_EMAIL})
-        if not existing:
-            await create_user(settings.DEFAULT_EDITOR_EMAIL, settings.DEFAULT_EDITOR_PASSWORD, role="editor")
+    async with AsyncSessionLocal() as session:
+        new_user = User(
+            email=email,
+            hashed_password=hashed,
+            role=role,
+            full_name=email.split("@")[0] # Mock display name
+        )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+        return str(new_user.id)
 
 async def ensure_default_users():
     """
@@ -112,7 +121,7 @@ async def ensure_default_users():
     for email, password, role in default_users:
         if not email or not password:
             continue
-        existing = await users_collection.find_one({"email": email})
+        existing = await get_user_by_email(email)
         if not existing:
             await create_user(email, password, role=role)
 
@@ -122,7 +131,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
-async def get_current_user(request: Request) -> dict:
+async def get_current_user(request: Request) -> User:
     auth_header = request.headers.get("authorization")
     token = None
     if auth_header and auth_header.lower().startswith("bearer "):
@@ -142,7 +151,7 @@ async def get_current_user(request: Request) -> dict:
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
         
-    user = await users_collection.find_one({"email": email})
+    user = await get_user_by_email(email)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
         
@@ -150,8 +159,8 @@ async def get_current_user(request: Request) -> dict:
 
 def role_required(min_role: Literal["guest", "editor", "admin"]):
     order = {"guest": 0, "editor": 1, "admin": 2}
-    async def dependency(user: dict = Depends(get_current_user)):
-        user_role = user.get("role", "guest")
+    async def dependency(user: User = Depends(get_current_user)):
+        user_role = user.role or "guest"
         if order[user_role] < order[min_role]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
@@ -164,10 +173,11 @@ def role_or_internal(min_role: Literal["guest", "editor", "admin"]):
     async def dependency(request: Request):
         api_key = request.headers.get("x-api-key")
         if api_key and api_key == settings.SECRET_KEY:
-            return {"role": "admin", "email": "internal@local"}
+            # Mock user object for internal bypass
+            return User(role="admin", email="internal@local")
         # fallback to user auth
         user = await get_current_user(request)
-        user_role = user.get("role", "guest")
+        user_role = user.role or "guest"
         if order[user_role] < order[min_role]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
@@ -177,9 +187,9 @@ def role_or_internal(min_role: Literal["guest", "editor", "admin"]):
 async def login(data: LoginRequest, response: Response):
     await ensure_default_users()
     user = await get_user_by_email(data.email)
-    if not user or not pwd_context.verify(data.password, user.get("password_hash", "")):
+    if not user or not pwd_context.verify(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token({"sub": user["email"], "role": user.get("role", "guest")})
+    token = create_access_token({"sub": user.email, "role": user.role or "guest"})
     # httpOnly cookie (best-effort; frontend primarily uses Authorization header)
     response.set_cookie(
         key=COOKIE_NAME,
@@ -216,58 +226,58 @@ async def logout(response: Response):
     return {"status": "success"}
 
 @router.get("/me", response_model=UserPublic)
-async def me(user: dict = Depends(get_current_user)):
+async def me(user: User = Depends(get_current_user)):
     return {
-        "id": str(user.get("_id")),
-        "email": user["email"],
-        "role": user.get("role", "guest"),
-        "display_name": user.get("display_name"),
-        "operator_preferences": _normalized_operator_preferences(user.get("operator_preferences")),
-        "access_scope": _normalized_access_scope(user.get("access_scope")),
+        "id": str(user.id),
+        "email": user.email,
+        "role": user.role or "guest",
+        "display_name": user.full_name,
+        # SQL User model doesn't have these extra JSON fields from MongoDB yet
+        # We'll provide defaults for now
+        "operator_preferences": _normalized_operator_preferences({}),
+        "access_scope": _normalized_access_scope({}),
     }
 
 @router.put("/me")
-async def update_me(data: UpdateProfileRequest, response: Response, user: dict = Depends(get_current_user)):
-    update_fields = {}
+async def update_me(data: UpdateProfileRequest, response: Response, user: User = Depends(get_current_user)):
+    update_data = {}
     email_changed = False
 
     if data.display_name is not None:
-        update_fields["display_name"] = data.display_name.strip()
+        update_data["full_name"] = data.display_name.strip()
 
-    if data.email is not None and data.email != user.get("email"):
+    if data.email is not None and data.email != user.email:
         existing = await get_user_by_email(data.email)
         if existing:
             raise HTTPException(status_code=409, detail="Email already exists")
-        update_fields["email"] = data.email
+        update_data["email"] = data.email
         email_changed = True
 
-    if data.operator_preferences is not None:
-        update_fields["operator_preferences"] = data.operator_preferences.model_dump()
+    # Note: operator_preferences and access_scope would require adding columns to PostgreSQL
+    # or using a JSONB column. For now we skip them or they are lost if not in the model.
 
-    if data.access_scope is not None:
-        scoped = data.access_scope.model_dump()
-        scoped["environments"] = [str(v).strip().lower() for v in scoped.get("environments", []) if str(v).strip()]
-        scoped["models"] = [str(v).strip() for v in scoped.get("models", []) if str(v).strip()]
-        update_fields["access_scope"] = scoped
+    if update_data:
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                update(User).where(User.id == user.id).values(**update_data)
+            )
+            await session.commit()
 
-    if update_fields:
-        await users_collection.update_one({"_id": user["_id"]}, {"$set": update_fields})
-
-    updated_user = await users_collection.find_one({"_id": user["_id"]})
+    updated_user = await get_user_by_email(user.email if not email_changed else data.email)
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
 
     result = {
-        "id": str(updated_user.get("_id")),
-        "email": updated_user["email"],
-        "role": updated_user.get("role", "guest"),
-        "display_name": updated_user.get("display_name"),
-        "operator_preferences": _normalized_operator_preferences(updated_user.get("operator_preferences")),
-        "access_scope": _normalized_access_scope(updated_user.get("access_scope")),
+        "id": str(updated_user.id),
+        "email": updated_user.email,
+        "role": updated_user.role or "guest",
+        "display_name": updated_user.full_name,
+        "operator_preferences": _normalized_operator_preferences({}),
+        "access_scope": _normalized_access_scope({}),
     }
 
     if email_changed:
-        token = create_access_token({"sub": updated_user["email"], "role": updated_user.get("role", "guest")})
+        token = create_access_token({"sub": updated_user.email, "role": updated_user.role or "guest"})
         response.set_cookie(
             key=COOKIE_NAME,
             value=token,

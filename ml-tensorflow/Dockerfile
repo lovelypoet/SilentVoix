@@ -12,10 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY ml-tensorflow/requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY app.py runtime_adapter.py ./
+COPY ml-tensorflow/app.py ml-tensorflow/runtime_adapter.py ./
 
 EXPOSE 8091
 

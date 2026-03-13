@@ -1,0 +1,23 @@
+{
+  "model_name": "SilentVoix-V2-LSTM",
+  "model_family": "lstm",
+  "export_format": "pytorch",
+  "modality": "cv",
+  "version": "2.0",
+  "labels": [
+    "Goodbye",
+    "Hello",
+    "No",
+    "Thank you",
+    "Yes"
+  ],
+  "precision": 0.9584,
+  "recall": 0.9521,
+  "f1": 0.9552,
+  "input_spec": {
+    "input_dim": 1008,
+    "feature_dim": 63,
+    "sequence_length": 16,
+    "preprocess_profile": "cv_wrist_center_v1_scaled"
+  }
+}
