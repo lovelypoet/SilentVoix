@@ -28,3 +28,4 @@ pyttsx3==2.90
 gTTS==2.3.2
 edge-tts==6.1.9
 pyserial==3.5
+prometheus-fastapi-instrumentator==6.1.0

@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "signglove-api"
+    static_configs:
+      - targets: ["api:8000"]
+
+  - job_name: "signglove-worker"
+    static_configs:
+      - targets: ["worker:8000"] # Note: Celery worker needs a metrics exporter or sidecar if not exposing directly
+
+  - job_name: "ml-tensorflow"
+    static_configs:
+      - targets: ["ml-tensorflow:8091"]
+
+  - job_name: "ml-pytorch"
+    static_configs:
+      - targets: ["ml-pytorch:8092"]
+
+  - job_name: "worker-library"
+    static_configs:
+      - targets: ["worker-library:8093"]

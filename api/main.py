@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from api.routes import (
     sensor_routes, admin_routes, dashboard_routes, gestures_predict,
@@ -72,6 +73,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Sign Glove API", lifespan=lifespan)
 
+# Initialize instrumentation
+instrumentator = Instrumentator().instrument(app)
+
 # Setup middleware
 setup_middleware(app)
 
@@ -96,6 +100,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Expose metrics endpoint
+@app.on_event("startup")
+async def startup():
+    instrumentator.expose(app)
 
 # Mount routers
 app.include_router(auth_routes.router)
