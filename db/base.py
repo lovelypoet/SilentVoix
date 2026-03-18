@@ -4,14 +4,26 @@ from typing import AsyncGenerator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import pool
 from api.core.settings import settings
 from contextlib import contextmanager
+
+_use_null_pool = settings.is_testing()
+_async_engine_kwargs = {
+    "echo": settings.DEBUG,
+    "future": True,
+}
+_sync_engine_kwargs = {
+    "echo": settings.DEBUG,
+}
+if _use_null_pool:
+    _async_engine_kwargs["poolclass"] = pool.NullPool
+    _sync_engine_kwargs["poolclass"] = pool.NullPool
 
 # Create async engine for PostgreSQL
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    future=True
+    **_async_engine_kwargs,
 )
 
 # Create session factory
@@ -25,7 +37,7 @@ AsyncSessionLocal = async_sessionmaker(
 sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
 sync_engine = create_engine(
     sync_url,
-    echo=settings.DEBUG,
+    **_sync_engine_kwargs,
 )
 
 SessionLocal = sessionmaker(

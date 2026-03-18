@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import shutil
 import logging
@@ -237,6 +238,53 @@ class DatasetService:
     def save_sidecar(self, csv_path: Path, data: Dict[str, Any]):
         p = self.sidecar_path(csv_path)
         p.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
+
+    def _sha256_for_file(self, path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def upsert_dataset_record(
+        self,
+        csv_path: Path,
+        owner_id: Any,
+        validation: Dict[str, Any],
+        sidecar: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        from uuid import UUID
+
+        from db.base import SessionLocal
+        from db.models import Dataset
+
+        resolved_path = csv_path.resolve()
+        stats = resolved_path.stat()
+        payload = {
+            "source": "csv_library",
+            "validation": validation,
+            "sidecar": sidecar or {},
+            "content_sha256": self._sha256_for_file(resolved_path),
+        }
+
+        with SessionLocal() as session:
+            dataset = session.query(Dataset).filter(Dataset.storage_path == str(resolved_path)).first()
+            if not dataset:
+                dataset = Dataset(
+                    name=resolved_path.name,
+                    version="v1",
+                    storage_path=str(resolved_path),
+                    owner_id=owner_id if isinstance(owner_id, UUID) else UUID(str(owner_id)),
+                )
+                session.add(dataset)
+
+            dataset.file_size_bytes = int(stats.st_size)
+            dataset.modality = str(validation.get("modality") or "unknown")
+            dataset.hand_mode = str(validation.get("hand_mode") or "unknown")
+            dataset.row_count = int(validation.get("row_count") or 0)
+            dataset.metadata_json = payload
+            session.commit()
+            return str(dataset.id)
 
     def create_job(
         self, 

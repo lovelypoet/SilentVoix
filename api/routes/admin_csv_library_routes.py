@@ -108,6 +108,7 @@ def _with_worker_metadata(base: Dict[str, Any], csv_path: Path) -> Dict[str, Any
         })
 
     base["worker_validation"] = validation
+    base["dataset_id"] = sidecar.get("dataset_id")
     base["operator_review"] = sidecar.get("operator_review")
     base["review_history"] = sidecar.get("review_history", [])
     

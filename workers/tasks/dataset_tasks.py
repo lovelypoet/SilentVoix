@@ -37,6 +37,11 @@ def _update_job_status(job_id: str, status: str, progress: int = None, error: st
             
             db.commit()
 
+
+def _get_job(job_id: str) -> Optional[JobRecord]:
+    with get_sync_db() as db:
+        return db.query(JobRecord).filter(JobRecord.id == job_id).first()
+
 @celery_app.task(name="scan_dataset_task", bind=True)
 def scan_dataset_task(self, csv_name: str, include_archived: bool = True):
     """
@@ -48,6 +53,9 @@ def scan_dataset_task(self, csv_name: str, include_archived: bool = True):
     try:
         self.update_state(state="PROGRESS", meta={"status": "resolving_path"})
         _, path, safe_name = dataset_service.resolve_csv_path(csv_name, include_archived)
+        job = _get_job(job_id)
+        if not job:
+            raise RuntimeError(f"JobRecord not found for task {job_id}")
         
         _update_job_status(job_id, "running", progress=30)
         self.update_state(state="PROGRESS", meta={"status": "scanning", "file": safe_name})
@@ -69,13 +77,27 @@ def scan_dataset_task(self, csv_name: str, include_archived: bool = True):
             flags.add("worker_scan_unknown_schema")
             sidecar["health_flags"] = sorted(list(flags))
             
+        dataset_id = dataset_service.upsert_dataset_record(
+            csv_path=path,
+            owner_id=job.user_id,
+            validation=results,
+            sidecar=sidecar,
+        )
+        sidecar["dataset_id"] = dataset_id
         dataset_service.save_sidecar(path, sidecar)
         
-        _update_job_status(job_id, "completed", progress=100, result_location=str(path), finished=True)
+        _update_job_status(
+            job_id,
+            "completed",
+            progress=100,
+            result_location=f"{path}#dataset:{dataset_id}",
+            finished=True,
+        )
         
         return {
             "status": "success",
             "name": safe_name,
+            "dataset_id": dataset_id,
             "results": results
         }
     except Exception as e:

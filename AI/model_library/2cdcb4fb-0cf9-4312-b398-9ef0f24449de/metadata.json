@@ -1,0 +1,1 @@
+{"model_name": "smoke-db-flow-http", "model_family": "lstm", "input_spec": {"input_dim": 11, "modality": "sensor"}, "labels": ["a", "b"], "export_format": "pytorch", "version": "v1", "precision": 0.9, "recall": 0.8, "f1": 0.85}

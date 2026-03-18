@@ -169,6 +169,17 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [path.strip() for path in v.split(",") if path.strip()]
         return v
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, v):
+        if isinstance(v, str):
+            normalized = v.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "development", "dev"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "release", "production", "prod"}:
+                return False
+        return v
     
     @field_validator("JWT_SECRET_KEY")
     @classmethod

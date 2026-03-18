@@ -28,3 +28,59 @@
 2026-03-13 01:27:46,175 - root - INFO - Local TFLite model is not loaded; predictions will be forwarded to ml-tensorflow service.
 2026-03-13 01:27:54,626 - signglove - INFO - Request: GET /health
 2026-03-13 01:27:54,629 - signglove - INFO - Response: GET /health - 200
+2026-03-18 22:20:27,112 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-18 22:20:27,240 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-18 22:20:27,240 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-18 22:20:44,042 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-18 22:20:44,145 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-18 22:20:44,145 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-18 22:24:37,233 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-18 22:24:37,242 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-18 22:24:37,382 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-18 22:24:37,382 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-18 22:24:37,390 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-18 22:24:37,390 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-18 22:24:38,165 - signglove - INFO - Request: POST /model-library/models/upload
+2026-03-18 22:24:38,169 - signglove.model_library - ERROR - Upload failed: Task <Task pending name='starlette.middleware.base.BaseHTTPMiddleware.__call__.<locals>.call_next.<locals>.coro' coro=<BaseHTTPMiddleware.__call__.<locals>.call_next.<locals>.coro() running at /home/lystiger/Documents/SilentVoix/venv/lib/python3.12/site-packages/starlette/middleware/base.py:70> cb=[TaskGroup._spawn.<locals>.task_done() at /home/lystiger/Documents/SilentVoix/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:661]> got Future <Future pending cb=[BaseProtocol._on_waiter_completed()]> attached to a different loop
+2026-03-18 22:24:38,176 - signglove - ERROR - Error 2bbbbe9a-d713-4c68-b1ff-0764afc40a11: HTTPException - 
+2026-03-18 22:24:38,177 - signglove - INFO - Response: POST /model-library/models/upload - 500
+2026-03-18 22:24:38,179 - httpx - INFO - HTTP Request: POST http://testserver/model-library/models/upload "HTTP/1.1 500 Internal Server Error"
+2026-03-18 22:25:09,955 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-18 22:25:10,057 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-18 22:25:10,058 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-18 22:25:10,781 - signglove - INFO - Request: POST /model-library/models/upload
+2026-03-18 22:25:10,808 - signglove.model_service - INFO - Registered model smoke-db-flow-http vv1 (ID: 2cdcb4fb-0cf9-4312-b398-9ef0f24449de) in PostgreSQL
+2026-03-18 22:25:10,815 - signglove - INFO - Response: POST /model-library/models/upload - 200
+2026-03-18 22:25:10,817 - httpx - INFO - HTTP Request: POST http://testserver/model-library/models/upload "HTTP/1.1 200 OK"
+2026-03-18 22:25:10,819 - signglove - INFO - Request: GET /model-library/models/active
+2026-03-18 22:25:10,825 - signglove - ERROR - Error 11e0b638-9f74-42f8-bf42-635350558770: RuntimeError - Task <Task pending name='starlette.middleware.base.BaseHTTPMiddleware.__call__.<locals>.call_next.<locals>.coro' coro=<BaseHTTPMiddleware.__call__.<locals>.call_next.<locals>.coro() running at /home/lystiger/Documents/SilentVoix/venv/lib/python3.12/site-packages/starlette/middleware/base.py:70> cb=[TaskGroup._spawn.<locals>.task_done() at /home/lystiger/Documents/SilentVoix/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:661]> got Future <Future pending cb=[BaseProtocol._on_waiter_completed()]> attached to a different loop
+2026-03-18 22:25:10,825 - signglove - INFO - Response: GET /model-library/models/active - 500
+2026-03-18 22:25:10,827 - httpx - INFO - HTTP Request: GET http://testserver/model-library/models/active "HTTP/1.1 500 Internal Server Error"
+2026-03-18 22:25:10,828 - signglove - INFO - Request: GET /model-library/models
+2026-03-18 22:25:10,831 - signglove - ERROR - Error daba38c0-0d87-41ab-a020-ae9c2084be3f: InterfaceError - (sqlalchemy.dialects.postgresql.asyncpg.InterfaceError) <class 'asyncpg.exceptions._base.InterfaceError'>: cannot perform operation: another operation is in progress
+[SQL: SELECT models.id, models.name, models.family, models.version, models.artifact_path, models.export_format, models.accuracy, models.f1_score, models.config_json, models.training_dataset_id, models.created_at 
+FROM models ORDER BY models.created_at DESC]
+(Background on this error at: https://sqlalche.me/e/20/rvf5)
+2026-03-18 22:25:10,831 - signglove - INFO - Response: GET /model-library/models - 500
+2026-03-18 22:25:10,833 - httpx - INFO - HTTP Request: GET http://testserver/model-library/models "HTTP/1.1 500 Internal Server Error"
+2026-03-18 22:25:10,834 - signglove - INFO - Request: DELETE /model-library/models/2cdcb4fb-0cf9-4312-b398-9ef0f24449de
+2026-03-18 22:25:10,837 - signglove - ERROR - Error bd0594b8-1ab0-44ec-9f77-4988b76f678e: HTTPException - 
+2026-03-18 22:25:10,837 - signglove - INFO - Response: DELETE /model-library/models/2cdcb4fb-0cf9-4312-b398-9ef0f24449de - 500
+2026-03-18 22:25:10,839 - httpx - INFO - HTTP Request: DELETE http://testserver/model-library/models/2cdcb4fb-0cf9-4312-b398-9ef0f24449de "HTTP/1.1 500 Internal Server Error"
+2026-03-18 22:26:01,175 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-18 22:26:01,277 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-18 22:26:01,277 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-18 22:26:02,017 - signglove - INFO - Request: POST /model-library/models/upload
+2026-03-18 22:26:02,045 - signglove.model_service - INFO - Registered model smoke-db-flow-http vv1 (ID: 1b60fddd-11e1-4f57-9170-ccc8fdcf9419) in PostgreSQL
+2026-03-18 22:26:02,134 - signglove - INFO - Response: POST /model-library/models/upload - 200
+2026-03-18 22:26:02,136 - httpx - INFO - HTTP Request: POST http://testserver/model-library/models/upload "HTTP/1.1 200 OK"
+2026-03-18 22:26:02,137 - signglove - INFO - Request: GET /model-library/models/active
+2026-03-18 22:26:02,160 - signglove - INFO - Response: GET /model-library/models/active - 200
+2026-03-18 22:26:02,162 - httpx - INFO - HTTP Request: GET http://testserver/model-library/models/active "HTTP/1.1 200 OK"
+2026-03-18 22:26:02,163 - signglove - INFO - Request: GET /model-library/models
+2026-03-18 22:26:02,185 - signglove - INFO - Response: GET /model-library/models - 200
+2026-03-18 22:26:02,186 - httpx - INFO - HTTP Request: GET http://testserver/model-library/models "HTTP/1.1 200 OK"
+2026-03-18 22:26:02,187 - signglove - INFO - Request: DELETE /model-library/models/1b60fddd-11e1-4f57-9170-ccc8fdcf9419
+2026-03-18 22:26:02,211 - signglove.model_service - INFO - Deleted artifacts at /home/lystiger/Documents/SilentVoix/AI/model_library/1b60fddd-11e1-4f57-9170-ccc8fdcf9419
+2026-03-18 22:26:02,231 - signglove - INFO - Response: DELETE /model-library/models/1b60fddd-11e1-4f57-9170-ccc8fdcf9419 - 200
+2026-03-18 22:26:02,233 - httpx - INFO - HTTP Request: DELETE http://testserver/model-library/models/1b60fddd-11e1-4f57-9170-ccc8fdcf9419 "HTTP/1.1 200 OK"
