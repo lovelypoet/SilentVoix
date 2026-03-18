@@ -1,8 +1,8 @@
-# SignGlove V3 Migration Plan — Tasks 9–11 (Status: Complete)
+# SignGlove V3 Migration Plan — Tasks 9–12
 
 ## Overview
 
-SignGlove V3 has successfully transitioned from a monolithic architecture to a production-ready ML platform. Core components for async job tracking, API hardening, and observability are now fully integrated.
+SignGlove V3 has successfully transitioned from a monolithic architecture to a production-ready ML platform. Core components for async job tracking, API hardening, and observability are fully integrated, and the database foundation for experiment tracking is now in place.
 
 ---
 
@@ -42,12 +42,27 @@ SignGlove V3 has successfully transitioned from a monolithic architecture to a p
 
 ---
 
+# Task 12 — Experiment Tracking & Versioning (Status: 100% Complete)
+
+## Progress
+*   **Source of Truth Fixed:** Model registration now writes to PostgreSQL `Model` records instead of relying on legacy Mongo model metadata.
+*   **Dataset Lineage Foundation:** Dataset scans now upsert PostgreSQL `Dataset` rows and expose `dataset_id` so model-to-dataset lineage is first-class.
+*   **Model Lineage Link:** Uploaded models now persist `training_dataset_id`, and model records now store dataset lineage using the dataset `content_sha256`.
+*   **Hyperparameter Logging:** Uploaded model metadata now normalizes `hyperparameters` into a dedicated experiment payload stored alongside the `Model` record.
+*   **Artifact Integrity:** Uploaded model artifacts now persist `artifact_sha256` and `metadata_sha256` integrity fields.
+*   **Compatibility Preserved:** Legacy `registry.json` remains as compatibility state for active model selection and ordering, but no longer acts as the primary model database.
+*   **Verification:** Verified through end-to-end HTTP smoke tests under `ENVIRONMENT=testing` for upload -> active -> list -> delete, including lineage hash persistence, hyperparameter persistence, and artifact SHA-256 fields.
+
+---
+
 # Current Architecture (Implemented)
 
 ```
 Client ──> [JWT Auth / Redis Rate Limit] ──> API Gateway ──> [Service Layer] ──> [Celery Queue] ──> Workers
                                                   │                                          │
-                                                  └─────────> [Postgres JobRecord] <─────────┘
+                                                  ├─────────> [Postgres JobRecord] <─────────┘
+                                                  ├─────────> [Postgres Dataset]
+                                                  └─────────> [Postgres Model + Dataset Linkage]
                                                   │                                          │
                                             [Prometheus] <──────── [Disk-Buffered Uploads] <─┘
                                                   │
@@ -59,9 +74,7 @@ Client ──> [JWT Auth / Redis Rate Limit] ──> API Gateway ──> [Servic
 # Future Roadmap (Updated)
 
 ### Task 12 — Experiment Tracking & Versioning
-*   **Dataset Versioning:** Track lineage between models and specific dataset hashes.
-*   **Hyperparameter Logging:** Save training config alongside the `Model` record.
-*   **Artifact Integrity:** Add SHA-256 verification for uploaded models.
+*   **Status:** Complete. Models now persist dataset lineage by hash, normalized hyperparameters, and artifact SHA-256 integrity metadata.
 
 ### Task 13 — Specialized GPU Worker Pools
 *   Configure specialized queues for GPU-intensive tasks (Training, YOLO Video Inference).

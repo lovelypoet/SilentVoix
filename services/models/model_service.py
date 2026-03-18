@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import shutil
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 
 from api.core.database import AsyncSessionLocal
-from db.models import Model
+from db.models import Dataset, Model
 from services.model_library_service import model_library_service
 
 logger = logging.getLogger("signglove.model_service")
@@ -33,6 +34,9 @@ class ModelService:
         config = model.config_json if isinstance(model.config_json, dict) else {}
         metadata = config.get("metadata") if isinstance(config.get("metadata"), dict) else {}
         runtime_status = config.get("runtime_status") if isinstance(config.get("runtime_status"), dict) else None
+        experiment = config.get("experiment") if isinstance(config.get("experiment"), dict) else None
+        lineage = config.get("lineage") if isinstance(config.get("lineage"), dict) else None
+        integrity = config.get("integrity") if isinstance(config.get("integrity"), dict) else None
 
         return {
             "id": str(model.id),
@@ -51,6 +55,9 @@ class ModelService:
             "created_at": _isoformat_utc(model.created_at),
             "status": "available",
             "training_dataset_id": str(model.training_dataset_id) if model.training_dataset_id else None,
+            "experiment": experiment,
+            "lineage": lineage,
+            "integrity": integrity,
             "runtime_status": runtime_status,
         }
 
@@ -67,7 +74,54 @@ class ModelService:
             "input_dim": int(entry.get("input_dim") or 0),
             "created_at": entry.get("created_at") or datetime.now(timezone.utc).isoformat(),
             "training_dataset_id": entry.get("training_dataset_id"),
+            "experiment": entry.get("experiment"),
+            "lineage": entry.get("lineage"),
+            "integrity": entry.get("integrity"),
             "runtime_status": entry.get("runtime_status"),
+        }
+
+    def _sha256_for_file(self, path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def _sha256_for_bytes(self, payload: bytes) -> str:
+        return hashlib.sha256(payload).hexdigest()
+
+    def _extract_hyperparameters(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        for key in ("hyperparameters", "training_config", "training_params", "experiment_config"):
+            value = metadata.get(key)
+            if isinstance(value, dict):
+                return value
+        return {}
+
+    def _build_experiment_payload(
+        self,
+        metadata: Dict[str, Any],
+        artifact_sha256: str,
+        metadata_sha256: str,
+        training_dataset: Optional[Dataset],
+    ) -> Dict[str, Any]:
+        dataset_hash = None
+        dataset_name = None
+        if training_dataset and isinstance(training_dataset.metadata_json, dict):
+            dataset_hash = training_dataset.metadata_json.get("content_sha256")
+            dataset_name = training_dataset.name
+
+        hyperparameters = self._extract_hyperparameters(metadata)
+        return {
+            "hyperparameters": hyperparameters,
+            "dataset": {
+                "id": str(training_dataset.id) if training_dataset else None,
+                "name": dataset_name,
+                "content_sha256": dataset_hash,
+            },
+            "artifacts": {
+                "model_sha256": artifact_sha256,
+                "metadata_sha256": metadata_sha256,
+            },
         }
 
     async def sync_registry_from_db(self) -> Dict[str, Any]:
@@ -132,20 +186,46 @@ class ModelService:
         family = str(metadata.get("model_family") or "unknown").strip() or "unknown"
         accuracy = metadata.get("accuracy")
         f1_score = metadata.get("f1")
+        artifact_sha256 = self._sha256_for_file(model_path)
+        metadata_sha256 = self._sha256_for_file(metadata_path)
 
-        config_json = {
-            "metadata": metadata,
-            "metadata_path": str(metadata_path),
-            "metadata_file_name": "metadata.json",
-            "model_file_name": model_file_name,
-            "input_dim": input_dim,
-            "class_path": str(saved_class_path) if saved_class_path else None,
-            "class_file_name": class_file_name,
-            "runtime_status": None,
-        }
-
+        training_dataset_uuid = UUID(training_dataset_id) if training_dataset_id else None
         try:
             async with AsyncSessionLocal() as session:
+                training_dataset = None
+                if training_dataset_uuid:
+                    training_dataset = await session.get(Dataset, training_dataset_uuid)
+
+                config_json = {
+                    "metadata": metadata,
+                    "metadata_path": str(metadata_path),
+                    "metadata_file_name": "metadata.json",
+                    "model_file_name": model_file_name,
+                    "input_dim": input_dim,
+                    "class_path": str(saved_class_path) if saved_class_path else None,
+                    "class_file_name": class_file_name,
+                    "integrity": {
+                        "artifact_sha256": artifact_sha256,
+                        "metadata_sha256": metadata_sha256,
+                        "verified_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "experiment": self._build_experiment_payload(
+                        metadata=metadata,
+                        artifact_sha256=artifact_sha256,
+                        metadata_sha256=metadata_sha256,
+                        training_dataset=training_dataset,
+                    ),
+                    "lineage": {
+                        "training_dataset_id": str(training_dataset.id) if training_dataset else None,
+                        "dataset_content_sha256": (
+                            training_dataset.metadata_json.get("content_sha256")
+                            if training_dataset and isinstance(training_dataset.metadata_json, dict)
+                            else None
+                        ),
+                    },
+                    "runtime_status": None,
+                }
+
                 db_model = Model(
                     id=model_id,
                     name=name,
@@ -156,7 +236,7 @@ class ModelService:
                     accuracy=float(accuracy) if isinstance(accuracy, (int, float)) else None,
                     f1_score=float(f1_score) if isinstance(f1_score, (int, float)) else None,
                     config_json=config_json,
-                    training_dataset_id=UUID(training_dataset_id) if training_dataset_id else None,
+                    training_dataset_id=training_dataset_uuid,
                     created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 )
                 session.add(db_model)

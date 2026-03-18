@@ -84,3 +84,17 @@ FROM models ORDER BY models.created_at DESC]
 2026-03-18 22:26:02,211 - signglove.model_service - INFO - Deleted artifacts at /home/lystiger/Documents/SilentVoix/AI/model_library/1b60fddd-11e1-4f57-9170-ccc8fdcf9419
 2026-03-18 22:26:02,231 - signglove - INFO - Response: DELETE /model-library/models/1b60fddd-11e1-4f57-9170-ccc8fdcf9419 - 200
 2026-03-18 22:26:02,233 - httpx - INFO - HTTP Request: DELETE http://testserver/model-library/models/1b60fddd-11e1-4f57-9170-ccc8fdcf9419 "HTTP/1.1 200 OK"
+2026-03-18 22:33:27,112 - root - ERROR - Failed to initialize pyttsx3: libespeak.so.1: cannot open shared object file: No such file or directory
+2026-03-18 22:33:27,221 - signglove - INFO - TensorFlow unavailable in this container (expected for API-only image): No module named 'tensorflow'
+2026-03-18 22:33:27,221 - signglove - INFO - Skipping local TFLite model load; will forward to ml-tensorflow service
+2026-03-18 22:33:28,016 - signglove - INFO - Request: POST /model-library/models/upload
+2026-03-18 22:33:28,053 - signglove.model_service - INFO - Registered model smoke-task12-model vv1 (ID: d8427aad-7e0a-474d-900a-5e3ca3b85dd6) in PostgreSQL
+2026-03-18 22:33:28,172 - signglove - INFO - Response: POST /model-library/models/upload - 200
+2026-03-18 22:33:28,175 - httpx - INFO - HTTP Request: POST http://testserver/model-library/models/upload "HTTP/1.1 200 OK"
+2026-03-18 22:33:28,176 - signglove - INFO - Request: GET /model-library/models
+2026-03-18 22:33:28,202 - signglove - INFO - Response: GET /model-library/models - 200
+2026-03-18 22:33:28,204 - httpx - INFO - HTTP Request: GET http://testserver/model-library/models "HTTP/1.1 200 OK"
+2026-03-18 22:33:28,206 - signglove - INFO - Request: DELETE /model-library/models/d8427aad-7e0a-474d-900a-5e3ca3b85dd6
+2026-03-18 22:33:28,233 - signglove.model_service - INFO - Deleted artifacts at /home/lystiger/Documents/SilentVoix/AI/model_library/d8427aad-7e0a-474d-900a-5e3ca3b85dd6
+2026-03-18 22:33:28,259 - signglove - INFO - Response: DELETE /model-library/models/d8427aad-7e0a-474d-900a-5e3ca3b85dd6 - 200
+2026-03-18 22:33:28,260 - httpx - INFO - HTTP Request: DELETE http://testserver/model-library/models/d8427aad-7e0a-474d-900a-5e3ca3b85dd6 "HTTP/1.1 200 OK"
