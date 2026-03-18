@@ -11,9 +11,12 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from api.core.settings import settings
-from api.routes.auth_routes import role_or_internal_dep
+from api.routes.auth_routes import role_or_internal_dep, get_current_user_dep
 from services.datasets.dataset_service import dataset_service, SCHEMA_DIM_MAP
 from celery.result import AsyncResult
+from db.models import JobRecord, User
+from api.core.database import AsyncSessionLocal
+from sqlalchemy import select
 
 router = APIRouter(prefix="/admin/csv-library", tags=["Admin CSV Library"])
 
@@ -45,6 +48,30 @@ def get_job_status(job_id: str) -> Dict[str, Any]:
         "result": res.result if res.ready() else None,
         "progress": res.info if not res.ready() else None
     }
+
+async def get_job_record_status(job_id: str) -> Dict[str, Any]:
+    """Retrieves job status from both Postgres JobRecord and Celery."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(JobRecord).where(JobRecord.id == job_id))
+        job = result.scalars().first()
+        
+        celery_info = get_job_status(job_id)
+        
+        if not job:
+            return celery_info
+            
+        return {
+            "job_id": job_id,
+            "status": job.status,
+            "celery_status": celery_info["status"],
+            "progress": job.progress,
+            "task_type": job.task_type,
+            "created_at": job.created_at,
+            "started_at": job.started_at,
+            "finished_at": job.finished_at,
+            "error": job.error_log,
+            "result_location": job.result_location
+        }
 
 def _with_worker_metadata(base: Dict[str, Any], csv_path: Path) -> Dict[str, Any]:
     """
@@ -119,14 +146,14 @@ async def list_csv_files(
     return {"status": "success", "files": result}
 
 @router.post("/files/scan-all")
-async def trigger_all_scans(_user=Depends(role_or_internal_dep("admin"))):
+async def trigger_all_scans(user: User = Depends(role_or_internal_dep("admin"))):
     """
     Triggers a background scan for all datasets that don't have up-to-date metadata.
     """
     files = dataset_service.list_datasets(include_archived=True)
     job_ids = []
     for f in files:
-        job_id = dataset_service.trigger_scan(f["name"])
+        job_id = dataset_service.trigger_scan(f["name"], user_id=user.id)
         job_ids.append(job_id)
     return {"status": "success", "triggered_count": len(job_ids), "job_ids": job_ids}
 
@@ -206,10 +233,10 @@ async def delete_csv_file(name: str, req: DeleteCsvRequest, _user=Depends(role_o
     return {"status": "success", "message": f"Deleted {safe_name}"}
 
 @router.post("/files/{name:path}/scan")
-async def trigger_dataset_scan(name: str, _user=Depends(role_or_internal_dep("admin"))):
-    job_id = dataset_service.trigger_scan(name)
+async def trigger_dataset_scan(name: str, user: User = Depends(role_or_internal_dep("admin"))):
+    job_id = dataset_service.trigger_scan(name, user_id=user.id)
     return {"status": "success", "job_id": job_id, "message": "Scan task triggered in background"}
 
 @router.get("/jobs/{job_id}")
 async def get_dataset_job_status(job_id: str, _user=Depends(role_or_internal_dep("admin"))):
-    return {"status": "success", "job": get_job_status(job_id)}
+    return {"status": "success", "job": await get_job_record_status(job_id)}

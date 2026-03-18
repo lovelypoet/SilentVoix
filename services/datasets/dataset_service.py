@@ -212,10 +212,52 @@ class DatasetService:
         p = self.sidecar_path(csv_path)
         p.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
 
-    def trigger_scan(self, csv_name: str, include_archived: bool = True) -> str:
+    def create_job(
+        self, 
+        task_type: str, 
+        user_id: Any, 
+        payload: Dict[str, Any], 
+        job_id: Optional[str] = None
+    ) -> str:
+        """
+        Creates a JobRecord in the database before starting the Celery task.
+        """
+        from db.base import SessionLocal
+        from db.models import JobRecord
+        from uuid import UUID
+        
+        with SessionLocal() as session:
+            job = JobRecord(
+                id=UUID(job_id) if job_id else None,
+                task_type=task_type,
+                user_id=user_id if isinstance(user_id, UUID) else UUID(str(user_id)),
+                input_payload=payload,
+                status="pending",
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None)
+            )
+            session.add(job)
+            session.commit()
+            return str(job.id)
+
+    def trigger_scan(self, csv_name: str, user_id: Any, include_archived: bool = True) -> str:
         """Triggers a background scan task and returns the job ID."""
         from workers.tasks.dataset_tasks import scan_dataset_task
-        task = scan_dataset_task.delay(csv_name, include_archived)
-        return task.id
+        from uuid import uuid4
+        
+        job_id = str(uuid4())
+        # Create persistent JobRecord first
+        self.create_job(
+            task_type="dataset_scan",
+            user_id=user_id,
+            payload={"csv_name": csv_name, "include_archived": include_archived},
+            job_id=job_id
+        )
+        
+        # Dispatch Celery task with the same UUID
+        scan_dataset_task.apply_async(
+            args=[csv_name, include_archived],
+            task_id=job_id
+        )
+        return job_id
 
 dataset_service = DatasetService()

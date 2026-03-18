@@ -27,6 +27,32 @@ class User(Base):
 
     # Relationships
     datasets: Mapped[List["Dataset"]] = relationship(back_populates="owner")
+    jobs: Mapped[List["JobRecord"]] = relationship(back_populates="user")
+
+
+class JobRecord(Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    task_type: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="pending", index=True, nullable=False)
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # Payload for idempotent retries
+    input_payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    
+    # Store detailed logs/errors
+    error_log: Mapped[Optional[str]] = mapped_column(Text)
+    result_location: Mapped[Optional[str]] = mapped_column(String(1024))
+    
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="jobs")
 
 
 class Dataset(Base):

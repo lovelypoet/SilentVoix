@@ -78,44 +78,73 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         
         return response
 
+import time
+import logging
+from typing import Callable
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import RequestResponseEndpoint
+from api.core.error_handler import performance_monitor, log_request_performance
+from api.core.auth import get_required_role_for_path
+from api.core.settings import settings
+import redis
+
+logger = logging.getLogger("signglove")
+
+# --- Redis Rate Limiting ---
+
+def get_redis_client():
+    """Create a Redis client for rate limiting (DB 1)."""
+    try:
+        # Construct DB-specific URL for rate limiting
+        base_url = settings.REDIS_URL.rsplit('/', 1)[0]
+        rate_limit_url = f"{base_url}/{settings.REDIS_RATE_LIMIT_DB}"
+        return redis.from_url(rate_limit_url, decode_responses=True)
+    except Exception as e:
+        logger.error(f"Failed to connect to Redis for rate limiting: {e}")
+        return None
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Simple rate limiting middleware."""
+    """Redis-backed rate limiting middleware."""
     
     def __init__(self, app, requests_per_minute: int = 60, exclude_prefixes=None):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
-        self.request_counts = {}
         self.exclude_prefixes = exclude_prefixes or []
+        self.redis = get_redis_client()
     
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        # Skip if Redis is unavailable
+        if not self.redis:
+            return await call_next(request)
+
         client_ip = request.client.host if request.client else "unknown"
         path = request.url.path or ""
+        
+        # Skip excluded paths
         for prefix in self.exclude_prefixes:
             if path.startswith(prefix):
                 return await call_next(request)
-        current_time = time.time()
         
-        # Clean old entries (older than 1 minute)
-        self.request_counts = {
-            ip: times for ip, times in self.request_counts.items()
-            if any(current_time - t < 60 for t in times)
-        }
-        
-        # Check rate limit
-        if client_ip in self.request_counts:
-            recent_requests = [t for t in self.request_counts[client_ip] if current_time - t < 60]
-            if len(recent_requests) >= self.requests_per_minute:
-                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+        try:
+            # Use Redis INCR and EXPIRE for sliding window (1 minute)
+            key = f"ratelimit:{client_ip}"
+            current_count = self.redis.incr(key)
+            
+            if current_count == 1:
+                self.redis.expire(key, 60)
+            
+            if current_count > self.requests_per_minute:
+                logger.warning(f"Rate limit exceeded for IP: {client_ip} (count: {current_count})")
                 return Response(
                     content='{"error": "Rate limit exceeded"}',
                     status_code=429,
                     media_type="application/json"
                 )
-        
-        # Add current request
-        if client_ip not in self.request_counts:
-            self.request_counts[client_ip] = []
-        self.request_counts[client_ip].append(current_time)
+        except Exception as e:
+            logger.error(f"Rate limiting error: {e}")
+            # Fail open if Redis fails during request
+            return await call_next(request)
         
         return await call_next(request)
 

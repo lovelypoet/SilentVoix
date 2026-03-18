@@ -11,7 +11,8 @@ from api.routes import (
     utils_routes, auth_routes, voice_routes, sync_routes, liveWS, 
     capture_controls_routes, admin_csv_library_routes, model_library_routes, 
     fusion_preprocess_routes, early_fusion_routes, model_status,
-    audio_files_routes, predict_integrated_routes, model_feedback_routes
+    audio_files_routes, predict_integrated_routes, model_feedback_routes,
+    job_routes
 )
 
 from api.ingestion.streaming.live_data import get_latest_data
@@ -126,6 +127,7 @@ app.include_router(model_status.router)
 app.include_router(audio_files_routes.router)
 app.include_router(predict_integrated_routes.router)
 app.include_router(model_feedback_routes.router)
+app.include_router(job_routes.router)
 
 @app.get("/health")
 async def health_check():

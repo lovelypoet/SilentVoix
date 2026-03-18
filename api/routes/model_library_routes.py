@@ -16,6 +16,7 @@ from services.model_library_service import model_library_service
 from services.models.model_service import model_service
 from api.routes.auth_routes import role_or_internal_dep
 from api.core.settings import settings
+from api.utils.upload_utils import handle_streaming_upload
 
 router = APIRouter(prefix="/model-library", tags=["Model Library"])
 logger = logging.getLogger("signglove.model_library")
@@ -45,27 +46,49 @@ async def upload_playground_model(
     if not model_filename:
         raise HTTPException(status_code=400, detail="model_file is required")
     
-    model_bytes = await artifact_file.read()
-    metadata_bytes = await metadata_file.read()
-    class_bytes = await class_file.read() if class_file else None
+    # 1. Stream to temp files with strict size limits
+    tmp_model = None
+    tmp_meta = None
+    tmp_class = None
     
     try:
-        metadata = json.loads(metadata_bytes.decode("utf-8"))
+        tmp_model = await handle_streaming_upload(
+            artifact_file, 
+            max_size=settings.MAX_MODEL_SIZE,
+            allowed_extensions=[".h5", ".tflite", ".pt", ".bin", ".onnx"]
+        )
+        tmp_meta = await handle_streaming_upload(
+            metadata_file, 
+            max_size=10 * 1024 * 1024, # 10MB meta limit
+            allowed_extensions=[".json"]
+        )
+        if class_file:
+            tmp_class = await handle_streaming_upload(
+                class_file,
+                max_size=10 * 1024 * 1024,
+                allowed_extensions=[".py", ".txt"]
+            )
+
+        # 2. Process metadata
+        metadata = json.loads(tmp_meta.read_text(encoding="utf-8"))
         model_name = metadata.get("model_name", Path(model_filename).stem)
         
-        # Register in V3 structured storage & DB
-        model_id = await model_service.register_model(
+        # 3. Register in V3 structured storage & DB using MOVE
+        model_id = await model_service.register_model_from_tmp(
             name=model_name,
             version=version,
-            model_file_content=model_bytes,
+            model_tmp_path=tmp_model,
             model_file_name=model_filename,
             metadata=metadata,
-            class_file_content=class_bytes,
+            class_tmp_path=tmp_class,
             class_file_name=class_file.filename if class_file else None
         )
         
-        # Backward Compatibility: Update legacy registry.json for now
-        # (This ensures existing UI and ML runtimes don't break immediately)
+        # Success: Mark as moved so we don't delete in finally
+        tmp_model = None
+        if tmp_class: tmp_class = None
+        
+        # 4. Backward Compatibility: Update legacy registry.json
         registry = model_library_service.load_registry()
         entry = {
             "id": model_id,
@@ -81,11 +104,16 @@ async def upload_playground_model(
         return {
             "status": "success",
             "model_id": model_id,
-            "message": f"Model registered successfully in V3 storage (v{version})"
+            "message": f"Model registered successfully via streaming upload (v{version})"
         }
     except Exception as e:
         logger.error(f"Upload failed: {e}")
+        if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        for p in [tmp_model, tmp_meta, tmp_class]:
+            if p and p.exists():
+                p.unlink()
 
 @router.get("/models")
 async def list_playground_models(_user=Depends(role_or_internal_dep("editor"))):

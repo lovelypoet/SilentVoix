@@ -18,31 +18,30 @@ class ModelService:
         self.storage_root = Path(settings.BASE_DIR) / "storage" / "models"
         self.storage_root.mkdir(parents=True, exist_ok=True)
 
-    async def register_model(
+    async def register_model_from_tmp(
         self,
         name: str,
         version: str,
-        model_file_content: bytes,
+        model_tmp_path: Path,
         model_file_name: str,
         metadata: Dict[str, Any],
-        class_file_content: Optional[bytes] = None,
+        class_tmp_path: Optional[Path] = None,
         class_file_name: Optional[str] = None
     ) -> str:
         """
-        Saves model artifacts to storage and registers metadata in DB.
-        Layout: storage/models/{name}/{version}/
+        Registers a model by moving artifacts from temporary paths.
         """
         # 1. Create directory structure
         model_dir = self.storage_root / name / version
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        # 2. Save artifacts
+        # 2. Move artifacts
         model_path = model_dir / model_file_name
-        model_path.write_bytes(model_file_content)
+        shutil.move(str(model_tmp_path), str(model_path))
 
-        if class_file_content and class_file_name:
+        if class_tmp_path and class_tmp_path.exists():
             class_path = model_dir / class_file_name
-            class_path.write_bytes(class_file_content)
+            shutil.move(str(class_tmp_path), str(class_path))
         else:
             class_path = None
 
@@ -61,7 +60,7 @@ class ModelService:
 
         # 4. Save to MongoDB
         await model_collection.insert_one(doc)
-        logger.info(f"Registered model {name} v{version} (ID: {model_id})")
+        logger.info(f"Registered model {name} v{version} (ID: {model_id}) via move")
         
         return model_id
 

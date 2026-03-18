@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field("postgresql+asyncpg://postgres:postgres@localhost:5432/signglove")
     # Legacy duplicates removed (ENVIRONMENT/SECRET_KEY/ALGORITHM/ACCESS_TOKEN_EXPIRE_MINUTES)
 
+    # Redis for Celery and Rate Limiting
+    REDIS_URL: str = Field("redis://localhost:6379/0")
+    REDIS_RATE_LIMIT_DB: int = Field(1)
+
     
     # Model/data paths
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -114,8 +118,11 @@ class Settings(BaseSettings):
     
     # File upload settings
     UPLOAD_DIR: str = Field("uploads")
+    UPLOAD_TMP_DIR: str = Field("/tmp/uploads")
     MAX_FILE_SIZE: int = Field(50 * 1024 * 1024)  # 50MB
-    ALLOWED_FILE_TYPES: List[str] = Field([".csv", ".json", ".txt"])
+    MAX_CSV_SIZE: int = Field(500 * 1024 * 1024)   # 500MB
+    MAX_MODEL_SIZE: int = Field(2 * 1024 * 1024 * 1024) # 2GB
+    ALLOWED_FILE_TYPES: List[str] = Field([".csv", ".json", ".txt", ".h5", ".tflite", ".pt"])
 
     # Runtime flags
     RUNTIME_PREFLIGHT_ON_STARTUP: bool = Field(True)
