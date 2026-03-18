@@ -3,14 +3,38 @@ from __future__ import annotations
 from pathlib import Path
 from threading import Lock
 from typing import Dict, List, Optional
+import time
 
 import numpy as np
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from pydantic import BaseModel
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 from runtime_adapter import load_runtime, normalize_export_format, predict
 
 app = FastAPI(title="SilentVoix ML TensorFlow Runtime", version="1.0")
+
+# --- Prometheus Metrics ---
+ML_INFERENCE_LATENCY = Histogram(
+    "ml_inference_latency_seconds",
+    "Time spent running inference",
+    ["pipeline_stage", "model_id"]
+)
+ML_CONFIDENCE_SCORE = Histogram(
+    "ml_confidence_score",
+    "Distribution of confidence scores",
+    ["model_id"],
+    buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0]
+)
+ML_REQUEST_COUNT = Counter(
+    "ml_request_count_total",
+    "Total ML requests processed",
+    ["status", "endpoint"]
+)
+
+@app.get("/metrics")
+def metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 _TF_EXPORT_FORMATS = {"tflite", "keras", "h5"}
 _MODEL_CACHE: Dict[str, Dict[str, object]] = {}
@@ -120,19 +144,27 @@ def runtime_check(payload: RuntimePayload):
 
 @app.post("/v1/predict")
 def run_predict(payload: PredictPayload):
+    start_time = time.time()
     validation_error = _validate_payload(payload)
     if validation_error:
+        ML_REQUEST_COUNT.labels(status="error", endpoint="predict").inc()
         return validation_error
 
     vector = np.asarray(payload.input_vector, dtype=np.float32).reshape(-1)
     if vector.shape[0] != payload.input_dim:
+        ML_REQUEST_COUNT.labels(status="error", endpoint="predict").inc()
         return _error("INPUT_DIM_MISMATCH", f"input_vector length mismatch: expected {payload.input_dim}, got {vector.shape[0]}")
     if not np.isfinite(vector).all():
+        ML_REQUEST_COUNT.labels(status="error", endpoint="predict").inc()
         return _error("NON_FINITE_INPUT", "input_vector contains non-finite values")
 
     try:
         runtime = _load_cached_runtime(payload)
-        probs = predict(runtime, vector)
+        
+        # Inference timing
+        with ML_INFERENCE_LATENCY.labels(pipeline_stage="tensorflow_inference", model_id=payload.model_id).time():
+            probs = predict(runtime, vector)
+        
         probs = _normalize_probs(probs)
 
         labels = [str(label) for label in payload.labels]
@@ -144,6 +176,11 @@ def run_predict(payload: PredictPayload):
         best_idx = int(np.argmax(probs))
         best_label = labels[best_idx]
         best_confidence = float(probs[best_idx])
+        
+        # Record confidence
+        ML_CONFIDENCE_SCORE.labels(model_id=payload.model_id).observe(best_confidence)
+        ML_REQUEST_COUNT.labels(status="success", endpoint="predict").inc()
+
         prob_map = {labels[i]: float(probs[i]) for i in range(len(labels))}
         top3 = sorted(prob_map.items(), key=lambda item: item[1], reverse=True)[:3]
 
@@ -158,10 +195,13 @@ def run_predict(payload: PredictPayload):
             },
         }
     except FileNotFoundError as exc:
+        ML_REQUEST_COUNT.labels(status="error", endpoint="predict").inc()
         return _error("MODEL_NOT_FOUND", str(exc))
     except ValueError as exc:
+        ML_REQUEST_COUNT.labels(status="error", endpoint="predict").inc()
         return _error("RUNTIME_PREDICT_FAILED", str(exc))
     except Exception as exc:
+        ML_REQUEST_COUNT.labels(status="error", endpoint="predict").inc()
         return _error("RUNTIME_PREDICT_FAILED", str(exc), retryable=True)
 
 

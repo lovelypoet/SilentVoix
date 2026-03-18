@@ -201,8 +201,20 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
+
+  celery-exporter:
+    image: danihodovic/celery-exporter:latest
+    ports:
+      - "9808:9808"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - worker
 
 volumes:
   mongo_data:

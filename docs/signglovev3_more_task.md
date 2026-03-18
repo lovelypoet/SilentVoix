@@ -1,21 +1,22 @@
-# SignGlove V3 Migration Plan — Tasks 9–11 (Status: Finalizing)
+# SignGlove V3 Migration Plan — Tasks 9–11 (Status: Complete)
 
 ## Overview
 
-SignGlove V3 has successfully transitioned from a monolithic architecture to a production-ready ML platform. Core components for async job tracking and API hardening are now fully integrated.
+SignGlove V3 has successfully transitioned from a monolithic architecture to a production-ready ML platform. Core components for async job tracking, API hardening, and observability are now fully integrated.
 
 ---
 
-# Task 9 — Observability & System Monitoring (Status: 60% Complete)
+# Task 9 — Observability & System Monitoring (Status: 100% Complete)
 
 ## Progress
-*   **Infrastructure:** Prometheus and Grafana containers are active in `docker-compose.yml`.
+*   **Infrastructure:** Prometheus, Grafana, and Celery Exporter containers are active.
 *   **API Instrumentation:** Full request/response metrics are exposed via `/metrics`.
-*   **Configuration:** `monitoring/prometheus.yml` is configured for API and Worker scraping.
-
-## Remaining Work
-*   **Worker/ML Metrics:** Expose inference latency (YOLO/Transformer) and queue depth directly.
-*   **Dashboards:** Provision Grafana dashboards for performance monitoring and error rates.
+*   **Worker Metrics:** `celery-exporter` sidecar exposes queue depth and task status to Prometheus.
+*   **ML Metrics:** `ml-tensorflow` and `ml-pytorch` expose custom metrics:
+    *   `ml_inference_latency_seconds`: Histogram per model/pipeline stage.
+    *   `ml_confidence_score`: Histogram of prediction confidence.
+    *   `ml_request_count_total`: Counter for success/error rates.
+*   **Dashboards:** Grafana auto-provisions a "SignGlove System Overview" dashboard visualizing API health, latency, and queue depth.
 
 ---
 
@@ -33,7 +34,7 @@ SignGlove V3 has successfully transitioned from a monolithic architecture to a p
 # Task 11 — API Gateway Hardening (Status: 100% Complete)
 
 ## Progress
-*   **Redis Rate Limiting:** Persistent Redis-backed (DB 1) rate limiting implemented.
+*   **Redis Rate Limiting:** Persistent Redis-backed (DB 1) rate limiting implemented in `RateLimitMiddleware`.
 *   **Strict Upload Security:** 500MB (CSV) and 2GB (Model) limits enforced at the stream level.
 *   **Resource Safety:** Disk-buffered streaming uploads implemented in `upload_utils.py` to prevent OOM errors.
 *   **Authentication:** JWT-based role enforcement (Admin/Editor/Guest) is active across all V3 routes.
@@ -49,21 +50,21 @@ Client ──> [JWT Auth / Redis Rate Limit] ──> API Gateway ──> [Servic
                                                   └─────────> [Postgres JobRecord] <─────────┘
                                                   │                                          │
                                             [Prometheus] <──────── [Disk-Buffered Uploads] <─┘
+                                                  │
+                                              [Grafana]
 ```
 
 ---
 
 # Future Roadmap (Updated)
 
-### Task 12 — Observability & Analytics (Cleanup)
-*   **Grafana Dashboards:** Provision standard dashboards for system health.
-*   **ML Metrics:** Expose confidence score histograms and pipeline latency to Prometheus.
-*   **Circuit Breaking:** Implement retry logic and timeouts for service-to-service communication.
-
-### Task 13 — Experiment Tracking & Versioning
+### Task 12 — Experiment Tracking & Versioning
 *   **Dataset Versioning:** Track lineage between models and specific dataset hashes.
 *   **Hyperparameter Logging:** Save training config alongside the `Model` record.
 *   **Artifact Integrity:** Add SHA-256 verification for uploaded models.
 
-### Task 14 — specialized GPU Worker Pools
+### Task 13 — Specialized GPU Worker Pools
 *   Configure specialized queues for GPU-intensive tasks (Training, YOLO Video Inference).
+
+### Task 14 — Advanced Analytics
+*   Implement drift detection alerts based on `ml_confidence_score` histograms.
