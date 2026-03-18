@@ -1,4 +1,38 @@
 {
-  "models": [],
-  "active_model_id": null
+  "models": [
+    {
+      "id": "235a1778-cf5c-40a9-aaa1-4b17ba0a0205",
+      "display_name": "smoke_test_9e2b",
+      "model_path": "/app/storage/models/235a1778-cf5c-40a9-aaa1-4b17ba0a0205/model.tflite",
+      "metadata": {
+        "model_name": "smoke_test_9e2b",
+        "framework": "tflite"
+      },
+      "created_at": "2026-03-18T10:58:08.988709+00:00",
+      "metadata_path": "/app/storage/models/235a1778-cf5c-40a9-aaa1-4b17ba0a0205/metadata.json"
+    },
+    {
+      "id": "ecbe4135-73a0-4622-b504-630a22b99494",
+      "display_name": "smoke_test_fc59",
+      "model_path": "/app/storage/models/ecbe4135-73a0-4622-b504-630a22b99494/model.tflite",
+      "metadata": {
+        "model_name": "smoke_test_fc59",
+        "framework": "tflite"
+      },
+      "created_at": "2026-03-18T11:00:04.399100+00:00",
+      "metadata_path": "/app/storage/models/ecbe4135-73a0-4622-b504-630a22b99494/metadata.json"
+    },
+    {
+      "id": "7926c00f-b7dd-4284-85c7-378307f6a6b5",
+      "display_name": "smoke_test_68f2",
+      "model_path": "/app/storage/models/7926c00f-b7dd-4284-85c7-378307f6a6b5/model.tflite",
+      "metadata": {
+        "model_name": "smoke_test_68f2",
+        "framework": "tflite"
+      },
+      "created_at": "2026-03-18T11:03:29.966663+00:00",
+      "metadata_path": "/app/storage/models/7926c00f-b7dd-4284-85c7-378307f6a6b5/metadata.json"
+    }
+  ],
+  "active_model_id": "7926c00f-b7dd-4284-85c7-378307f6a6b5"
 }

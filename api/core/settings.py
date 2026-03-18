@@ -9,8 +9,8 @@ import os
 from pathlib import Path
 from pydantic_settings import SettingsConfigDict
 
-# backend/
-BASE_DIR = Path(__file__).resolve().parent.parent
+# api/core/settings.py
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 ENV_FILE = BASE_DIR / ".env"
 
 class Settings(BaseSettings):
@@ -45,8 +45,8 @@ class Settings(BaseSettings):
 
     
     # Model/data paths
-    BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DATA_DIR: str = os.path.join(BASE_DIR, 'data')
+    BASE_DIR: str = str(BASE_DIR)
+    DATA_DIR: str = os.path.join(BASE_DIR, 'storage')
     AI_DIR: str = os.path.join(BASE_DIR, 'AI')
     RAW_DATA_PATH: str = os.path.join(DATA_DIR, 'raw_data.csv')
     CLEAN_DATA_PATH: str = os.path.join(DATA_DIR, 'clean_data.csv')

@@ -198,6 +198,32 @@ class DatasetService:
 
     # --- Sidecar Metadata ---
 
+    def list_datasets(self, include_archived: bool = False) -> List[Dict[str, Any]]:
+        """
+        Lists all datasets across available roots.
+        """
+        result = []
+        logger.info(f"Listing datasets. include_archived={include_archived}")
+        for scope, root in self.get_roots(include_archived):
+            logger.info(f"Checking root: {scope} -> {root} (exists: {root.exists()})")
+            if not root.exists():
+                continue
+            for csv_file in root.glob("**/*.csv"):
+                try:
+                    stats = csv_file.stat()
+                    # Relative name from the root of this scope
+                    rel_name = str(csv_file.relative_to(root))
+                    result.append({
+                        "name": rel_name,
+                        "source": scope,
+                        "path": str(csv_file),
+                        "size_bytes": stats.st_size,
+                        "modified": datetime.fromtimestamp(stats.st_mtime, tz=timezone.utc).isoformat()
+                    })
+                except Exception as e:
+                    logger.error(f"Error listing {csv_file}: {e}")
+        return result
+
     def sidecar_path(self, csv_path: Path) -> Path:
         return csv_path.with_suffix(".metadata.json")
 

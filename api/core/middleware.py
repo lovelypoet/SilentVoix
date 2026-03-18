@@ -134,8 +134,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if current_count == 1:
                 self.redis.expire(key, 60)
             
+            if current_count % 10 == 0:
+                logger.debug(f"Rate limit check for {client_ip}: {current_count}/{self.requests_per_minute}")
+            
             if current_count > self.requests_per_minute:
-                logger.warning(f"Rate limit exceeded for IP: {client_ip} (count: {current_count})")
+                logger.warning(f"Rate limit exceeded for IP: {client_ip} (count: {current_count}, limit: {self.requests_per_minute})")
                 return Response(
                     content='{"error": "Rate limit exceeded"}',
                     status_code=429,

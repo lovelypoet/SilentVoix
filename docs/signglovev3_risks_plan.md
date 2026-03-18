@@ -1,364 +1,106 @@
 # SignGlove V3 – Architecture Risks & Best Practices Review
 
-This document summarizes **three critical architectural pitfalls** that commonly break ML platforms at scale and the recommended patterns to avoid them.
-It is intended to review the **SignGlove V3 architecture** with AI coding assistants or collaborators.
+This document summarizes critical architectural pitfalls that commonly break ML platforms at scale and the recommended patterns implemented in SignGlove V3 to avoid them.
 
 ---
 
-# 1. Artifact Chaos (Model Versioning Problem)
+# 1. Artifact Chaos (Model Versioning)
 
 ## Problem
+Without a strict artifact versioning strategy, model storage quickly becomes disorganized (`final.pt`, `best_new.pt`, etc.), making it impossible to determine which model version is active or reproducible.
 
-Without a strict artifact versioning strategy, model storage quickly becomes disorganized:
-
+## Mitigation: Immutable Model Versioning (Implemented)
+Use a structured, immutable layout where each version is isolated:
 ```
-models/
-   final.pt
-   final2.pt
-   best.pt
-   best_new.pt
-   latest_final.pt
+storage/models/{model_name}/{version}/
+   ├── model.pt
+   └── metadata.json
 ```
-
-After some time it becomes impossible to determine:
-
-* which model generated which results
-* which dataset trained the model
-* which version is currently deployed
-* which model should be used for inference
-
-This leads to **reproducibility failure** and **debugging nightmares**.
+*   **Status:** ✅ Implemented in `ModelService`.
+*   **Rule:** Workers must **never overwrite** existing version folders.
 
 ---
 
-## Recommended Architecture
-
-Use **immutable model versioning**.
-
-```
-storage/
-   models/
-      gesture_lstm/
-         v1/
-            model.pt
-            metadata.json
-         v2/
-            model.pt
-            metadata.json
-```
-
-Each version folder is **immutable**.
-
-Workers must **never overwrite existing versions**.
-
----
-
-## Metadata Example
-
-```
-{
-  "model_name": "gesture_lstm",
-  "version": "v2",
-  "dataset": "asl_dataset_v3",
-  "framework": "pytorch",
-  "accuracy": 0.94,
-  "created_at": "2026-03-12"
-}
-```
-
----
-
-## Database Pointer Strategy
-
-Instead of replacing files:
-
-```
-model_name: gesture_lstm
-active_version: v2
-```
-
-Workers:
-
-1. Create new version folder
-2. Upload artifacts
-3. Update DB pointer
-
-This prevents:
-
-* artifact corruption
-* race conditions
-* accidental overwrites
-
----
-
-# 2. Worker Explosion
+# 2. Worker Explosion & Queue Starvation
 
 ## Problem
+Moving every operation into a single generic worker creates queue starvation, unpredictable latency, and hard-to-debug memory leaks.
 
-When asynchronous jobs are introduced, developers often move **every operation** into workers:
-
-```
-parse_dataset
-train_model
-run_inference
-compute_metrics
-validate_dataset
-generate_preview
-```
-
-Eventually a single worker process handles everything.
-
-This creates:
-
-* queue starvation
-* unpredictable latency
-* memory leaks
-* hard debugging
-
----
-
-## Recommended Pattern – Worker Specialization
-
-Instead of a single generic worker:
-
-```
-worker
-```
-
-Use **specialized workers**:
-
-```
-dataset-worker
-inference-worker
-metrics-worker
-```
-
----
-
-## Example Responsibilities
-
-### Dataset Worker
-
-Handles:
-
-```
-CSV parsing
-dataset validation
-dataset preprocessing
-```
-
-Queue:
-
-```
-dataset_queue
-```
-
----
-
-### Inference Worker
-
-Handles:
-
-```
-batch inference
-prediction generation
-model evaluation
-```
-
-Queue:
-
-```
-inference_queue
-```
-
----
-
-### Metrics Worker
-
-Handles:
-
-```
-precision calculation
-recall calculation
-f1-score computation
-analytics
-```
-
-Queue:
-
-```
-metrics_queue
-```
-
----
-
-## Benefits
-
-* shorter jobs are not blocked by long jobs
-* easier scaling
-* easier debugging
-* better system stability
+## Mitigation: Specialized Workers (Ongoing)
+Isolate tasks into dedicated queues:
+*   **Dataset Worker:** Handles CSV parsing, validation, and preprocessing.
+*   **Inference Worker:** Handles batch inference and model evaluation.
+*   **Metrics Worker:** Handles analytics and performance scoring.
+*   **Status:** ⚠️ Partial. `dataset_scan` is isolated, but further specialization is planned.
 
 ---
 
 # 3. API Orchestration Overload
 
 ## Problem
+Turning the API into a central orchestration engine (calling multiple workers and waiting) creates a "distributed monolith" with high latency and cascading failures.
 
-Many ML systems gradually turn the API into a **central orchestration engine**.
-
-Example flow:
-
-```
-API
- ├ call dataset worker
- ├ call inference worker
- ├ call metrics worker
- ├ call storage
- └ call ML runtime
-```
-
-This creates a **distributed monolith**.
-
-Consequences:
-
-* cascading failures
-* complex debugging
-* long request latency
-* API instability
+## Mitigation: Event-Driven Job Tracking (Implemented)
+The API only enqueues jobs and returns a `job_id` immediately.
+*   **Pattern:** API -> Redis -> Worker -> Postgres (`JobRecord`).
+*   **Status:** ✅ Implemented. Global `/jobs` router and `JobRecord` table track async lifecycle.
 
 ---
 
-## Recommended Pattern – Event Driven Pipeline
+# 4. Production Hardening (Security & Stability)
 
-The API should only **enqueue jobs**.
+## Risk: Resource Exhaustion (OOM)
+Uploading multi-gigabyte files directly into memory crashes the API.
+*   **Mitigation:** **Streaming Disk-Buffered Uploads**. Files are processed in 1MB chunks and buffered to `/tmp/uploads` with strict enforcement of 500MB (CSV) and 2GB (Model) limits.
+*   **Status:** ✅ Implemented in `upload_utils.py`.
 
-Example:
-
-```
-Client
-   │
-API Gateway
-   │
-enqueue job
-   │
-Worker pipeline
-```
+## Risk: Request Flooding (DoS)
+Malicious or buggy clients can overwhelm the system with rapid-fire requests.
+*   **Mitigation:** **Redis-backed Rate Limiting**. Uses Redis (DB 1) to enforce a persistent 60 requests/minute policy per IP.
+*   **Status:** ✅ Implemented in `RateLimitMiddleware`.
 
 ---
 
-## Example Workflow
-
-```
-dataset uploaded
-     ↓
-dataset_worker
-     ↓
-dataset_validated event
-     ↓
-inference_worker
-     ↓
-metrics_worker
-```
-
-The API returns immediately:
-
-```
-{
-  "job_id": "abc123"
-}
-```
-
-The pipeline completes asynchronously.
-
----
-
-# 4. Bonus Risk – Model Loading Latency
+# 5. Model Loading Latency
 
 ## Problem
+Loading a model from disk for every inference request causes multi-second latency.
 
-A common mistake in inference services:
-
-```
-def predict():
-    model = load_model("model.pt")
-    return model(x)
-```
-
-This loads the model **for every request**, causing latency of several seconds.
+## Mitigation: Warm-Loading (Implemented)
+Load models once during service startup or on the first request, then cache them in the runtime memory.
+*   **Status:** ✅ Implemented in `ml-tensorflow` and `ml-pytorch` services via `_MODEL_CACHE`.
 
 ---
 
-## Correct Pattern
+# 6. Implementation Scorecard (March 2026)
 
-Load model once during service startup.
-
-```
-model = load_model("model.pt")
-
-def predict():
-    return model(x)
-```
-
-Benefits:
-
-* low latency
-* predictable performance
-* reduced I/O overhead
+| Risk Category | Status | Mitigation Strategy |
+| :--- | :--- | :--- |
+| **Artifact Chaos** | ✅ Resolved | Immutable directory structure per version. |
+| **Worker Explosion** | ⚠️ Partial | Isolated `dataset_scan` tasks; more queues needed. |
+| **Orchestration Overload** | ✅ Resolved | Async job tracking via `JobRecord` & Postgres. |
+| **Model Loading Latency** | ✅ Resolved | In-memory caching in ML runtimes. |
+| **Resource Exhaustion** | ✅ Resolved | Streaming uploads with hard 500MB/2GB limits. |
+| **Security/DoS** | ✅ Resolved | JWT Authentication + Redis Rate Limiting (DB 1). |
 
 ---
 
-# 5. Recommended Future Improvements
-
-To evolve SignGlove into a full **ML platform**, consider adding:
+# 7. Target Architecture
 
 ```
-experiment tracking
-dataset versioning
-model registry abstraction
-pipeline orchestration
-artifact storage using S3/MinIO
-observability (Prometheus + Grafana)
+Frontend ──> [Auth/Rate Limit] ──> API Gateway ──> [Service Layer] ──> [Celery Queue] ──> Workers
+                                        │                                          │
+                                        └──────────> [Prometheus/Grafana] <────────┘
+                                        │                                          │
+                                  [Postgres DB] <─────── [Artifacts] <─────── [ML Runtimes]
 ```
-
----
-
-# 6. Target Architecture
-
-```
-Frontend
-   │
-API Gateway
-   │
-Service Layer
-   │
-Task Queue (Redis)
-   │
-Workers
-   │
-ML Runtime Services
-   │
-Artifact Storage
-   │
-Metadata Database
-```
-
-This architecture aligns with modern ML platforms such as:
-
-* MLflow
-* Kubeflow
-* BentoML
-* Metaflow
 
 ---
 
 # Summary
 
-To maintain long-term stability of the SignGlove system:
-
-1. Use **immutable artifact versioning**
-2. Implement **specialized workers**
-3. Avoid **API orchestration overload**
-4. Ensure **models are loaded once per runtime**
-
-Following these principles will allow the system to scale while remaining maintainable.
+To maintain the stability of the SignGlove system:
+1.  **Immutability:** Never overwrite model artifacts; version everything.
+2.  **Asynchronicity:** API returns `job_id` immediately; work happens in the background.
+3.  **Resource Control:** Enforce strict upload limits and rate limits at the gateway.
+4.  **Specialization:** Keep workers focused on single domains to prevent queue starvation.
