@@ -77,7 +77,51 @@ Client ──> [JWT Auth / Redis Rate Limit] ──> API Gateway ──> [Servic
 *   **Status:** Complete. Models now persist dataset lineage by hash, normalized hyperparameters, and artifact SHA-256 integrity metadata.
 
 ### Task 13 — Specialized GPU Worker Pools
-*   Configure specialized queues for GPU-intensive tasks (Training, YOLO Video Inference).
+*   Configure specialized queues for GPU-intensive tasks (Training, YOLO / classifier inference) and add a downstream NLP post-processing queue that converts prediction tokens into words or sentence candidates.
+
+```mermaid
+flowchart LR
+    A[Client / Admin UI] --> B[API Gateway]
+    B --> C[Service Layer]
+
+    C --> D[Celery Broker]
+
+    D --> Q1[[Queue: gpu.training]]
+    D --> Q2[[Queue: gpu.yolo_inference]]
+    D --> Q3[[Queue: cpu.default]]
+    D --> Q4[[Queue: cpu.nlp_postprocess]]
+
+    Q1 --> W1[GPU Worker Pool\nTraining Jobs]
+    Q2 --> W2[GPU Worker Pool\nYOLO / Classifier Inference Jobs]
+    Q3 --> W3[CPU Worker Pool\nScans / Lightweight Tasks]
+    Q4 --> W4[NLP Worker Pool\nToken to Word / Sentence Jobs]
+
+    W1 --> P1[Postgres Model / Experiment Records]
+    W1 --> S1[Model Artifacts Storage]
+
+    W2 --> I1[Intermediate Gesture / Token Predictions]
+    I1 --> Q4
+    W2 --> M1[Mongo Raw Prediction / Runtime Logs]
+    W2 --> S2[Video / Frame Artifacts]
+
+    W3 --> P2[Postgres JobRecord / Dataset Metadata]
+    W4 --> P3[Postgres Final Text Output / Session Records]
+    W4 --> M2[Mongo NLP Output / Prompt Logs]
+
+    W1 -. metrics .-> O[Prometheus / Grafana]
+    W2 -. metrics .-> O
+    W3 -. metrics .-> O
+    W4 -. metrics .-> O
+```
+
+*   **Queue Intent:**
+    `gpu.training` isolates long-running model training from real-time inference demand.
+*   **Queue Intent:**
+    `gpu.yolo_inference` handles detector/classifier workloads and produces intermediate prediction tokens.
+*   **Queue Intent:**
+    `cpu.default` keeps scans, metadata updates, and lighter jobs off expensive GPU workers.
+*   **Queue Intent:**
+    `cpu.nlp_postprocess` converts classifier/token outputs into words or sentence candidates without blocking real-time inference.
 
 ### Task 14 — Advanced Analytics
 *   Implement drift detection alerts based on `ml_confidence_score` histograms.

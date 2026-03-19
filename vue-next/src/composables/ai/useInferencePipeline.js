@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import api from '@/services/api'
 import { usePlaygroundStore } from '@/stores/playgroundStore'
 
@@ -18,18 +18,66 @@ export function useInferencePipeline() {
     return values
   }
 
+  const expectedFeatureDim = () => {
+    const dim = Number(store.activeModel?.metadata?.input_spec?.feature_dim || 0)
+    if (dim > 0) return dim
+    const inputDim = Number(store.activeModel?.input_dim || 0)
+    if (inputDim === 63 || inputDim === 126) return inputDim
+    return 63
+  }
+
+  const expectedSequenceLength = () => {
+    const raw = Number(store.activeModel?.metadata?.input_spec?.sequence_length || 0)
+    return Number.isFinite(raw) && raw > 1 ? raw : 1
+  }
+
+  const buildFrameVector = (results) => {
+    const hands = Array.isArray(results?.landmarks) ? results.landmarks : []
+    const firstHand = flattenHand63(hands[0] || [])
+    const secondHand = flattenHand63(hands[1] || [])
+    const featureDim = expectedFeatureDim()
+
+    if (featureDim >= 126) {
+      return [...firstHand, ...secondHand].slice(0, featureDim)
+    }
+    return firstHand.slice(0, featureDim)
+  }
+
   const buildCvPayload = (results) => {
-    const hands = results?.landmarks || []
-    const hand = hands[0] || []
-    const vector = flattenHand63(hand)
+    const vector = buildFrameVector(results)
+    const sequenceLength = expectedSequenceLength()
+
+    if (sequenceLength > 1) {
+      cvFrameBuffer.value.push(vector)
+      if (cvFrameBuffer.value.length > sequenceLength) {
+        cvFrameBuffer.value = cvFrameBuffer.value.slice(-sequenceLength)
+      }
+      return {
+        sequence: [...cvFrameBuffer.value]
+      }
+    }
+
     return { cv_values: vector }
   }
 
   const predictCv = async (results) => {
     if (!store.activeModel || isPredicting.value) return
+    const sequenceLength = expectedSequenceLength()
+    if (sequenceLength > 1) {
+      const vector = buildFrameVector(results)
+      cvFrameBuffer.value.push(vector)
+      if (cvFrameBuffer.value.length > sequenceLength) {
+        cvFrameBuffer.value = cvFrameBuffer.value.slice(-sequenceLength)
+      }
+      if (cvFrameBuffer.value.length < sequenceLength) {
+        return
+      }
+    }
     isPredicting.value = true
     try {
-      const payload = buildCvPayload(results)
+      const payload = sequenceLength > 1
+        ? { sequence: [...cvFrameBuffer.value] }
+        : buildCvPayload(results)
       payload.model_id = store.activeModel.id
       const res = await api.modelLibrary.predictCv(payload)
       if (res?.prediction) {
@@ -65,6 +113,10 @@ export function useInferencePipeline() {
       isPredicting.value = false
     }
   }
+
+  watch(() => store.activeModel?.id, () => {
+    cvFrameBuffer.value = []
+  })
 
   return {
     isPredicting,

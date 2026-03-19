@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -23,6 +24,19 @@ logger = logging.getLogger("signglove.model_library")
 class PlaygroundModelReorderRequest(BaseModel):
     model_config = {"protected_namespaces": ()}
     model_ids: List[str]
+
+
+class PlaygroundPredictRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    cv_values: Optional[List[float]] = None
+    sequence: Optional[List[List[float]]] = None
+    model_id: Optional[str] = None
+
+
+class PlaygroundSensorPredictRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    sensor_values: List[float]
+    model_id: Optional[str] = None
 
 
 def _runtime_status_timestamp() -> str:
@@ -49,6 +63,24 @@ def _compute_runtime_status(entry: Dict[str, Any]) -> Dict[str, Any]:
             "checked_at": _runtime_status_timestamp(),
             "message": str(exc),
         }
+
+
+async def _resolve_model_entry(model_id: Optional[str]) -> Dict[str, Any]:
+    if model_id:
+        model = await model_service.get_model_by_id(model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+        return model
+
+    registry = await _synced_registry()
+    active_id = registry.get("active_model_id")
+    if not active_id:
+        raise HTTPException(status_code=404, detail="No active playground model")
+
+    model = await model_service.get_model_by_id(str(active_id))
+    if not model:
+        raise HTTPException(status_code=404, detail="Active model not found")
+    return model
 
 
 @router.post("/models/upload")
@@ -292,6 +324,151 @@ async def runtime_check_playground_model(model_id: str, _user=Depends(role_or_in
         await model_service.update_model_runtime_status(model_id, runtime_status)
         await _synced_registry()
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/predict/cv")
+async def predict_playground_cv(req: PlaygroundPredictRequest, _user=Depends(role_or_internal_dep("editor"))):
+    model_entry = await _resolve_model_entry(req.model_id)
+
+    model_modality = model_library_service.get_entry_modality(model_entry)
+    if model_modality == "sensor":
+        raise HTTPException(
+            status_code=400,
+            detail="Selected model modality is sensor, but /model-library/predict/cv expects a CV model.",
+        )
+
+    expected_dim = int(model_entry.get("input_dim") or 0)
+    try:
+        if req.sequence is not None:
+            vector = model_library_service.preprocess_cv_sequence(req.sequence, model_entry.get("metadata", {}))
+            if vector.shape[0] != expected_dim:
+                raise ValueError(f"Preprocessed sequence length mismatch: expected {expected_dim}, got {vector.shape[0]}")
+        elif req.cv_values is not None:
+            vector = model_library_service.coerce_input_vector(req.cv_values, expected_dim, "cv_values")
+        else:
+            raise HTTPException(status_code=400, detail="Either 'cv_values' or 'sequence' must be provided.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    if bool(settings.USE_RUNTIME_SERVICES):
+        try:
+            remote = model_library_service.remote_predict(model_entry, vector)
+            prediction = remote.get("prediction")
+            if not isinstance(prediction, dict):
+                raise HTTPException(status_code=502, detail="Runtime service returned invalid prediction payload")
+            return {
+                "status": "success",
+                "model_id": model_entry.get("id"),
+                "model_name": model_entry.get("display_name"),
+                "prediction": prediction,
+            }
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc))
+
+    try:
+        runtime = model_library_service.load_model_runtime(model_entry)
+        probs = model_library_service.predict_with_runtime(runtime, vector)
+        labels = [str(v) for v in (model_entry.get("metadata", {}).get("labels") or [])]
+        if not labels:
+            raise HTTPException(status_code=500, detail="Model metadata labels are missing")
+
+        probs = np.asarray(probs, dtype=np.float32).reshape(-1)
+        if len(labels) != probs.shape[0]:
+            n = min(len(labels), probs.shape[0])
+            labels = labels[:n]
+            probs = probs[:n]
+
+        probs = model_library_service.normalize_probs(probs)
+        best_idx = int(np.argmax(probs))
+        best_label = labels[best_idx]
+        best_confidence = float(probs[best_idx])
+        probabilities = {labels[i]: float(probs[i]) for i in range(len(labels))}
+        top3 = sorted(probabilities.items(), key=lambda item: item[1], reverse=True)[:3]
+
+        return {
+            "status": "success",
+            "model_id": model_entry.get("id"),
+            "model_name": model_entry.get("display_name"),
+            "prediction": {
+                "label": best_label,
+                "confidence": best_confidence,
+                "probabilities": probabilities,
+                "top3": [{"label": label, "confidence": conf} for label, conf in top3],
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/predict/sensor")
+async def predict_playground_sensor(req: PlaygroundSensorPredictRequest, _user=Depends(role_or_internal_dep("editor"))):
+    model_entry = await _resolve_model_entry(req.model_id)
+
+    model_modality = model_library_service.get_entry_modality(model_entry)
+    if model_modality == "cv":
+        raise HTTPException(
+            status_code=400,
+            detail="Selected model modality is cv, but /model-library/predict/sensor expects a sensor model.",
+        )
+
+    expected_dim = int(model_entry.get("input_dim") or 0)
+    try:
+        vector = model_library_service.coerce_input_vector(req.sensor_values, expected_dim, "sensor_values")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    if bool(settings.USE_RUNTIME_SERVICES):
+        try:
+            remote = model_library_service.remote_predict(model_entry, vector)
+            prediction = remote.get("prediction")
+            if not isinstance(prediction, dict):
+                raise HTTPException(status_code=502, detail="Runtime service returned invalid prediction payload")
+            return {
+                "status": "success",
+                "model_id": model_entry.get("id"),
+                "model_name": model_entry.get("display_name"),
+                "prediction": prediction,
+            }
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc))
+
+    try:
+        runtime = model_library_service.load_model_runtime(model_entry)
+        probs = model_library_service.predict_with_runtime(runtime, vector)
+        labels = [str(v) for v in (model_entry.get("metadata", {}).get("labels") or [])]
+        if not labels:
+            raise HTTPException(status_code=500, detail="Model metadata labels are missing")
+
+        probs = np.asarray(probs, dtype=np.float32).reshape(-1)
+        if len(labels) != probs.shape[0]:
+            n = min(len(labels), probs.shape[0])
+            labels = labels[:n]
+            probs = probs[:n]
+
+        probs = model_library_service.normalize_probs(probs)
+        best_idx = int(np.argmax(probs))
+        best_label = labels[best_idx]
+        best_confidence = float(probs[best_idx])
+        probabilities = {labels[i]: float(probs[i]) for i in range(len(labels))}
+        top3 = sorted(probabilities.items(), key=lambda item: item[1], reverse=True)[:3]
+
+        return {
+            "status": "success",
+            "model_id": model_entry.get("id"),
+            "model_name": model_entry.get("display_name"),
+            "prediction": {
+                "label": best_label,
+                "confidence": best_confidence,
+                "probabilities": probabilities,
+                "top3": [{"label": label, "confidence": conf} for label, conf in top3],
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.delete("/models/{model_id}")
