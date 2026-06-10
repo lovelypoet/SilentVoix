@@ -64,7 +64,7 @@ Real-time hand-gesture recognition in the Realtime AI Playground — MediaPipe's
 
 <div align="center"><em>Live landmark tracking at ~25 FPS · 86–87% confidence · running locally, no cloud</em></div>
 
-https://github.com/user-attachments/assets/1d546b0c-4044-4c0e-a4d4-454e4860e6ae
+https://github.com/user-attachments/assets/272ba3f2-6344-49f8-b760-abc512da9d21
 
 <div align="center"><sub>Full UI walkthrough — playground, training, fusion, and live inference</sub></div>
 
