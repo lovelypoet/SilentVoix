@@ -13,7 +13,10 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)](#)
 [![PyTorch](https://img.shields.io/badge/PyTorch-runtime-EE4C2C?logo=pytorch&logoColor=white)](#)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-runtime-FF6F00?logo=tensorflow&logoColor=white)](#)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](#)
 [![MongoDB](https://img.shields.io/badge/MongoDB-hybrid_store-47A248?logo=mongodb&logoColor=white)](#)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](#)
+[![Celery](https://img.shields.io/badge/Celery-workers-37814A?logo=celery&logoColor=white)](#)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](#)
 
 </div>
@@ -46,7 +49,10 @@ The flagship build, **V-Hand**, is a competition-ready demo: an ESP32 glove stre
 | Temporal LSTM classification (single-frame **and** rolling-window) | Done |
 | Real-time WebSocket stream → prediction → Text-to-Speech | Done |
 | Split runtime microservices (TF / PyTorch) + Docker profile | Done |
-| Hybrid MongoDB model registry & dataset library | Done |
+| Hybrid storage — PostgreSQL (jobs/users/datasets) + MongoDB (sessions/registry) | Done |
+| Async pipeline — Redis + Celery workers (dataset, early-fusion, preprocess) | Done |
+| Early-fusion (74-d CV+sensor) inference & preprocessing workers | Done |
+| Prometheus / Grafana monitoring with celery-exporter | Done |
 | V-Hand competition demo with built-in Test Lab | Done |
 
 Developed **Jan – Mar 2026** as a third-year engineering project (USTH). 298 commits, 5 contributors, runs end-to-end with no cloud dependency.
@@ -142,31 +148,63 @@ Every model below is hot-swappable in the playground via the registry — *uploa
 ## Architecture
 
 ```
-ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)
-   flex + IMU            /ws/stream           │ normalize → canonical 11-value frame
-                                              │ rolling window buffer
-                                              ▼
-                            ┌─────────────────────────────────┐
-                            │  Runtime dispatch (worker-library)│
-                            └───────┬───────────────┬───────────┘
-                                    ▼               ▼
-                          ml-pytorch (8092)   ml-tensorflow (8091)
-                                    │               │
-                                    └──────┬────────┘
-                                           ▼
-                              prediction + confidence + latency
-                                           ▼
-                              Vue 3 frontend (vue-next/) ──▶ Text-to-Speech
+                            ┌──────── Realtime path (low latency) ────────┐
+ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)                 │
+   flex + IMU            /ws/stream           │ normalize → 11-value frame │
+                                              │ rolling window buffer      │
+                                              ▼                            │
+                            ┌─────────────────────────────────┐           │
+                            │  Runtime dispatch (worker-library)│           │
+                            └───────┬───────────────┬───────────┘           │
+                                    ▼               ▼                       │
+                          ml-pytorch (8092)   ml-tensorflow (8091)          │
+                                    └──────┬────────┘                       │
+                                           ▼  prediction + confidence       │
+                              Vue 3 frontend (vue-next/) ──▶ Text-to-Speech │
+                            └─────────────────────────────────────────────┘
+
+                            ┌──── Async path (heavy / batch jobs) ────┐
+  Dataset upload / fusion ──▶ FastAPI enqueues job ──▶ Redis (broker) │
+                                       │                              │
+                          ┌────────────┴───────────────┐              │
+                          ▼              ▼              ▼              │
+                     worker         worker-          worker-          │
+                  (celery jobs)   early-fusion    fusion-preprocess   │
+                          │       (74-d fused      (video+CSV align,  │
+                          │        inference)       OpenCV, CSV out)  │
+                          └────────────┬───────────────┘              │
+                                       ▼  JobRecord status + results  │
+                       PostgreSQL (jobs, users, datasets, models)     │
+                            └─────────────────────────────────────────┘
+
+  Storage: PostgreSQL (relational/jobs) + MongoDB (sessions/registry) + Redis (cache & broker)
+  Observability: Prometheus + Grafana + celery-exporter
 ```
 
 | Component | Role |
 |---|---|
-| [`api/`](api/) | Canonical FastAPI app — auth, registry, live WebSocket ingest & broadcast |
+| [`api/`](api/) | Canonical FastAPI app — auth, registry, live WebSocket ingest & broadcast, job enqueue |
 | [`vue-next/`](vue-next/) | Vue 3 frontend — playground, model library, live demo, dashboards |
 | [`ml-pytorch/`](ml-pytorch/) | PyTorch-family inference microservice |
 | [`ml-tensorflow/`](ml-tensorflow/) | TensorFlow / TFLite inference microservice |
 | [`worker-library/`](worker-library/) | Reconciles model-library registry state |
-| `MongoDB` | Hybrid store for model registry, sessions & datasets |
+| [`workers/`](workers/) | Celery workers — async dataset jobs (scan, export) with `JobRecord` tracking |
+| [`worker-early-fusion/`](worker-early-fusion/) | Early-fusion service — builds 74-dim fused frames (63 CV + 11 sensor), runs fused LSTM inference |
+| [`worker-fusion-preprocess/`](worker-fusion-preprocess/) | Aligns & preprocesses raw video + sensor CSV into fused training datasets (OpenCV) |
+| `PostgreSQL 16` | Relational store — jobs, users, datasets, models (SQLAlchemy async + Alembic migrations) |
+| `MongoDB` | Document store — live sessions & model registry |
+| `Redis 7` | Celery broker / result backend + caching layer |
+| `Prometheus + Grafana` | Metrics & dashboards (incl. `celery-exporter` for queue health) |
+
+### Async processing & storage
+
+Heavy work never blocks the realtime path. The API validates a request, writes a `JobRecord` to **PostgreSQL**, and enqueues a task onto **Redis**; **Celery** workers pick it up and update progress as they go:
+
+- **`worker`** — general Celery queue for dataset jobs (e.g. `scan_dataset_task`), with per-job status/progress persisted to Postgres.
+- **`worker-fusion-preprocess`** — ingests a recorded video + sensor CSV, aligns the two streams frame-by-frame (OpenCV), and emits a fused, training-ready dataset.
+- **`worker-early-fusion`** — concatenates CV landmarks and sensor values into a single **74-feature** frame (`63 vision + 11 sensor`, sequence length 30) and serves fused-model inference — the [`model_fit.py`](model_fit.py) training contract.
+
+Data is split by access pattern: **PostgreSQL** for transactional/relational state (jobs, users, datasets, models via Alembic-migrated schemas in [`db/`](db/)), **MongoDB** for high-write live sensor sessions and the model registry, and **Redis** as both the task broker and a cache.
 
 <div align="center">
 <img src="diagrams/modelprocessing/AIplayground.png" alt="AI playground flow" width="80%"/>
@@ -197,7 +235,7 @@ ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)
 
 ## Quick Start
 
-**Requirements:** Python 3.10+ · Node.js LTS · npm · MongoDB
+**Requirements:** Python 3.10+ · Node.js LTS · npm · Docker (PostgreSQL · MongoDB · Redis)
 
 ```bash
 # Backend API
@@ -228,6 +266,11 @@ docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 | TensorFlow runtime | `http://localhost:8091` |
 | PyTorch runtime | `http://localhost:8092` |
 | Worker library | `http://localhost:8093` |
+| Fusion preprocess worker | `http://localhost:8094` |
+| Early fusion worker | `http://localhost:8095` |
+| PostgreSQL | `localhost:5432` |
+| MongoDB | `localhost:27017` |
+| Redis | `localhost:6379` |
 
 > Note: PyTorch uploads must be **callable inference artifacts** — `state_dict`-only checkpoints are not valid runtime artifacts.
 
@@ -235,11 +278,12 @@ docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 
 ## Tech Stack
 
-**Backend** FastAPI · Python · WebSockets · MongoDB · Docker Compose
-**ML** PyTorch · TensorFlow / TFLite · LSTM · MediaPipe · YOLO · scikit-learn
+**Backend** FastAPI · Python · WebSockets · SQLAlchemy (async) · Alembic · Docker Compose
+**Data & queue** PostgreSQL 16 · MongoDB · Redis 7 · Celery (workers + beat)
+**ML** PyTorch · TensorFlow / TFLite · LSTM · MediaPipe · YOLO · OpenCV · scikit-learn
 **Frontend** Vue 3 · Pinia · Vue Router · Vite · PrimeIcons · Web Speech API (TTS)
 **Hardware** ESP32 · MPU6050 IMU · 5× flex sensors
-**Tooling** Vitest · Playwright · Prometheus / Grafana monitoring
+**Tooling & ops** Vitest · Playwright · Prometheus / Grafana · celery-exporter
 
 ---
 
