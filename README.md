@@ -66,7 +66,9 @@ Real-time hand-gesture recognition in the Realtime AI Playground — MediaPipe's
 
 <div align="center">
 
-**▶ [Watch the full UI walkthrough video](docs/screenshots/demo-video.mp4)**
+https://github.com/lovelypoet/SilentVoix/releases/download/demo-media/demo-video.mp4
+
+**▶ [Watch the full UI walkthrough video](https://github.com/lovelypoet/SilentVoix/releases/download/demo-media/demo-video.mp4)**
 
 </div>
 
