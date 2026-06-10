@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🤟 SilentVoix · V-Hand
+<img src="docs/screenshots/icon.png" alt="SilentVoix logo" width="180"/>
+
+# SilentVoix · V-Hand
 
 ### *Your Hand, Your Voice.*
 
@@ -18,7 +20,7 @@
 
 ---
 
-## ✨ What is SilentVoix?
+## What is SilentVoix?
 
 SilentVoix is a **sign-glove + computer-vision platform** built around a **multi-format model testing ground**. You train models *anywhere* (Colab, local, any framework), then upload the exported artifact and let the playground handle storage, validation, activation, and **live real-time inference** — across both **camera (CV)** and **wearable-sensor** modalities.
 
@@ -28,25 +30,25 @@ The flagship build, **V-Hand**, is a competition-ready demo: an ESP32 glove stre
 
 ---
 
-## 🎯 Project Status — *Complete & Demo-Ready*
+## Project Status — *Complete & Demo-Ready*
 
 | Capability | Status |
 |---|:---:|
-| Multi-format model upload (`.tflite` `.keras` `.h5` `.pth` `.pt`) | ✅ |
-| Runtime preflight validation before activation | ✅ |
-| Live camera (MediaPipe / YOLO landmark) inference path | ✅ |
-| Live ESP32 glove sensor streaming + inference | ✅ |
-| Temporal LSTM classification (single-frame **and** rolling-window) | ✅ |
-| Real-time WebSocket stream → prediction → Text-to-Speech | ✅ |
-| Split runtime microservices (TF / PyTorch) + Docker profile | ✅ |
-| Hybrid MongoDB model registry & dataset library | ✅ |
-| V-Hand competition demo with built-in Test Lab | ✅ |
+| Multi-format model upload (`.tflite` `.keras` `.h5` `.pth` `.pt`) | Done |
+| Runtime preflight validation before activation | Done |
+| Live camera (MediaPipe / YOLO landmark) inference path | Done |
+| Live ESP32 glove sensor streaming + inference | Done |
+| Temporal LSTM classification (single-frame **and** rolling-window) | Done |
+| Real-time WebSocket stream → prediction → Text-to-Speech | Done |
+| Split runtime microservices (TF / PyTorch) + Docker profile | Done |
+| Hybrid MongoDB model registry & dataset library | Done |
+| V-Hand competition demo with built-in Test Lab | Done |
 
 Developed **Jan – Mar 2026** as a third-year engineering project (USTH). 298 commits, 5 contributors, runs end-to-end with no cloud dependency.
 
 ---
 
-## 🎥 Live Inference in Action
+## Live Inference in Action
 
 Real-time hand-gesture recognition in the Realtime AI Playground — MediaPipe's 21-point hand skeleton tracked live, with an on-screen HUD for FPS, signal condition, detected gesture, and confidence.
 
@@ -59,11 +61,11 @@ Real-time hand-gesture recognition in the Realtime AI Playground — MediaPipe's
 
 ---
 
-## 🖥️ The Application
+## The Application
 
 The Vue 3 frontend is the control center for the whole platform — upload models, hot-swap classifiers, run live CV/sensor inference, and monitor production health.
 
-| 🎮 Realtime AI Playground | 📦 Model Library |
+| Realtime AI Playground | Model Library |
 |:---:|:---:|
 | ![Playground](docs/screenshots/app-playground.png) | ![Model Library](docs/screenshots/app-model-library.png) |
 | Hot-swap classifiers, single/early/late fusion modes, live camera & sensor inference | Multi-format registry — upload, validate, activate, and compare uploaded models |
@@ -75,7 +77,7 @@ The Vue 3 frontend is the control center for the whole platform — upload model
 
 ---
 
-## 📊 Evaluation & Results
+## Evaluation & Results
 
 SilentVoix ships with reproducible evaluation artifacts under [`AI/results/`](AI/results/). Two model families were trained and benchmarked:
 
@@ -119,11 +121,11 @@ Every model below is hot-swappable in the playground via the registry — *uploa
 | CV Temporal (V2) | Camera | PyTorch | `16 × 63` | 0.414 | Early temporal baseline |
 | YOLO-Hand | Camera | YOLO | detector | — | Hand-region pre-stage |
 
-> 💡 The comparison itself is a feature: SilentVoix exists to make *"is this exported model actually any good live?"* a one-click question.
+> The comparison itself is a feature: SilentVoix exists to make *"is this exported model actually any good live?"* a one-click question.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)
@@ -140,7 +142,7 @@ ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)
                                            ▼
                               prediction + confidence + latency
                                            ▼
-                              Vue 3 frontend (vue-next/) ──▶ 🔊 Text-to-Speech
+                              Vue 3 frontend (vue-next/) ──▶ Text-to-Speech
 ```
 
 | Component | Role |
@@ -158,7 +160,7 @@ ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)
 </div>
 
 <details>
-<summary>📐 More diagrams (system & database)</summary>
+<summary>More diagrams (system & database)</summary>
 
 <div align="center">
 <img src="diagrams/REST/systemSignGlove.png" alt="System diagram" width="70%"/>
@@ -167,7 +169,7 @@ ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)
 
 </details>
 
-### ⚡ Performance targets (demo acceptance)
+### Performance targets (demo acceptance)
 
 | Stage | Target |
 |---|---|
@@ -179,7 +181,7 @@ ESP32 Glove ──50Hz──▶ WebSocket Bridge ──▶ FastAPI (api/)
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 **Requirements:** Python 3.10+ · Node.js LTS · npm · MongoDB
 
@@ -213,11 +215,11 @@ docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 | PyTorch runtime | `http://localhost:8092` |
 | Worker library | `http://localhost:8093` |
 
-> ⚠️ PyTorch uploads must be **callable inference artifacts** — `state_dict`-only checkpoints are not valid runtime artifacts.
+> Note: PyTorch uploads must be **callable inference artifacts** — `state_dict`-only checkpoints are not valid runtime artifacts.
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 **Backend** FastAPI · Python · WebSockets · MongoDB · Docker Compose
 **ML** PyTorch · TensorFlow / TFLite · LSTM · MediaPipe · YOLO · scikit-learn
@@ -227,7 +229,7 @@ docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - [docs/README.md](docs/README.md) — documentation index
 - [transformation.md](transformation.md) — V-Hand engineering spec & data contracts
@@ -237,7 +239,7 @@ docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 
 ---
 
-## 👥 Contributors
+## Contributors
 
 This project was built by a student team. Huge thanks to everyone who shaped it:
 
@@ -254,7 +256,7 @@ This project was built by a student team. Huge thanks to everyone who shaped it:
 
 <div align="center">
 
-**SilentVoix — giving a voice to every hand.** 🤟🔊
+**SilentVoix — giving a voice to every hand.**
 
 <sub>Keep secrets out of version control — use `backend/.env` for local config. The API container uses `backend/requirements-api.txt`, not the monolithic ML dependency set.</sub>
 
