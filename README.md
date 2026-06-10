@@ -64,22 +64,9 @@ Real-time hand-gesture recognition in the Realtime AI Playground — MediaPipe's
 
 <div align="center"><em>Live landmark tracking at ~25 FPS · 86–87% confidence · running locally, no cloud</em></div>
 
-<div align="center">
+https://github.com/user-attachments/assets/1d546b0c-4044-4c0e-a4d4-454e4860e6ae
 
-<!--
-  INLINE VIDEO PLAYER — one-time manual step (only an authenticated browser upload can mint this URL):
-  1. Open https://github.com/lovelypoet/SilentVoix/issues/new in your browser.
-  2. Drag the video file into the comment box and wait for the upload to finish.
-     (Grab the file from the release if you don't have it locally:
-      https://github.com/lovelypoet/SilentVoix/releases/download/demo-media/demo-video.mp4)
-  3. GitHub inserts a line like: https://github.com/user-attachments/assets/xxxxxxxx-xxxx-...
-  4. Copy that URL, paste it on its OWN LINE just below this comment, then delete this comment.
-     GitHub auto-renders a video player from a bare user-attachments URL. Do NOT submit the issue.
--->
-
-**▶ [Watch the full UI walkthrough video](https://github.com/lovelypoet/SilentVoix/releases/download/demo-media/demo-video.mp4)**
-
-</div>
+<div align="center"><sub>Full UI walkthrough — playground, training, fusion, and live inference</sub></div>
 
 ---
 
