@@ -46,6 +46,19 @@ Developed **Jan – Mar 2026** as a third-year engineering project (USTH). 298 c
 
 ---
 
+## 🎥 Live Inference in Action
+
+Real-time hand-gesture recognition in the Realtime AI Playground — MediaPipe's 21-point hand skeleton tracked live, with an on-screen HUD for FPS, signal condition, detected gesture, and confidence.
+
+| | |
+|:---:|:---:|
+| ![Live gesture 1](docs/screenshots/6a_di.jpg) | ![Live gesture 2](docs/screenshots/6aa_camdiec.jpg) |
+| ![Live gesture 3](docs/screenshots/6b_toi.jpg) | ![Live gesture 4](docs/screenshots/6bb_ban.jpg) |
+
+<div align="center"><em>Live landmark tracking at ~25 FPS · 86–87% confidence · running locally, no cloud</em></div>
+
+---
+
 ## 🖥️ The Application
 
 The Vue 3 frontend is the control center for the whole platform — upload models, hot-swap classifiers, run live CV/sensor inference, and monitor production health.
@@ -59,8 +72,6 @@ The Vue 3 frontend is the control center for the whole platform — upload model
 <img src="docs/screenshots/app-dashboard.png" alt="Model monitoring dashboard" width="85%"/>
 <br/><em>Model Monitoring dashboard — runtime health, alerts, rollout & data-quality metrics</em>
 </div>
-
-*Screenshots captured automatically with [Playwright](https://playwright.dev) against the running app.*
 
 ---
 
