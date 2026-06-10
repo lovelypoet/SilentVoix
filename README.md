@@ -46,16 +46,21 @@ Developed **Jan – Mar 2026** as a third-year engineering project (USTH). 298 c
 
 ---
 
-## 🖥️ Live Demo Playground
+## 🖥️ The Application
 
-The **V-Hand** demo surface ships with a live inference view and a self-contained **Test Lab** for validating the pipeline without hardware.
+The Vue 3 frontend is the control center for the whole platform — upload models, hot-swap classifiers, run live CV/sensor inference, and monitor production health.
 
-| Live Inference View | Test Lab — 22-point dual-hand injector |
+| 🎮 Realtime AI Playground | 📦 Model Library |
 |:---:|:---:|
-| ![Demo landing](docs/screenshots/demo-landing.png) | ![Test Lab](docs/screenshots/demo-testlab.png) |
-| Connection state, prediction feed, latency & TTS controls | Mock sensor injector, gesture presets, TTS stress test |
+| ![Playground](docs/screenshots/app-playground.png) | ![Model Library](docs/screenshots/app-model-library.png) |
+| Hot-swap classifiers, single/early/late fusion modes, live camera & sensor inference | Multi-format registry — upload, validate, activate, and compare uploaded models |
 
-*Screenshots captured automatically with [Playwright](https://playwright.dev) against the production build.*
+<div align="center">
+<img src="docs/screenshots/app-dashboard.png" alt="Model monitoring dashboard" width="85%"/>
+<br/><em>Model Monitoring dashboard — runtime health, alerts, rollout & data-quality metrics</em>
+</div>
+
+*Screenshots captured automatically with [Playwright](https://playwright.dev) against the running app.*
 
 ---
 
