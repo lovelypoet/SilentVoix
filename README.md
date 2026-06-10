@@ -25,7 +25,7 @@
 
 ## What is SilentVoix?
 
-SilentVoix is a **sign-glove + computer-vision platform** built around a **multi-format model testing ground**. You train models *anywhere* (Colab, local, any framework), then upload the exported artifact and let the playground handle storage, validation, activation, and **live real-time inference** — across both **camera (CV)** and **wearable-sensor** modalities.
+SilentVoix is a **multimodal** sign-language AI platform for **testing and deploying** gesture-recognition models across wearable sensor and computer-vision inputs. It provides model upload, runtime validation, dataset management, live inference, and split TensorFlow/PyTorch inference services for sign-glove experimentation.
 
 The flagship build, **V-Hand**, is a competition-ready demo: an ESP32 glove streams flex + motion data at 50 Hz over WebSocket, an LSTM classifies the gesture, and the browser speaks the result aloud — fully offline, on the local network.
 
