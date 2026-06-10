@@ -4,7 +4,7 @@
 
 # SilentVoix · V-Hand
 
-### *Your Hand, Your Voice.*
+### *Your Hands, Your Voice.*
 
 **A real-time sign-language recognition platform and multi-format AI playground that turns glove sensors and camera input into spoken language.**
 
@@ -27,6 +27,11 @@ SilentVoix is a **sign-glove + computer-vision platform** built around a **multi
 The flagship build, **V-Hand**, is a competition-ready demo: an ESP32 glove streams flex + motion data at 50 Hz over WebSocket, an LSTM classifies the gesture, and the browser speaks the result aloud — fully offline, on the local network.
 
 > **One platform, two modalities, many model formats.** Drop in a `.pth`, `.tflite`, `.keras`, `.h5`, or `.pt` model and test it live in seconds.
+
+<div align="center">
+<img src="docs/screenshots/hardware-gloves.jpg" alt="SilentVoix V-Hand sensor gloves" width="55%"/>
+<br/><em>The V-Hand sensor gloves — an MPU6050 IMU + 5 flex sensors per hand, streaming over ESP32</em>
+</div>
 
 ---
 
@@ -59,21 +64,32 @@ Real-time hand-gesture recognition in the Realtime AI Playground — MediaPipe's
 
 <div align="center"><em>Live landmark tracking at ~25 FPS · 86–87% confidence · running locally, no cloud</em></div>
 
+<div align="center">
+
+**▶ [Watch the full UI walkthrough video](docs/screenshots/demo-video.mp4)**
+
+</div>
+
 ---
 
 ## The Application
 
-The Vue 3 frontend is the control center for the whole platform — upload models, hot-swap classifiers, run live CV/sensor inference, and monitor production health.
+The Vue 3 frontend is the control center for the whole platform — upload models, hot-swap classifiers, capture datasets, run live CV/sensor inference, and monitor production health.
 
 | Realtime AI Playground | Model Library |
 |:---:|:---:|
-| ![Playground](docs/screenshots/app-playground.png) | ![Model Library](docs/screenshots/app-model-library.png) |
-| Hot-swap classifiers, single/early/late fusion modes, live camera & sensor inference | Multi-format registry — upload, validate, activate, and compare uploaded models |
+| ![Playground](docs/screenshots/ui-playground-fusion.png) | ![Model Library](docs/screenshots/app-model-library.png) |
+| Hot-swap CV + sensor classifiers, single / early / late fusion modes, live inference | Multi-format registry — upload, validate, activate, and compare uploaded models |
 
-<div align="center">
-<img src="docs/screenshots/app-dashboard.png" alt="Model monitoring dashboard" width="85%"/>
-<br/><em>Model Monitoring dashboard — runtime health, alerts, rollout & data-quality metrics</em>
-</div>
+| Sensor Training | Fusion Training |
+|:---:|:---:|
+| ![Sensor Training](docs/screenshots/ui-sensor-training.webp) | ![Fusion Training](docs/screenshots/ui-fusion-training.webp) |
+| Guided glove capture: service → stream → record → export | Synchronized camera + sensor capture workflow |
+
+| CSV Library | Model Monitoring |
+|:---:|:---:|
+| ![CSV Library](docs/screenshots/ui-csv-library.png) | ![Dashboard](docs/screenshots/app-dashboard.png) |
+| Dataset schema validation & pipeline-compatibility checks | Runtime health, alerts, rollout & data-quality metrics |
 
 ---
 
