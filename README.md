@@ -299,14 +299,20 @@ docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 
 ## Contributors
 
-This project was built by a student team. Huge thanks to everyone who shaped it:
+This project was built by a students team. Huge thanks to everyone who shaped it over time :
 
 | Contributor | Role | Contributions |
 |---|---|:---:|
-| **Do Hung Anh** ([@lystiger](https://github.com/lystiger)) | Lead — architecture, runtime services, playground, live pipeline | 218 commits |
-| **Do Tran Nam Anh** | Backend & ML integration, model registry | 60 commits |
-| **Nguyen Nam Khanh** | Frontend & data pipeline | 15 commits |
-| **Nguyen Duc Anh** | Data collection & testing | 2 commits |
+| **Nguyen Duc Anh** | Leader of the team , Machine Learning,Deep Learning and AI engineer, ,IOT and Embedded engineer| Managing team member's tasks, collect data, build ML/DL models, finetuning models, test and evaluate them|
+| **Do Hung Anh** ([@lystiger](https://github.com/lystiger)) | Lead Software, Software Engineer, Fullstacks engineer | Build software architecture, professional in docker, CI/CD pipeline |
+| **Do Tran Nam Anh** | Devops, Fullstacks engineer | Fix and testing software, quality check for FrontEnd and Backend|
+| **Nguyen Duc Duong** | Hardware, embedded engineer  | Hardware tesing |
+| **Le Huu Phuc Minh** | Ex Lead Hardware, embedded engineer  | Hardware building and tesing |
+| **Nguyen Nam Khanh** | Frontend and backend engineer | Update and maintaining Frontend and Backend |
+| **Luong Duc Anh** | Software architecture engineer | Tesing and sofware quality checking |
+| **Pham Gia Bao** | Computer vision engineer, data analysit | Build Deep learning models, Finetuing YoLo and other models for experiments |
+| **Truong Viet Lam** | Lead Hardware, embedded engineer | Hardware Lead, Buil, update, maintance and maintain hardware |
+
 
 <sub>Commit counts via `git shortlog`. Project developed at USTH, 2026.</sub>
 
