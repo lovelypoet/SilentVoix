@@ -314,7 +314,7 @@ This project was built by a students team. Huge thanks to everyone who shaped it
 | **Truong Viet Lam** | Member, Lead Hardware, embedded engineer | Hardware Lead, Buil, update, maintance and maintain hardware |
 
 
-<sub>Commit counts via `git shortlog`. Project developed at USTH, 2026.</sub>
+<sub>Commit counts via `git shortlog`. Project developed at USTH, 2026. Owned by SilentVoix Team. </sub>
 
 ---
 
