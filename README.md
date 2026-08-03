@@ -303,10 +303,10 @@ This project was built by a students team. Huge thanks to everyone who shaped it
 
 | Contributor | Role | Contributions |
 |---|---|:---:|
-| **Nguyen Duc Anh** | Leader of the team , Machine Learning,Deep Learning and AI engineer, ,IOT and Embedded engineer| Managing team member's tasks, collect data, build ML/DL models, finetuning models, test and evaluate them|
+| **Nguyen Duc Anh** | Leader of the team , AI engineer, Embedded engineer| Managing team member's tasks, collect data, build ML/DL models, finetuning models, test and evaluate them|
 | **Do Hung Anh** ([@lystiger](https://github.com/lystiger)) | Member,Lead Software, Software Engineer, Fullstacks engineer | Build software architecture, professional in docker, CI/CD pipeline |
 | **Do Tran Nam Anh** | Member, Devops, Fullstacks engineer | Fix and testing software, quality check for FrontEnd and Backend|
-| **Nguyen Duc Duong** | Member, Hardware, embedded engineer  | Hardware tesing |
+| **Nguyen Duc Duong** | Member, Hardware, Ex embedded engineer  | Hardware tesing |
 | **Le Huu Phuc Minh** | Member, Ex Lead Hardware, embedded engineer  | Hardware building and tesing |
 | **Nguyen Nam Khanh** | Member, Frontend and backend engineer | Update and maintaining Frontend and Backend |
 | **Luong Duc Anh** | Member, Software architecture engineer | Tesing and sofware quality checking |
