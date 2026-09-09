@@ -79,7 +79,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
           <span class="status-label" :class="overviewBadgeClass">{{ statusLabel }}</span>
         </div>
       </div>
-      <p v-if="refreshError" class="text-rose-300 text-sm mt-3">{{ refreshError }}</p>
+      <p v-if="refreshError" class="text-danger-300 text-sm mt-3">{{ refreshError }}</p>
       <p v-if="isLoading" class="text-slate-400 text-sm mt-3">Loading monitoring data...</p>
     </BaseCard>
 
@@ -93,11 +93,11 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
           </div>
           <div>
             <p class="metric-label">Critical</p>
-            <p class="metric-value text-rose-300">{{ monitoring.alerts?.critical ?? 0 }}</p>
+            <p class="metric-value text-danger-300">{{ monitoring.alerts?.critical ?? 0 }}</p>
           </div>
           <div>
             <p class="metric-label">Warning</p>
-            <p class="metric-value text-amber-300">{{ monitoring.alerts?.warning ?? 0 }}</p>
+            <p class="metric-value text-warning-300">{{ monitoring.alerts?.warning ?? 0 }}</p>
           </div>
         </div>
         <div class="mt-3 space-y-2">
@@ -136,7 +136,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
             class="flex items-center justify-between text-sm"
           >
             <span class="text-slate-200">{{ service.name }}</span>
-            <span :class="service.ok ? 'text-emerald-300' : 'text-rose-300'">
+            <span :class="service.ok ? 'text-success-300' : 'text-danger-300'">
               {{ service.ok ? 'Healthy' : 'Unavailable' }}
             </span>
           </div>
@@ -213,7 +213,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
             class="flex items-center justify-between text-sm"
           >
             <span class="text-slate-200">{{ item.feature }}</span>
-            <span class="text-amber-300">{{ formatPercent(item.shift, 2) }}</span>
+            <span class="text-warning-300">{{ formatPercent(item.shift, 2) }}</span>
           </div>
           <p v-if="topShiftedFeatures.length === 0" class="text-sm text-slate-500">No drift contributors yet.</p>
         </div>
@@ -265,7 +265,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 
 <style scoped>
 .monitoring-overview {
-  background: radial-gradient(1400px 460px at -10% -20%, rgba(20, 184, 166, 0.22), transparent 62%),
+  background: radial-gradient(1400px 460px at -10% -20%, rgb(var(--brand-500) / 0.22), transparent 62%),
     radial-gradient(900px 360px at 120% -10%, rgba(251, 191, 36, 0.16), transparent 58%),
     linear-gradient(125deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.85));
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -317,26 +317,26 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 }
 
 .badge-healthy {
-  background: rgba(16, 185, 129, 0.2);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.4);
+  background: rgb(var(--success-500) / 0.2);
+  color: rgb(var(--success-300));
+  border-color: rgb(var(--success-500) / 0.4);
 }
 
 .badge-warning {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fcd34d;
-  border-color: rgba(245, 158, 11, 0.4);
+  background: rgb(var(--warning-500) / 0.2);
+  color: rgb(var(--warning-300));
+  border-color: rgb(var(--warning-500) / 0.4);
 }
 
 .badge-critical {
-  background: rgba(244, 63, 94, 0.22);
-  color: #fda4af;
-  border-color: rgba(244, 63, 94, 0.4);
+  background: rgb(var(--danger-500) / 0.22);
+  color: rgb(var(--danger-300));
+  border-color: rgb(var(--danger-500) / 0.4);
 }
 
 .badge-neutral {
   background: rgba(148, 163, 184, 0.2);
-  color: #cbd5e1;
+  color: rgb(203, 213, 225); /* slate-300 */
   border-color: rgba(148, 163, 184, 0.4);
 }
 
@@ -351,7 +351,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 .trend-bar {
   width: 100%;
   border-radius: 0.3rem;
-  background: linear-gradient(180deg, rgba(20, 184, 166, 0.95), rgba(14, 116, 144, 0.9));
+  background: linear-gradient(180deg, rgb(var(--brand-500) / 0.95), rgb(var(--brand-700) / 0.9));
   min-height: 8px;
 }
 

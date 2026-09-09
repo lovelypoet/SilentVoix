@@ -20,7 +20,7 @@ const store = usePlaygroundStore()
            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Early:</span>
            <button 
              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-             :class="store.isEarlyFusionMode ? 'bg-teal-500' : 'bg-slate-700'"
+             :class="store.isEarlyFusionMode ? 'bg-brand-500' : 'bg-slate-700'"
              @click="store.isEarlyFusionMode = !store.isEarlyFusionMode; store.isFusionMode = false"
            >
              <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="store.isEarlyFusionMode ? 'translate-x-6' : 'translate-x-1'"></span>
@@ -30,7 +30,7 @@ const store = usePlaygroundStore()
            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Late:</span>
            <button 
              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-             :class="store.isFusionMode ? 'bg-teal-500' : 'bg-slate-700'"
+             :class="store.isFusionMode ? 'bg-brand-500' : 'bg-slate-700'"
              @click="store.isFusionMode = !store.isFusionMode; store.isEarlyFusionMode = false"
            >
              <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="store.isFusionMode ? 'translate-x-6' : 'translate-x-1'"></span>
@@ -65,11 +65,11 @@ const store = usePlaygroundStore()
           <div class="flex items-center justify-between mb-2">
              <span class="text-xs font-bold text-slate-500 uppercase">Glove vs. Vision Weight</span>
              <div class="flex gap-4">
-                <span class="text-[10px] text-teal-400 font-bold uppercase tracking-widest">Vision: {{ (1 - props.fusionLogic.gloveWeight.value).toFixed(2) }}</span>
-                <span class="text-[10px] text-amber-400 font-bold uppercase tracking-widest">Glove: {{ props.fusionLogic.gloveWeight.value.toFixed(2) }}</span>
+                <span class="text-[10px] text-brand-400 font-bold uppercase tracking-widest">Vision: {{ (1 - props.fusionLogic.gloveWeight.value).toFixed(2) }}</span>
+                <span class="text-[10px] text-warning-400 font-bold uppercase tracking-widest">Glove: {{ props.fusionLogic.gloveWeight.value.toFixed(2) }}</span>
              </div>
           </div>
-          <input type="range" v-model.number="props.fusionLogic.gloveWeight.value" min="0" max="1" step="0.05" class="w-full accent-teal-500 bg-slate-800 h-2 rounded-lg cursor-pointer" />
+          <input type="range" v-model.number="props.fusionLogic.gloveWeight.value" min="0" max="1" step="0.05" class="w-full accent-brand-500 bg-slate-800 h-2 rounded-lg cursor-pointer" />
        </div>
     </div>
   </div>

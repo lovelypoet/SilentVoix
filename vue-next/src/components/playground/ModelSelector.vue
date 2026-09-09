@@ -59,7 +59,7 @@ onMounted(loadModels)
       </label>
     </div>
 
-    <div v-if="error" class="p-3 rounded bg-rose-400/10 text-rose-300 border border-rose-400/20 text-sm italic">
+    <div v-if="error" class="p-3 rounded bg-danger-400/10 text-danger-300 border border-danger-400/20 text-sm italic">
       {{ error }}
     </div>
   </div>

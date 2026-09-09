@@ -548,7 +548,7 @@ onMounted(() => {
     </div>
 
     <BaseCard>
-      <p v-if="error" class="text-red-300 text-sm">{{ error }}</p>
+      <p v-if="error" class="text-danger-300 text-sm">{{ error }}</p>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
         <label class="block">
           <span class="text-xs text-slate-400">Search</span>
@@ -678,10 +678,10 @@ onMounted(() => {
                   class="mx-auto w-3.5 h-3.5 rounded-full shrink-0 transition-colors shadow-sm outline-none ring-2 ring-transparent focus-visible:ring-slate-400"
                   :class="
                     runtimeStatusFor(model.id) === 'pass'
-                      ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
+                      ? 'bg-success-500 hover:bg-success-400 shadow-success-500/20'
                       : runtimeStatusFor(model.id) === 'fail'
-                        ? 'bg-rose-500 hover:bg-rose-400 shadow-rose-500/20'
-                        : 'bg-amber-400 hover:bg-amber-300 shadow-amber-400/20'
+                        ? 'bg-danger-500 hover:bg-danger-400 shadow-danger-500/20'
+                        : 'bg-warning-400 hover:bg-warning-300 shadow-warning-400/20'
                   "
                   title="Click to view runtime status details"
                   @click="showRuntimeStatusToast(model)"
@@ -719,7 +719,7 @@ onMounted(() => {
                       Runtime Check
                     </button>
                     <button
-                      class="w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                      class="w-full text-left px-3 py-2 text-sm text-danger-300 hover:bg-danger-500/10 disabled:opacity-50"
                       :disabled="isActionLoading(model.id)"
                       @click="requestDeleteFromMenu(model.id, close)"
                     >
@@ -822,17 +822,17 @@ onMounted(() => {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="block">
               <span class="text-sm font-semibold text-slate-300">Model File (required)</span>
-              <input type="file" @change="onPickModelFile" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-teal-400 hover:file:bg-slate-700" />
+              <input type="file" @change="onPickModelFile" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
             </label>
             <label class="block">
               <span class="text-sm font-semibold text-slate-300">Metadata JSON (required)</span>
-              <input type="file" @change="onPickMetadataFile" accept=".json,application/json" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-teal-400 hover:file:bg-slate-700" />
+              <input type="file" @change="onPickMetadataFile" accept=".json,application/json" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
             </label>
           </div>
 
           <div class="mt-2 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
             <label class="flex items-center gap-3 cursor-pointer group">
-              <input type="checkbox" v-model="isStateDict" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-teal-400 focus:ring-teal-500 focus:ring-offset-slate-950" />
+              <input type="checkbox" v-model="isStateDict" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-brand-400 focus:ring-brand-500 focus:ring-offset-slate-950" />
               <span class="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">This PyTorch model is a state_dict</span>
             </label>
             
@@ -840,22 +840,22 @@ onMounted(() => {
               <label class="block">
                 <span class="text-sm font-semibold text-slate-300">Model Class Definition (.py)</span>
                 <span class="block text-xs text-slate-500 mt-1 mb-2">Required to rebuild the neural network architecture before loading state weights.</span>
-                <input type="file" @change="onPickModelClassFile" accept=".py" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-teal-400 hover:file:bg-slate-700" />
+                <input type="file" @change="onPickModelClassFile" accept=".py" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
               </label>
             </div>
           </div>
 
-          <div v-if="uploadMessage" class="p-3 rounded-lg text-sm" :class="validationErrors.length ? 'bg-amber-400/10 text-amber-300 border border-amber-400/20' : 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20'">
+          <div v-if="uploadMessage" class="p-3 rounded-lg text-sm" :class="validationErrors.length ? 'bg-warning-400/10 text-warning-300 border border-warning-400/20' : 'bg-success-400/10 text-success-300 border border-success-400/20'">
             {{ uploadMessage }}
           </div>
           
-          <div v-if="uploadError" class="p-3 rounded-lg bg-rose-400/10 text-rose-300 border border-rose-400/20 text-sm">
+          <div v-if="uploadError" class="p-3 rounded-lg bg-danger-400/10 text-danger-300 border border-danger-400/20 text-sm">
             {{ uploadError }}
           </div>
 
-          <ul v-if="validationErrors.length" class="space-y-1 bg-red-400/5 p-3 rounded border border-red-400/20">
-            <li v-for="err in validationErrors" :key="err" class="text-xs text-rose-300 flex items-start gap-2">
-              <span class="mt-1 block w-1 h-1 rounded-full bg-rose-400 shrink-0"></span>
+          <ul v-if="validationErrors.length" class="space-y-1 bg-danger-400/5 p-3 rounded border border-danger-400/20">
+            <li v-for="err in validationErrors" :key="err" class="text-xs text-danger-300 flex items-start gap-2">
+              <span class="mt-1 block w-1 h-1 rounded-full bg-danger-400 shrink-0"></span>
               {{ err }}
             </li>
           </ul>

@@ -2,7 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ---------------------------------------------------------------------------
+ * Design tokens
+ * ---------------------------------------------------------------------------
+ * Space-separated RGB channels so Tailwind can apply slash-opacity, e.g.
+ * `bg-brand-500/10` -> rgb(var(--brand-500) / 0.1).
+ *
+ * To re-brand the app, change ONLY the --brand-* / --brand-alt-* blocks
+ * below. Nothing else in the codebase hardcodes the brand hue.
+ */
 :root {
+  /* Brand accent - indigo */
+  --brand-50: 238 242 255;
+  --brand-100: 224 231 255;
+  --brand-200: 199 210 254;
+  --brand-300: 165 180 252;
+  --brand-400: 129 140 248;
+  --brand-500: 99 102 241;
+  --brand-600: 79 70 229;
+  --brand-700: 67 56 202;
+  --brand-800: 55 48 163;
+  --brand-900: 49 46 129;
+  --brand-950: 30 27 75;
+
+  /* Brand companion - violet. Used for gradients, glows and depth. */
+  --brand-alt-50: 245 243 255;
+  --brand-alt-100: 237 233 254;
+  --brand-alt-200: 221 214 254;
+  --brand-alt-300: 196 181 253;
+  --brand-alt-400: 167 139 250;
+  --brand-alt-500: 139 92 246;
+  --brand-alt-600: 124 58 237;
+  --brand-alt-700: 109 40 217;
+  --brand-alt-800: 91 33 182;
+  --brand-alt-900: 76 29 149;
+  --brand-alt-950: 46 16 101;
+
+  /* Status - success (emerald) */
+  --success-50: 236 253 245;
+  --success-100: 209 250 229;
+  --success-200: 167 243 208;
+  --success-300: 110 231 183;
+  --success-400: 52 211 153;
+  --success-500: 16 185 129;
+  --success-600: 5 150 105;
+  --success-700: 4 120 87;
+  --success-800: 6 95 70;
+  --success-900: 6 78 59;
+  --success-950: 2 44 34;
+
+  /* Status - warning (amber) */
+  --warning-50: 255 251 235;
+  --warning-100: 254 243 199;
+  --warning-200: 253 230 138;
+  --warning-300: 252 211 77;
+  --warning-400: 251 191 36;
+  --warning-500: 245 158 11;
+  --warning-600: 217 119 6;
+  --warning-700: 180 83 9;
+  --warning-800: 146 64 14;
+  --warning-900: 120 53 15;
+  --warning-950: 69 26 3;
+
+  /* Status - danger (rose) */
+  --danger-50: 255 241 242;
+  --danger-100: 255 228 230;
+  --danger-200: 254 205 211;
+  --danger-300: 253 164 175;
+  --danger-400: 251 113 133;
+  --danger-500: 244 63 94;
+  --danger-600: 225 29 72;
+  --danger-700: 190 18 60;
+  --danger-800: 159 18 57;
+  --danger-900: 136 19 55;
+  --danger-950: 76 5 25;
+
+  /* Surfaces */
   --liquid-glass-bg: rgba(15, 23, 42, 0.48);
   --liquid-glass-border: rgba(255, 255, 255, 0.12);
   --liquid-glass-highlight: rgba(255, 255, 255, 0.28);
@@ -41,11 +117,11 @@
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   background:
-    radial-gradient(1400px 700px at -10% -20%, rgba(20, 184, 166, 0.14), transparent 60%),
-    radial-gradient(1100px 600px at 110% 0%, rgba(56, 189, 248, 0.12), transparent 55%),
-    radial-gradient(800px 500px at 50% 120%, rgba(45, 212, 191, 0.1), transparent 60%),
+    radial-gradient(1400px 700px at -10% -20%, rgb(var(--brand-500) / 0.16), transparent 60%),
+    radial-gradient(1100px 600px at 110% 0%, rgb(var(--brand-alt-500) / 0.14), transparent 55%),
+    radial-gradient(800px 500px at 50% 120%, rgb(var(--brand-400) / 0.1), transparent 60%),
     linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
 }
 
@@ -53,7 +129,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   background-image:
     repeating-linear-gradient(
       0deg,
@@ -67,7 +143,43 @@
   pointer-events: none;
 }
 
-.app-bg > * {
-  position: relative;
-  z-index: 1;
+/*
+ * The decorative layers above sit at z-index -1 so page content stacks on top
+ * without needing a `.app-bg > *` position override. That override used to win
+ * over Tailwind's `.fixed` (same specificity, declared later), which knocked
+ * the mobile nav drawer back into normal flow and squeezed page content to a
+ * ~117px column. Keep `.app-bg` free of its own background colour, or these
+ * layers will be painted over.
+ */
+
+/*
+ * Shared focus-visible treatment. Keyboard users get a clear brand ring;
+ * mouse users are unaffected.
+ */
+.focus-ring:focus-visible {
+  outline: 2px solid rgb(var(--brand-400));
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * PrimeVue toasts are 25rem wide by default, which overhangs narrow viewports
+ * and covers the mobile header. Keep them inside the screen instead.
+ */
+@media (max-width: 30rem) {
+  .p-toast {
+    width: calc(100vw - 2rem);
+    max-width: 100%;
+  }
 }

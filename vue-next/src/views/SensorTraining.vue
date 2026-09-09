@@ -134,7 +134,7 @@ const channelPercent = (value, index) => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-teal-300">Sensor Training</h1>
+        <h1 class="text-2xl md:text-3xl font-bold text-brand-300">Sensor Training</h1>
         <p class="text-slate-400 mt-1">
           Guided flow: <code>Service</code> -> <code>Stream</code> -> <code>Recording</code> -> <code>Export</code>
         </p>
@@ -149,15 +149,15 @@ const channelPercent = (value, index) => {
             <p class="text-xs uppercase tracking-wide text-slate-400">Primary Workflow</p>
             <p class="text-sm mt-1 text-slate-300">{{ flowHint }}</p>
           </div>
-          <div class="text-xs rounded-full px-3 py-1 border" :class="workflowStep === 4 ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'">
+          <div class="text-xs rounded-full px-3 py-1 border" :class="workflowStep === 4 ? 'border-success-500/40 text-success-300' : 'border-warning-500/40 text-warning-300'">
             Step {{ workflowStep }} of 4
           </div>
         </div>
 
         <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div class="rounded-xl border p-3" :class="isCaptureRunning ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+          <div class="rounded-xl border p-3" :class="isCaptureRunning ? 'border-success-500/30 bg-success-500/5' : 'border-slate-800 bg-slate-950/40'">
             <p class="text-[11px] uppercase tracking-wide text-slate-400">1. Sensor Service</p>
-            <p class="text-sm mt-1" :class="isCaptureRunning ? 'text-emerald-300' : 'text-amber-300'">
+            <p class="text-sm mt-1" :class="isCaptureRunning ? 'text-success-300' : 'text-warning-300'">
               {{ isCaptureRunning ? 'Running' : 'Stopped' }}
               <span v-if="capturePid"> (pid {{ capturePid }})</span>
             </p>
@@ -184,9 +184,9 @@ const channelPercent = (value, index) => {
             </div>
           </div>
 
-          <div class="rounded-xl border p-3" :class="isConnected ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+          <div class="rounded-xl border p-3" :class="isConnected ? 'border-success-500/30 bg-success-500/5' : 'border-slate-800 bg-slate-950/40'">
             <p class="text-[11px] uppercase tracking-wide text-slate-400">2. Stream Connection</p>
-            <p class="text-sm mt-1" :class="isConnected ? 'text-emerald-300' : 'text-amber-300'">
+            <p class="text-sm mt-1" :class="isConnected ? 'text-success-300' : 'text-warning-300'">
               {{ isConnected ? 'Connected' : 'Disconnected' }}
             </p>
             <p class="text-xs text-slate-500 mt-1">Endpoint: /ws/stream</p>
@@ -203,9 +203,9 @@ const channelPercent = (value, index) => {
             </div>
           </div>
 
-          <div class="rounded-xl border p-3" :class="isRecording ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+          <div class="rounded-xl border p-3" :class="isRecording ? 'border-success-500/30 bg-success-500/5' : 'border-slate-800 bg-slate-950/40'">
             <p class="text-[11px] uppercase tracking-wide text-slate-400">3. Recording</p>
-            <p class="text-sm mt-1" :class="isRecording ? 'text-emerald-300' : 'text-amber-300'">
+            <p class="text-sm mt-1" :class="isRecording ? 'text-success-300' : 'text-warning-300'">
               {{ isRecording ? 'Recording' : 'Idle' }}
             </p>
             <p class="text-xs text-slate-500 mt-1">Saved frames: {{ recordedFrames.length }}</p>
@@ -213,7 +213,7 @@ const channelPercent = (value, index) => {
               <BaseBtn variant="primary" :disabled="!canStartRecordingNow" @click="startRecording">
                 Start Recording
               </BaseBtn>
-              <BaseBtn variant="amber" :disabled="!isRecording" @click="stopRecording">
+              <BaseBtn variant="warning" :disabled="!isRecording" @click="stopRecording">
                 Stop Recording
               </BaseBtn>
               <BaseBtn variant="danger" :disabled="recordedFrames.length === 0 && !isRecording" @click="resetRecording">
@@ -222,9 +222,9 @@ const channelPercent = (value, index) => {
             </div>
           </div>
 
-          <div class="rounded-xl border p-3" :class="canExport ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+          <div class="rounded-xl border p-3" :class="canExport ? 'border-success-500/30 bg-success-500/5' : 'border-slate-800 bg-slate-950/40'">
             <p class="text-[11px] uppercase tracking-wide text-slate-400">4. Export</p>
-            <p class="text-sm mt-1" :class="canExport ? 'text-emerald-300' : 'text-slate-400'">
+            <p class="text-sm mt-1" :class="canExport ? 'text-success-300' : 'text-slate-400'">
               {{ canExport ? 'Ready' : 'Not ready' }}
             </p>
             <p class="text-xs text-slate-500 mt-1">Exported label: {{ (label || 'unlabeled').trim() || 'unlabeled' }}</p>
@@ -235,8 +235,8 @@ const channelPercent = (value, index) => {
           </div>
         </div>
 
-        <p v-if="captureError" class="text-xs text-rose-300 mt-3">{{ captureError }}</p>
-        <p v-if="connectionError" class="text-xs text-rose-300 mt-1">{{ connectionError }}</p>
+        <p v-if="captureError" class="text-xs text-danger-300 mt-3">{{ captureError }}</p>
+        <p v-if="connectionError" class="text-xs text-danger-300 mt-1">{{ connectionError }}</p>
       </BaseCard>
     </section>
 
@@ -266,7 +266,7 @@ const channelPercent = (value, index) => {
                   <span>{{ Number(value).toFixed(2) }}</span>
                 </div>
                 <div class="h-2 rounded bg-slate-800 overflow-hidden">
-                  <div class="h-full bg-teal-400" :style="{ width: `${channelPercent(value, idx)}%` }"></div>
+                  <div class="h-full bg-brand-400" :style="{ width: `${channelPercent(value, idx)}%` }"></div>
                 </div>
               </div>
             </div>
@@ -304,7 +304,7 @@ const channelPercent = (value, index) => {
               v-model="label"
               type="text"
               placeholder="e.g. hello, rest, custom gesture"
-              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </label>
 
@@ -315,7 +315,7 @@ const channelPercent = (value, index) => {
               type="number"
               min="20"
               max="2000"
-              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </label>
         </div>
@@ -329,7 +329,7 @@ const channelPercent = (value, index) => {
           <div v-if="showAdvanced" class="mt-3 space-y-3">
             <div>
               <p class="text-xs uppercase tracking-wide text-slate-400">Serial Port</p>
-              <p class="text-xs mt-1" :class="serialStatus.single_connected ? 'text-emerald-300' : 'text-amber-300'">
+              <p class="text-xs mt-1" :class="serialStatus.single_connected ? 'text-success-300' : 'text-warning-300'">
                 {{ serialStatus.single_connected ? 'Connected' : 'Not Connected' }}
                 <span class="text-slate-500"> ({{ serialStatus.single_port || '--' }})</span>
               </p>
@@ -377,11 +377,11 @@ const channelPercent = (value, index) => {
                   {{ isPortLoading ? 'Checking...' : 'Refresh' }}
                 </BaseBtn>
               </div>
-              <p class="text-[11px] mt-2" :class="autoRefresh ? 'text-teal-300' : 'text-amber-300'">
+              <p class="text-[11px] mt-2" :class="autoRefresh ? 'text-brand-300' : 'text-warning-300'">
                 Auto-refresh: {{ autoRefresh ? 'on' : 'paused' }}
               </p>
-              <p v-if="portError" class="text-xs text-rose-300 mt-1">{{ portError }}</p>
-              <p v-if="portMessage" class="text-xs text-emerald-300 mt-1">{{ portMessage }}</p>
+              <p v-if="portError" class="text-xs text-danger-300 mt-1">{{ portError }}</p>
+              <p v-if="portMessage" class="text-xs text-success-300 mt-1">{{ portMessage }}</p>
             </div>
 
             <div>

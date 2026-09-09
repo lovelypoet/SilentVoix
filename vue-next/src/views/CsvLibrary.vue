@@ -154,16 +154,16 @@ const formatDate = (value) => {
 }
 
 const workerValidationClass = (status) => {
-  if (status === 'pass') return 'bg-emerald-500/20 text-emerald-300'
-  if (status === 'warning') return 'bg-amber-500/20 text-amber-300'
-  if (status === 'reject') return 'bg-rose-500/20 text-rose-300'
+  if (status === 'pass') return 'bg-success-500/20 text-success-300'
+  if (status === 'warning') return 'bg-warning-500/20 text-warning-300'
+  if (status === 'reject') return 'bg-danger-500/20 text-danger-300'
   return 'bg-slate-800 text-slate-400'
 }
 
 const operatorReviewClass = (decision) => {
-  if (decision === 'approved') return 'bg-emerald-500/15 text-emerald-200'
-  if (decision === 'needs_review') return 'bg-amber-500/15 text-amber-200'
-  if (decision === 'rejected') return 'bg-rose-500/15 text-rose-200'
+  if (decision === 'approved') return 'bg-success-500/15 text-success-200'
+  if (decision === 'needs_review') return 'bg-warning-500/15 text-warning-200'
+  if (decision === 'rejected') return 'bg-danger-500/15 text-danger-200'
   return 'bg-slate-800 text-slate-400'
 }
 
@@ -515,8 +515,8 @@ const onRowDragEnd = () => {
 
 const menuItemClass = 'w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50'
 const menuAccentClass = 'w-full text-left px-3 py-2 text-sm text-cyan-300 hover:bg-slate-800 disabled:opacity-50'
-const menuWarningClass = 'w-full text-left px-3 py-2 text-sm text-amber-300 hover:bg-slate-800 disabled:opacity-50'
-const menuDangerClass = 'w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50'
+const menuWarningClass = 'w-full text-left px-3 py-2 text-sm text-warning-300 hover:bg-slate-800 disabled:opacity-50'
+const menuDangerClass = 'w-full text-left px-3 py-2 text-sm text-danger-300 hover:bg-danger-500/10 disabled:opacity-50'
 
 onMounted(() => {
   const queryPipeline = String(route.query?.pipeline || '').toLowerCase()
@@ -612,15 +612,15 @@ watch([compatibleOnly, pipeline, mode], () => {
       <div v-if="pipeline === 'late'" class="mt-3 rounded border border-slate-700 bg-slate-900/50 p-3 text-xs">
         <p class="text-slate-300">
           Late fusion needs both slots selected:
-          <span :class="latePairStatus?.cv ? 'text-emerald-300' : 'text-amber-300'">CV</span> +
-          <span :class="latePairStatus?.sensor ? 'text-emerald-300' : 'text-amber-300'">Sensor</span>
+          <span :class="latePairStatus?.cv ? 'text-success-300' : 'text-warning-300'">CV</span> +
+          <span :class="latePairStatus?.sensor ? 'text-success-300' : 'text-warning-300'">Sensor</span>
         </p>
-        <p class="mt-1" :class="latePairStatus?.isComplete ? 'text-emerald-300' : 'text-amber-300'">
+        <p class="mt-1" :class="latePairStatus?.isComplete ? 'text-success-300' : 'text-warning-300'">
           {{ latePairStatus?.isComplete ? 'Pair complete for late-fusion training.' : 'Pair incomplete: select both CV and Sensor datasets.' }}
         </p>
       </div>
 
-      <p v-if="error" class="text-red-300 text-sm mt-3">{{ error }}</p>
+      <p v-if="error" class="text-danger-300 text-sm mt-3">{{ error }}</p>
     </BaseCard>
 
     <BaseCard>
@@ -694,7 +694,7 @@ watch([compatibleOnly, pipeline, mode], () => {
                 <div v-if="compatibilityByName[file.name]?.checked">
                   <span
                     class="px-2 py-1 rounded text-xs font-semibold"
-                    :class="compatibilityByName[file.name]?.isCompatible ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'"
+                    :class="compatibilityByName[file.name]?.isCompatible ? 'bg-success-500/20 text-success-300' : 'bg-danger-500/20 text-danger-300'"
                   >
                     {{ compatibilityByName[file.name]?.isCompatible ? 'Compatible' : 'Not Compatible' }}
                   </span>
@@ -781,7 +781,7 @@ watch([compatibleOnly, pipeline, mode], () => {
           <BaseBtn variant="secondary" @click="closePreviewModal">Close</BaseBtn>
         </div>
         <p v-if="previewLoading" class="text-slate-400">Loading preview...</p>
-        <p v-else-if="previewError" class="text-red-300">{{ previewError }}</p>
+        <p v-else-if="previewError" class="text-danger-300">{{ previewError }}</p>
         <p v-else-if="!previewData" class="text-slate-500">No preview data.</p>
         <div v-else>
           <div class="text-sm text-slate-300 mb-3">
@@ -812,7 +812,7 @@ watch([compatibleOnly, pipeline, mode], () => {
           <BaseBtn variant="secondary" @click="closeStatsModal">Close</BaseBtn>
         </div>
         <p v-if="statsLoading" class="text-slate-400">Loading stats...</p>
-        <p v-else-if="statsError" class="text-red-300">{{ statsError }}</p>
+        <p v-else-if="statsError" class="text-danger-300">{{ statsError }}</p>
         <p v-else-if="!statsData" class="text-slate-500">No stats data.</p>
         <div v-else class="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-1">
           <div class="text-slate-300">
@@ -888,23 +888,23 @@ watch([compatibleOnly, pipeline, mode], () => {
                   {{ flag }}
                 </span>
               </div>
-              <p v-else class="text-emerald-300">No health flags.</p>
+              <p v-else class="text-success-300">No health flags.</p>
             </div>
           </div>
           <div class="rounded border border-slate-800 p-3 bg-slate-950/40">
             <p class="text-slate-400 mb-1">Schema Mismatch Details</p>
-            <p v-if="!(statsData.schema_mismatch_details?.missing_required_columns?.length || statsData.schema_mismatch_details?.notes?.length)" class="text-emerald-300">
+            <p v-if="!(statsData.schema_mismatch_details?.missing_required_columns?.length || statsData.schema_mismatch_details?.notes?.length)" class="text-success-300">
               No mismatch details.
             </p>
             <div v-else class="space-y-2">
               <div v-if="statsData.schema_mismatch_details?.missing_required_columns?.length">
-                <p class="text-rose-300 text-xs">Missing required columns</p>
+                <p class="text-danger-300 text-xs">Missing required columns</p>
                 <p class="text-slate-200 text-xs">
                   {{ statsData.schema_mismatch_details.missing_required_columns.join(', ') }}
                 </p>
               </div>
               <div v-if="statsData.schema_mismatch_details?.notes?.length">
-                <p class="text-amber-300 text-xs">Notes</p>
+                <p class="text-warning-300 text-xs">Notes</p>
                 <p class="text-slate-200 text-xs">
                   {{ statsData.schema_mismatch_details.notes.join(' | ') }}
                 </p>

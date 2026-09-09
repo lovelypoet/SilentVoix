@@ -226,9 +226,9 @@ const handleLogin = async () => {
         <p class="graphics-status">{{ autoStatus }}</p>
       </div>
     </div>
-    <div class="login-card bg-slate-900/75 backdrop-blur-md border border-teal-500/20 p-8 rounded-2xl w-full max-w-md shadow-2xl">
+    <div class="login-card bg-slate-900/75 backdrop-blur-md border border-brand-500/20 p-8 rounded-2xl w-full max-w-md shadow-2xl">
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-teal-300 mb-2">SilentVoix</h1>
+        <h1 class="text-3xl font-bold text-brand-300 mb-2">SilentVoix</h1>
         <p class="text-slate-300">Sign Language Translation System</p>
       </div>
 
@@ -248,7 +248,7 @@ const handleLogin = async () => {
             required
         />
 
-        <div v-if="error" class="text-red-500 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+        <div v-if="error" class="text-danger-500 text-sm bg-danger-500/10 p-3 rounded-lg border border-danger-500/20">
             {{ error }}
         </div>
 
@@ -264,7 +264,7 @@ const handleLogin = async () => {
 
       <div class="mt-6 text-center text-sm text-slate-300">
         New here?
-        <button class="text-teal-300 hover:text-teal-200 underline underline-offset-2 ml-1" @click="router.push('/register')">
+        <button class="text-brand-300 hover:text-brand-200 underline underline-offset-2 ml-1" @click="router.push('/register')">
           Create account
         </button>
       </div>
@@ -276,7 +276,7 @@ const handleLogin = async () => {
 .login-page {
   position: relative;
   isolation: isolate;
-  background: radial-gradient(circle at 20% 20%, #0f2633 0%, #020617 55%, #000000 100%);
+  background: radial-gradient(circle at 20% 20%, #1a1638 0%, #020617 55%, #000000 100%);
 }
 
 .login-card {
@@ -295,16 +295,16 @@ const handleLogin = async () => {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  border: 1px solid rgba(45, 212, 191, 0.35);
+  border: 1px solid rgb(var(--brand-400) / 0.35);
   background: rgba(2, 6, 23, 0.65);
   backdrop-filter: blur(8px);
-  color: #99f6e4;
+  color: rgb(var(--brand-200));
   display: grid;
   place-items: center;
 }
 
 .graphics-settings-trigger:hover {
-  border-color: rgba(45, 212, 191, 0.7);
+  border-color: rgb(var(--brand-400) / 0.7);
 }
 
 .graphics-gear-icon {
@@ -315,12 +315,12 @@ const handleLogin = async () => {
 .graphics-settings-menu {
   margin-top: 0.5rem;
   width: min(18rem, 90vw);
-  border: 1px solid rgba(45, 212, 191, 0.3);
+  border: 1px solid rgb(var(--brand-400) / 0.3);
   border-radius: 0.85rem;
   background: rgba(2, 6, 23, 0.86);
   backdrop-filter: blur(12px);
   padding: 0.75rem;
-  color: #d1fae5;
+  color: rgb(var(--success-100));
 }
 
 .graphics-settings-title {
@@ -346,9 +346,9 @@ const handleLogin = async () => {
 }
 
 .graphics-option-btn.active {
-  border-color: rgba(45, 212, 191, 0.9);
-  background: rgba(13, 35, 44, 0.95);
-  color: #99f6e4;
+  border-color: rgb(var(--brand-400) / 0.9);
+  background: rgba(23, 20, 50, 0.95);
+  color: rgb(var(--brand-200));
 }
 
 .graphics-status {

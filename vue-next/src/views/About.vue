@@ -293,8 +293,8 @@ const supervisors = [
 
 .member-card-active {
   transform: scale(1.03);
-  border-color: rgba(45, 212, 191, 0.7);
-  box-shadow: 0 12px 22px -14px rgba(45, 212, 191, 0.55);
+  border-color: rgb(var(--brand-400) / 0.7);
+  box-shadow: 0 12px 22px -14px rgb(var(--brand-400) / 0.55);
 }
 
 .member-card-dim {
@@ -307,8 +307,8 @@ const supervisors = [
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 9999px;
-  border: 2px solid rgba(12, 74, 110, 0.9);
-  background: rgba(45, 212, 191, 0.95);
+  border: 2px solid rgb(var(--brand-700) / 0.9);
+  background: rgb(var(--brand-400) / 0.95);
   transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;

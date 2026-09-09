@@ -133,7 +133,7 @@ onMounted(() => {
   transition: background-color 0.2s ease-in-out;
 }
 .toggle-switch:checked {
-  background-color: #4f46e5;
+  background-color: rgb(var(--brand-600));
 }
 .toggle-switch::before {
   content: '';

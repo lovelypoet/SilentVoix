@@ -32,7 +32,7 @@ defineExpose({ terminalEl })
       <div class="flex items-center gap-2">
         <span
           class="text-xs font-semibold"
-          :class="isStreaming ? 'text-green-400' : 'text-slate-500'"
+          :class="isStreaming ? 'text-success-400' : 'text-slate-500'"
         >
           {{ isStreaming ? 'Live' : 'Idle' }}
         </span>
@@ -50,13 +50,13 @@ defineExpose({ terminalEl })
       ref="terminalEl"
       class="terminal-body h-44 overflow-y-auto rounded-lg border border-slate-800 bg-black/70 px-4 py-3 font-mono text-xs text-slate-200"
     >
-      <div v-if="terminalError" class="text-red-400">{{ terminalError }}</div>
+      <div v-if="terminalError" class="text-danger-400">{{ terminalError }}</div>
       <div v-else-if="terminalLines.length === 0" class="text-slate-500">
         No log output yet.
       </div>
       <div v-else class="space-y-1">
         <div v-for="(line, idx) in terminalLines" :key="`term-${idx}`">
-          <span class="text-emerald-400">$</span>
+          <span class="text-success-400">$</span>
           <span class="ml-2">{{ line }}</span>
         </div>
       </div>
@@ -67,7 +67,7 @@ defineExpose({ terminalEl })
         <input
           :checked="autoScroll"
           type="checkbox"
-          class="accent-teal-400"
+          class="accent-brand-400"
           @change="emit('update:autoScroll', $event.target.checked)"
         />
         Auto-scroll

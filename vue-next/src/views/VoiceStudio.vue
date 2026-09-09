@@ -179,12 +179,12 @@ const uploadFile = async (file) => {
       </div>
       
       <!-- Tab Navigation -->
-      <div class="flex bg-teal-500/10 border border-teal-500/30 p-1 rounded-lg">
+      <div class="flex bg-brand-500/10 border border-brand-500/30 p-1 rounded-lg">
         <button 
           v-for="tab in ['tts', 'library', 'live']" 
           :key="tab"
           class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          :class="activeTab === tab ? 'bg-teal-500 text-slate-950 shadow shadow-teal-500/30' : 'text-teal-200 hover:text-teal-100'"
+          :class="activeTab === tab ? 'bg-brand-500 text-slate-950 shadow shadow-brand-500/30' : 'text-brand-200 hover:text-brand-100'"
           @click="activeTab = tab"
         >
           {{ tab === 'tts' ? 'Text to Speech' : tab === 'library' ? 'Audio Library' : 'Live Voice' }}
@@ -193,7 +193,7 @@ const uploadFile = async (file) => {
     </div>
 
     <!-- Error Alert -->
-    <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg flex justify-between items-center relative">
+    <div v-if="error" class="bg-danger-500/10 border border-danger-500/20 text-danger-400 p-4 rounded-lg flex justify-between items-center relative">
       <span>{{ error }}</span>
       <button class="text-sm hover:text-white absolute right-4" @click="error = null">&times;</button>
     </div>
@@ -204,17 +204,17 @@ const uploadFile = async (file) => {
         <div class="space-y-6">
           <!-- Engine Selector -->
           <div class="flex gap-4">
-            <div class="inline-flex bg-teal-500/10 p-1 rounded-lg border border-teal-500/30">
+            <div class="inline-flex bg-brand-500/10 p-1 rounded-lg border border-brand-500/30">
                <button 
                  class="px-4 py-2 rounded-md text-sm font-medium transition-all"
-                 :class="ttsEngine === 'gtts' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/30' : 'text-teal-200 hover:text-teal-100'"
+                 :class="ttsEngine === 'gtts' ? 'bg-brand-500 text-slate-950 shadow-lg shadow-brand-500/30' : 'text-brand-200 hover:text-brand-100'"
                  @click="ttsEngine = 'gtts'"
                >
                  GTTS
                </button>
                <button 
                  class="px-4 py-2 rounded-md text-sm font-medium transition-all"
-                 :class="ttsEngine === 'os' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/30' : 'text-teal-200 hover:text-teal-100'"
+                 :class="ttsEngine === 'os' ? 'bg-brand-500 text-slate-950 shadow-lg shadow-brand-500/30' : 'text-brand-200 hover:text-brand-100'"
                  @click="ttsEngine = 'os'"
                >
                  Device Default
@@ -232,7 +232,7 @@ const uploadFile = async (file) => {
             <textarea 
               v-model="ttsText"
               rows="4"
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all resize-none"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all resize-none"
               placeholder="Type something here (e.g., 'Hello, how can I help you?')..."
             ></textarea>
           </div>
@@ -244,7 +244,7 @@ const uploadFile = async (file) => {
               Play
             </BaseBtn>
             
-            <div v-if="ttsStatus" class="text-sm text-teal-300 animate-pulse">
+            <div v-if="ttsStatus" class="text-sm text-brand-300 animate-pulse">
               {{ ttsStatus }}
             </div>
           </div>
@@ -265,8 +265,8 @@ const uploadFile = async (file) => {
       >
         <input ref="fileInput" type="file" class="hidden" accept="audio/*" @change="handleFileUpload">
         <div class="flex flex-col items-center gap-3">
-          <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
-            <i class="ph ph-upload-simple text-2xl text-slate-400 group-hover:text-teal-300"></i>
+          <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-brand-500/20 transition-colors">
+            <i class="ph ph-upload-simple text-2xl text-slate-400 group-hover:text-brand-300"></i>
           </div>
           <div>
             <h3 class="font-medium text-white mb-1">Upload Audio File</h3>
@@ -285,14 +285,14 @@ const uploadFile = async (file) => {
       </div>
 
       <div v-else class="grid grid-cols-1 gap-4">
-        <BaseCard v-for="file in filteredFiles" :key="file.filename" class="group hover:border-teal-400/30 transition-colors">
+        <BaseCard v-for="file in filteredFiles" :key="file.filename" class="group hover:border-brand-400/30 transition-colors">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-300">
+              <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-300">
                 <i class="ph ph-file-audio text-xl"></i>
               </div>
               <div>
-                <h3 class="font-medium text-white group-hover:text-teal-200 transition-colors">{{ file.filename }}</h3>
+                <h3 class="font-medium text-white group-hover:text-brand-200 transition-colors">{{ file.filename }}</h3>
                 <div class="text-xs text-slate-500 flex items-center gap-2">
                   <span>{{ new Date(file.upload_time).toLocaleDateString() }}</span>
                   <span>•</span>
@@ -302,13 +302,13 @@ const uploadFile = async (file) => {
             </div>
             
             <div class="flex items-center gap-2">
-              <button class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Glove" @click="playOnGlove(file.filename)">
+              <button class="p-2 rounded-lg hover:bg-brand-500/20 text-slate-400 hover:text-brand-300 transition-colors" title="Play on Glove" @click="playOnGlove(file.filename)">
                 <i class="ph ph-speaker-high text-xl"></i>
               </button>
-              <button class="p-2 rounded-lg hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition-colors" title="Play on Laptop" @click="playOnLaptop(file.filename)">
+              <button class="p-2 rounded-lg hover:bg-brand-500/20 text-slate-400 hover:text-brand-300 transition-colors" title="Play on Laptop" @click="playOnLaptop(file.filename)">
                 <i class="ph ph-laptop text-xl"></i>
               </button>
-              <button class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors" title="Delete" @click="deleteFile(file.filename)">
+              <button class="p-2 rounded-lg hover:bg-danger-500/20 text-slate-400 hover:text-danger-400 transition-colors" title="Delete" @click="deleteFile(file.filename)">
                 <i class="ph ph-trash text-xl"></i>
               </button>
             </div>

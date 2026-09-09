@@ -274,9 +274,9 @@ const handleLogout = async () => {
 }
 
 .scope-chip-active {
-  border-color: rgba(45, 212, 191, 0.5);
-  color: #99f6e4;
-  background: rgba(15, 118, 110, 0.18);
+  border-color: rgb(var(--brand-400) / 0.5);
+  color: rgb(var(--brand-200));
+  background: rgb(var(--brand-700) / 0.18);
 }
 
 .scope-chip-inactive {
