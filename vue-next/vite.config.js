@@ -10,6 +10,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  /*
+   * onnxruntime-web must not be pre-bundled. Its wasm build locates
+   * `ort-wasm-simd-threaded.wasm` relative to `import.meta.url`, and esbuild
+   * rewrites that to node_modules/.vite/deps/ without copying the binary
+   * along. The dev server then answers that path with index.html, and ORT
+   * fails compiling HTML as wasm ("failed to match magic number"). Excluding
+   * it leaves the module served from its own directory, where the .wasm
+   * actually sits. `vite build` was never affected, so this is dev-only.
+   */
+  optimizeDeps: {
+    exclude: ['onnxruntime-web', 'onnxruntime-web/wasm'],
+  },
   server: {
     host: '0.0.0.0',
     proxy: {

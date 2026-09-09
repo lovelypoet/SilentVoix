@@ -14,6 +14,7 @@ This directory now contains only docs that match the current SilentVoix scope: a
 - `backend_cleanup_pth_migration.md`: backend migration status and cleanup order
 - `fusion_preprocessing_worker_plan.md`: gloved-hand fusion preprocessing worker plan
 - `realtime_ai_playground_model_import.md`: model upload and playground import behavior
+- `emotion_recognition.md`: in-browser face emotion recognition (MediaPipe + ONNX FER+)
 - `LIVEWS_SENSOR_SCHEMA.md`: sensor WebSocket payload contract
 
 ## Active Product / Admin Docs

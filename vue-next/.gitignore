@@ -36,3 +36,6 @@ override.tf.json
 # Terraform CLI
 .terraformrc
 terraform.rc
+
+# Vendored model weights (fetched by `npm run model:emotion`)
+public/models/
