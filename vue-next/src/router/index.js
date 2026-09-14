@@ -5,6 +5,12 @@ const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
         {
+            path: '/',
+            name: 'landing',
+            component: () => import('../views/LandingPage.vue'),
+            meta: { layout: 'marketing' }
+        },
+        {
             path: '/login',
             name: 'login',
             component: () => import('../views/Login.vue'),
@@ -17,7 +23,7 @@ const router = createRouter({
             meta: { layout: 'empty' }
         },
         {
-            path: '/',
+            path: '/dashboard',
             name: 'dashboard',
             component: () => import('../views/Dashboard.vue'),
             meta: { requiresAuth: true }
@@ -133,9 +139,9 @@ router.beforeEach((to, from, next) => {
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
         next('/login')
     } else if (to.meta.allowedRoles && !to.meta.allowedRoles.includes(authStore.user?.role)) {
-        next('/')
+        next('/dashboard')
     } else if ((to.name === 'login' || to.name === 'register') && authStore.isAuthenticated) {
-        next('/')
+        next('/dashboard')
     } else {
         next()
     }

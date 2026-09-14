@@ -11,7 +11,7 @@ const frameExcludedRoutes = new Set(['profile', 'training'])
 const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
 const canAccessAdminPages = computed(() => authStore.user?.role === 'admin')
 const isFullscreenLayout = computed(() => {
-  if (route.meta.layout === 'empty' || route.meta.layout === 'fullscreen') return true
+  if (['empty', 'fullscreen', 'marketing'].includes(route.meta.layout)) return true
   return route.name === 'training' && route.query.trainingSession === '1'
 })
 const useContentFrame = computed(() => !isFullscreenLayout.value && !frameExcludedRoutes.has(String(route.name || '')))
@@ -41,10 +41,10 @@ watch(
     </svg>
     <!-- Sidebar (Hidden on login) -->
     <aside v-if="!isFullscreenLayout" class="hidden lg:flex w-52 p-5 flex-col sticky top-0 h-screen shrink-0">
-      <RouterLink to="/" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
+      <RouterLink to="/dashboard" class="text-2xl font-bold text-teal-400 mb-8 cursor-pointer">SilentVoix</RouterLink>
       
       <nav class="flex flex-col gap-2">
-        <RouterLink to="/" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+        <RouterLink to="/dashboard" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Dashboard
         </RouterLink>
         <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
@@ -85,14 +85,14 @@ watch(
       :class="isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
     >
       <div class="flex items-center justify-between mb-8">
-        <RouterLink to="/" class="text-2xl font-bold text-teal-400 cursor-pointer">SilentVoix</RouterLink>
+        <RouterLink to="/dashboard" class="text-2xl font-bold text-teal-400 cursor-pointer">SilentVoix</RouterLink>
         <button class="p-2 rounded border border-slate-700 text-slate-300" @click="isMobileNavOpen = false">
           ✕
         </button>
       </div>
 
       <nav class="flex flex-col gap-2">
-        <RouterLink to="/" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
+        <RouterLink to="/dashboard" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">
           Dashboard
         </RouterLink>
         <RouterLink to="/training" class="nav-link p-3 rounded font-semibold hover:bg-slate-900 hover:text-teal-300 transition-colors" active-class="nav-active text-teal-300">

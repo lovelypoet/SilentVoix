@@ -167,7 +167,7 @@ const handleLogin = async () => {
   error.value = ''
   try {
     await authStore.login(email.value, password.value)
-    router.push('/')
+    router.push('/dashboard')
   } catch (e) {
     error.value = e.response?.data?.detail || 'Login failed. Please check your credentials.'
   } finally {

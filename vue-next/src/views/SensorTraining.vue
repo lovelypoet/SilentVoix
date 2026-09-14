@@ -128,7 +128,7 @@ const channelPercent = (value, index) => {
           variant="secondary"
           title="Return to dashboard"
           class="px-3"
-          @click="router.push('/')"
+          @click="router.push('/dashboard')"
         >
           &larr;
         </BaseBtn>
