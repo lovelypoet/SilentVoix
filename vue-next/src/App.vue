@@ -23,7 +23,6 @@ const isMobileNavOpen = ref(false)
 const mobileNavRef = ref(null)
 const mobileNavToggleRef = ref(null)
 
-const frameExcludedRoutes = new Set(['profile', 'training'])
 const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
 const canAccessAdminPages = computed(() => authStore.user?.role === 'admin')
 
@@ -31,7 +30,6 @@ const isFullscreenLayout = computed(() => {
   if (route.meta.layout === 'empty' || route.meta.layout === 'fullscreen') return true
   return route.name === 'training' && route.query.trainingSession === '1'
 })
-const useContentFrame = computed(() => !isFullscreenLayout.value && !frameExcludedRoutes.has(String(route.name || '')))
 
 /*
  * Single source of truth for navigation. The desktop sidebar and the mobile
@@ -142,40 +140,27 @@ onBeforeUnmount(() => {
 })
 
 const navLinkClass =
-  'nav-link focus-ring flex items-center gap-3 p-3 rounded font-semibold text-slate-300 hover:bg-slate-900 hover:text-brand-300 transition-colors'
+  'nav-link focus-ring flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-slate-100 transition-colors'
 </script>
 
 <template>
-  <!-- No background colour here: .app-bg paints its gradient layers at z-index -1,
-       and body already supplies the slate-950 base. -->
-  <div class="min-h-screen text-slate-200 flex app-bg">
+  <div class="min-h-screen text-slate-300 flex app-bg">
     <Toast />
-    <svg
-      aria-hidden="true"
-      width="0"
-      height="0"
-      class="absolute pointer-events-none"
-      focusable="false"
-    >
-      <filter id="frosted" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-        <feTurbulence type="fractalNoise" baseFrequency="0.015 0.04" numOctaves="1" seed="7" result="noise" />
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G" />
-      </filter>
-    </svg>
 
     <!-- Desktop sidebar -->
     <aside
       v-if="!isFullscreenLayout"
-      class="hidden lg:flex w-56 p-5 flex-col sticky top-0 h-screen shrink-0"
+      class="hidden lg:flex w-60 p-4 flex-col gap-6 sticky top-0 h-screen shrink-0 border-r border-slate-900"
       aria-label="Main navigation"
     >
-      <RouterLink to="/" class="focus-ring text-2xl font-bold text-brand-300 mb-8 cursor-pointer">
-        SilentVoix
+      <RouterLink to="/" class="focus-ring flex items-center gap-2.5 px-2 py-1 cursor-pointer">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-600 text-sm font-bold text-white">S</span>
+        <span class="text-[15px] font-semibold tracking-tight text-slate-100">SilentVoix</span>
       </RouterLink>
 
-      <nav class="flex flex-col gap-5 overflow-y-auto">
+      <nav class="flex flex-col gap-6 overflow-y-auto">
         <div v-for="section in navSections" :key="section.label" class="flex flex-col gap-1">
-          <div class="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <div class="px-3 mb-1 text-[11px] font-medium uppercase tracking-wider text-slate-600">
             {{ section.label }}
           </div>
           <RouterLink
@@ -185,13 +170,11 @@ const navLinkClass =
             :class="navLinkClass"
             active-class="nav-active"
           >
-            <component :is="item.icon" size="18" weight="bold" aria-hidden="true" />
+            <component :is="item.icon" size="17" weight="bold" aria-hidden="true" />
             <span>{{ item.label }}</span>
           </RouterLink>
         </div>
       </nav>
-
-      <div class="mt-auto"></div>
     </aside>
 
     <!-- Mobile drawer scrim -->
@@ -206,19 +189,20 @@ const navLinkClass =
       v-if="!isFullscreenLayout"
       id="mobile-navigation"
       ref="mobileNavRef"
-      class="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-800 bg-slate-950 p-6 flex flex-col transform transition-transform duration-200 lg:hidden overflow-y-auto"
+      class="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-900 bg-slate-950 p-5 flex flex-col gap-6 transform transition-transform duration-200 lg:hidden overflow-y-auto"
       :class="isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
       :aria-hidden="!isMobileNavOpen"
       :inert="!isMobileNavOpen || undefined"
       aria-label="Main navigation"
     >
-      <div class="flex items-center justify-between mb-8">
-        <RouterLink to="/" class="focus-ring text-2xl font-bold text-brand-300 cursor-pointer">
-          SilentVoix
+      <div class="flex items-center justify-between">
+        <RouterLink to="/" class="focus-ring flex items-center gap-2.5 cursor-pointer">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-600 text-sm font-bold text-white">S</span>
+          <span class="text-[15px] font-semibold tracking-tight text-slate-100">SilentVoix</span>
         </RouterLink>
         <button
           type="button"
-          class="focus-ring p-2 rounded border border-slate-700 text-slate-300 hover:text-brand-300 transition-colors"
+          class="focus-ring p-2 rounded-md border border-slate-800 text-slate-400 hover:text-slate-100 hover:border-slate-700 transition-colors"
           aria-label="Close navigation menu"
           @click="isMobileNavOpen = false"
         >
@@ -226,9 +210,9 @@ const navLinkClass =
         </button>
       </div>
 
-      <nav class="flex flex-col gap-5">
+      <nav class="flex flex-col gap-6">
         <div v-for="section in navSections" :key="section.label" class="flex flex-col gap-1">
-          <div class="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <div class="px-3 mb-1 text-[11px] font-medium uppercase tracking-wider text-slate-600">
             {{ section.label }}
           </div>
           <RouterLink
@@ -238,30 +222,26 @@ const navLinkClass =
             :class="navLinkClass"
             active-class="nav-active"
           >
-            <component :is="item.icon" size="18" weight="bold" aria-hidden="true" />
+            <component :is="item.icon" size="17" weight="bold" aria-hidden="true" />
             <span>{{ item.label }}</span>
           </RouterLink>
         </div>
       </nav>
-
-      <div class="mt-auto"></div>
     </aside>
 
     <!-- Main Content -->
     <main
       class="flex-1 overflow-auto"
-      :class="{
-        'p-4 sm:p-6 lg:py-8 lg:pr-8 lg:pl-0 lg:border-l lg:border-slate-800': !isFullscreenLayout
-      }"
+      :class="{ 'p-4 sm:p-6 lg:p-8': !isFullscreenLayout }"
     >
       <div
         v-if="!isFullscreenLayout"
-        class="mb-4 flex items-center gap-3 lg:hidden"
+        class="mb-5 flex items-center gap-3 lg:hidden"
       >
         <button
           ref="mobileNavToggleRef"
           type="button"
-          class="focus-ring p-2 rounded border border-slate-700 text-slate-200 hover:text-brand-300 transition-colors"
+          class="focus-ring p-2 rounded-md border border-slate-800 text-slate-300 hover:text-slate-100 hover:border-slate-700 transition-colors"
           aria-label="Open navigation menu"
           aria-controls="mobile-navigation"
           :aria-expanded="isMobileNavOpen"
@@ -269,15 +249,9 @@ const navLinkClass =
         >
           <PhList size="18" weight="bold" aria-hidden="true" />
         </button>
-        <h1 class="text-sm font-semibold text-slate-200">{{ currentPageTitle }}</h1>
+        <h1 class="text-sm font-medium text-slate-200">{{ currentPageTitle }}</h1>
       </div>
-      <div
-        v-if="useContentFrame"
-        class="content-frame"
-      >
-        <RouterView />
-      </div>
-      <RouterView v-else />
+      <RouterView />
     </main>
   </div>
 </template>
@@ -289,71 +263,14 @@ body {
 
 .nav-link {
   position: relative;
-  z-index: 0;
 }
 
 .nav-active {
-  color: rgb(var(--brand-300));
-  animation: nav-bounce 420ms ease;
+  background: rgb(var(--surface-raised) / 0.6);
+  color: rgb(248 250 252);
 }
 
-.nav-active::before {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgb(var(--brand-500) / 0.18), rgba(15, 23, 42, 0.25));
-  border: 1px solid rgb(var(--brand-400) / 0.25);
-  z-index: -1;
-}
-
-@keyframes nav-bounce {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-4px); }
-  100% { transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nav-active {
-    animation: none;
-  }
-}
-
-.content-frame {
-  width: 100%;
-  margin-top: 0.75rem;
-  border-radius: 18px;
-  border: 1px solid rgb(var(--brand-400) / 0.25);
-  background:
-    linear-gradient(180deg, rgb(var(--brand-400) / 0.08), rgba(15, 23, 42, 0.0) 18%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.62), rgba(2, 6, 23, 0.85));
-  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
-  padding: 1rem;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-}
-
-@supports (backdrop-filter: url(#frosted)) or (-webkit-backdrop-filter: url(#frosted)) {
-  .content-frame {
-    backdrop-filter: url(#frosted) blur(12px) saturate(130%);
-    -webkit-backdrop-filter: url(#frosted) blur(12px) saturate(130%);
-  }
-}
-
-@media (min-width: 640px) {
-  .content-frame {
-    margin-top: 1rem;
-    padding: 1.25rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .content-frame {
-    margin-top: 1.5rem;
-    margin-left: 1.5rem;
-    width: calc(100% - 1.5rem);
-    max-width: none;
-    padding: 1.5rem;
-  }
+.nav-active svg {
+  color: rgb(var(--brand-400));
 }
 </style>

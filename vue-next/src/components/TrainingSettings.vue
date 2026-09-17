@@ -27,7 +27,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" @click.self="emit('close')">
+  <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50" @click.self="emit('close')">
     <div class="bg-slate-800/80 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-8 m-4">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-white">Settings </h2>

@@ -13,6 +13,7 @@ import {
 } from '@phosphor-icons/vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import api from '../services/api'
 import { useFaceEmotion, LOCAL_MODEL_URL } from '../composables/ai/useFaceEmotion'
 import { EMOTION_LABELS, EMOTION_META } from '../composables/ai/emotionModel'
@@ -268,14 +269,11 @@ onBeforeUnmount(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-white">Emotion Studio</h1>
-        <p class="text-slate-400">
-          MediaPipe face landmarks feeding an ONNX FER+ classifier, entirely in this tab.
-        </p>
-      </div>
-      <div class="flex flex-wrap gap-2">
+    <BasePageHeader
+      title="Emotion Studio"
+      description="MediaPipe face landmarks feeding an ONNX FER+ classifier, entirely in this tab."
+    >
+      <template #actions>
         <BaseBtn
           v-if="!isRunning"
           variant="primary"
@@ -305,8 +303,8 @@ onBeforeUnmount(() => {
             {{ isRecording ? 'Stop & export CSV' : 'Record session' }}
           </span>
         </BaseBtn>
-      </div>
-    </div>
+      </template>
+    </BasePageHeader>
 
     <!-- Model load failure: the one state the page cannot recover from on its own -->
     <div
@@ -375,7 +373,7 @@ onBeforeUnmount(() => {
 
           <!-- Status strip -->
           <div
-            class="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-5 gap-y-1 bg-slate-950/70 px-4 py-2 text-[11px] backdrop-blur"
+            class="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-5 gap-y-1 bg-slate-950/90 px-4 py-2 text-[11px]"
           >
             <span class="flex items-center gap-1.5 font-semibold" :class="statusLine.tone">
               <span class="h-1.5 w-1.5 rounded-full bg-current"></span>

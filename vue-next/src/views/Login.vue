@@ -226,10 +226,11 @@ const handleLogin = async () => {
         <p class="graphics-status">{{ autoStatus }}</p>
       </div>
     </div>
-    <div class="login-card bg-slate-900/75 backdrop-blur-md border border-brand-500/20 p-8 rounded-2xl w-full max-w-md shadow-2xl">
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-brand-300 mb-2">SilentVoix</h1>
-        <p class="text-slate-300">Sign Language Translation System</p>
+    <div class="login-card bg-slate-900 border border-slate-800 p-8 rounded-xl w-full max-w-md shadow-2xl">
+      <div class="flex flex-col items-center text-center mb-8">
+        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold text-white mb-3">S</span>
+        <h1 class="text-xl font-semibold tracking-tight text-slate-100">SilentVoix</h1>
+        <p class="text-sm text-slate-400 mt-1">Sign Language Translation System</p>
       </div>
 
       <form class="space-y-6" @submit.prevent="handleLogin">
@@ -252,9 +253,9 @@ const handleLogin = async () => {
             {{ error }}
         </div>
 
-        <BaseBtn 
-            variant="primary" 
-            class="w-full justify-center login-button-twinkle" 
+        <BaseBtn
+            variant="primary"
+            class="w-full justify-center"
             :disabled="isLoading"
         >
             <span v-if="isLoading">Signing in...</span>
@@ -262,9 +263,9 @@ const handleLogin = async () => {
         </BaseBtn>
       </form>
 
-      <div class="mt-6 text-center text-sm text-slate-300">
+      <div class="mt-6 text-center text-sm text-slate-400">
         New here?
-        <button class="text-brand-300 hover:text-brand-200 underline underline-offset-2 ml-1" @click="router.push('/register')">
+        <button class="text-brand-400 hover:text-brand-300 underline underline-offset-2 ml-1" @click="router.push('/register')">
           Create account
         </button>
       </div>
@@ -295,16 +296,17 @@ const handleLogin = async () => {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  border: 1px solid rgb(var(--brand-400) / 0.35);
-  background: rgba(2, 6, 23, 0.65);
-  backdrop-filter: blur(8px);
-  color: rgb(var(--brand-200));
+  border: 1px solid rgb(var(--border-default));
+  background: rgb(15, 23, 42);
+  color: rgb(148 163 184);
   display: grid;
   place-items: center;
+  transition: color 150ms, border-color 150ms;
 }
 
 .graphics-settings-trigger:hover {
-  border-color: rgb(var(--brand-400) / 0.7);
+  border-color: rgb(var(--brand-400) / 0.5);
+  color: rgb(var(--brand-300));
 }
 
 .graphics-gear-icon {
@@ -315,12 +317,11 @@ const handleLogin = async () => {
 .graphics-settings-menu {
   margin-top: 0.5rem;
   width: min(18rem, 90vw);
-  border: 1px solid rgb(var(--brand-400) / 0.3);
-  border-radius: 0.85rem;
-  background: rgba(2, 6, 23, 0.86);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgb(var(--border-default));
+  border-radius: 0.75rem;
+  background: rgb(2, 6, 23);
   padding: 0.75rem;
-  color: rgb(var(--success-100));
+  color: rgb(226 232 240);
 }
 
 .graphics-settings-title {
@@ -339,7 +340,7 @@ const handleLogin = async () => {
 .graphics-option-btn {
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 0.55rem;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgb(15, 23, 42);
   color: #cbd5e1;
   font-size: 0.8rem;
   padding: 0.45rem 0.35rem;
@@ -347,7 +348,7 @@ const handleLogin = async () => {
 
 .graphics-option-btn.active {
   border-color: rgb(var(--brand-400) / 0.9);
-  background: rgba(23, 20, 50, 0.95);
+  background: rgb(23, 20, 50);
   color: rgb(var(--brand-200));
 }
 
@@ -357,27 +358,4 @@ const handleLogin = async () => {
   line-height: 1.25;
 }
 
-@keyframes fadeToTransparent {
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes twinkle {
-  from {
-    opacity: var(--twinkle-amount);
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.login-button-twinkle {
-  --twinkle-amount: 0.5; /* Adjust as needed */
-  --twinkle-duration: 1.5s; /* Adjust as needed */
-  --fade-duration: 1s; /* Adjust as needed */
-  animation:
-    twinkle var(--twinkle-duration) infinite alternate ease-in-out,
-    fadeToTransparent var(--fade-duration) 500ms;
-}
 </style>

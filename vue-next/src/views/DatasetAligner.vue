@@ -256,7 +256,7 @@ onUnmounted(() => {
        <div class="flex-1 bg-black relative cursor-crosshair group" ref="containerRef" @mousemove="handleMouseMove">
           <canvas ref="canvasRef" class="w-full h-full"></canvas>
           
-          <div v-if="isDataLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div v-if="isDataLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-black/85">
              <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mb-2"></div>
              <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Loading High-Fidelity Data...</p>
           </div>
@@ -268,11 +268,11 @@ onUnmounted(() => {
 
           <!-- Metadata Overlays -->
           <div v-if="cvData && sensorData" class="absolute top-4 left-4 pointer-events-none space-y-2">
-             <div class="bg-black/60 border border-slate-700 p-2 rounded backdrop-blur-md">
+             <div class="bg-black/85 border border-slate-700 p-2 rounded">
                 <p class="text-[9px] text-slate-500 uppercase font-bold">Reference: {{ cvData.name }}</p>
                 <p class="text-xs text-brand-400 font-bold">{{ cvData.total_rows }} frames @ master clock</p>
              </div>
-             <div class="bg-black/60 border border-slate-700 p-2 rounded backdrop-blur-md">
+             <div class="bg-black/85 border border-slate-700 p-2 rounded">
                 <p class="text-[9px] text-slate-500 uppercase font-bold">Target: {{ sensorData.name }}</p>
                 <p class="text-xs text-warning-400 font-bold">{{ sensorData.total_rows }} rows (Interpolated on export)</p>
              </div>

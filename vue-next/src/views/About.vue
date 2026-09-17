@@ -100,15 +100,15 @@ const supervisors = [
 <template>
   <div class="space-y-6">
     <div class="text-center mx-auto max-w-3xl">
-      <h1 class="text-3xl font-bold text-white">About The Team</h1>
+      <h1 class="text-2xl font-semibold tracking-tight text-slate-100">About The Team</h1>
       <p class="text-sm text-slate-400 mt-1">The people behind SilentVoix and the model-monitoring platform.</p>
     </div>
 
     <BaseCard class="about-hero p-0 overflow-hidden">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
         <div class="p-6 md:p-8 text-center lg:text-left">
-          <p class="text-xs uppercase tracking-widest text-cyan-300/80">SilentVoix Team</p>
-          <h2 class="text-2xl md:text-3xl font-bold text-white mt-2">Building Reliable AI + Hardware Systems</h2>
+          <p class="text-xs uppercase tracking-widest text-brand-300/80">SilentVoix Team</p>
+          <h2 class="text-xl md:text-2xl font-semibold text-slate-100 mt-2">Building Reliable AI + Hardware Systems</h2>
           <p class="text-sm md:text-base text-slate-300 mt-4">
             We combine software engineering, operations, and mechatronics to deliver robust sensor-driven AI experiences.
           </p>
@@ -197,7 +197,7 @@ const supervisors = [
     </BaseCard>
 
     <div class="space-y-3">
-      <h3 class="text-xl font-bold text-white text-center">Main Members</h3>
+      <h3 class="text-lg font-semibold text-slate-100 text-center">Main Members</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in mainMembers"
@@ -210,8 +210,8 @@ const supervisors = [
           @mouseenter="activeMemberId = memberKey(member)"
           @mouseleave="activeMemberId = null"
         >
-          <div class="text-xs uppercase tracking-wider text-cyan-300/80">Main Member</div>
-          <h3 class="text-xl font-bold text-white mt-2">{{ member.name }}</h3>
+          <div class="text-xs uppercase tracking-wider text-brand-300/80">Main Member</div>
+          <h3 class="text-lg font-semibold text-slate-100 mt-2">{{ member.name }}</h3>
           <p class="text-slate-200 mt-2">{{ member.role }}</p>
           <p class="text-sm text-slate-400 mt-1">{{ member.department }}</p>
         </BaseCard>
@@ -219,7 +219,7 @@ const supervisors = [
     </div>
 
     <div class="space-y-3">
-      <h3 class="text-xl font-bold text-white text-center">Support Team</h3>
+      <h3 class="text-lg font-semibold text-slate-100 text-center">Support Team</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in supportMembers"
@@ -232,8 +232,8 @@ const supervisors = [
           @mouseenter="activeMemberId = memberKey(member)"
           @mouseleave="activeMemberId = null"
         >
-          <div class="text-xs uppercase tracking-wider text-cyan-300/80">{{ member.category }}</div>
-          <h3 class="text-xl font-bold text-white mt-2">{{ member.name }}</h3>
+          <div class="text-xs uppercase tracking-wider text-brand-300/80">{{ member.category }}</div>
+          <h3 class="text-lg font-semibold text-slate-100 mt-2">{{ member.name }}</h3>
           <p class="text-slate-200 mt-2">{{ member.role }}</p>
           <p class="text-sm text-slate-400 mt-1">{{ member.department }}</p>
         </BaseCard>
@@ -241,7 +241,7 @@ const supervisors = [
     </div>
 
     <div class="space-y-3">
-      <h3 class="text-xl font-bold text-white text-center">Supervisor</h3>
+      <h3 class="text-lg font-semibold text-slate-100 text-center">Supervisor</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in supervisors"
@@ -254,8 +254,8 @@ const supervisors = [
           @mouseenter="activeMemberId = memberKey(member)"
           @mouseleave="activeMemberId = null"
         >
-          <div class="text-xs uppercase tracking-wider text-cyan-300/80">{{ member.category }}</div>
-          <h3 class="text-xl font-bold text-white mt-2">{{ member.name }}</h3>
+          <div class="text-xs uppercase tracking-wider text-brand-300/80">{{ member.category }}</div>
+          <h3 class="text-lg font-semibold text-slate-100 mt-2">{{ member.name }}</h3>
           <p class="text-slate-200 mt-2">{{ member.role }}</p>
           <p class="text-sm text-slate-400 mt-1">{{ member.department }}</p>
         </BaseCard>

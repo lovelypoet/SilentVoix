@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import { useAuthStore } from '../stores/auth.js'
 import api from '../services/api.js'
 import { useToast } from 'primevue/usetoast'
@@ -147,25 +148,22 @@ const handleLogout = async () => {
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <div>
-      <h1 class="text-3xl font-bold text-white">Operator Profile</h1>
-      <p class="text-sm text-slate-400 mt-1">Configure how you monitor models, alerts, and dashboard defaults.</p>
-    </div>
+    <BasePageHeader title="Operator Profile" description="Configure how you monitor models, alerts, and dashboard defaults." />
 
     <BaseCard>
-      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Identity</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Identity</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <BaseInput v-model="form.display_name" label="Display Name" />
         <BaseInput v-model="form.email" label="Email" type="email" />
       </div>
       <div class="mt-4 text-sm">
         <span class="text-slate-400">Role:</span>
-        <span class="ml-2 px-2 py-1 rounded-full border border-cyan-400/30 text-cyan-200 bg-cyan-500/10">{{ roleLabel }}</span>
+        <span class="ml-2 px-2 py-1 rounded-full border border-brand-400/30 text-brand-200 bg-brand-500/10">{{ roleLabel }}</span>
       </div>
     </BaseCard>
 
     <BaseCard>
-      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Access Scope Defaults</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Access Scope Defaults</h2>
       <div>
         <p class="text-sm text-slate-400 mb-2">Environments</p>
         <div class="flex flex-wrap gap-2">
@@ -196,7 +194,7 @@ const handleLogout = async () => {
     </BaseCard>
 
     <BaseCard>
-      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Alert Preferences</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Alert Preferences</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <label class="toggle-row">
           <span>In-app</span>
@@ -237,7 +235,7 @@ const handleLogout = async () => {
     </BaseCard>
 
     <BaseCard>
-      <h2 class="text-xl font-bold text-white mb-4 pb-3 border-b border-white/5">Dashboard Defaults</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Dashboard Defaults</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="label">Time Window</label>

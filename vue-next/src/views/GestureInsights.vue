@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import api from '../services/api'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
@@ -73,16 +74,12 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-      <div>
-        <h1 class="text-3xl font-bold text-white">Gesture Insights</h1>
-        <p class="text-slate-400">Visual dataset analysis and model reliability metrics.</p>
-      </div>
-      <div class="flex gap-2">
+    <BasePageHeader title="Gesture Insights" description="Visual dataset analysis and model reliability metrics.">
+      <template #actions>
         <BaseBtn variant="secondary" @click="loadInsights" :disabled="isLoading">Refresh</BaseBtn>
         <BaseBtn variant="primary" @click="recordNewGesture">Record New</BaseBtn>
-      </div>
-    </div>
+      </template>
+    </BasePageHeader>
 
     <!-- Active Model Context -->
     <div v-if="activeModelName" class="bg-brand-500/5 border border-brand-500/20 rounded-lg px-4 py-2 flex items-center gap-2">

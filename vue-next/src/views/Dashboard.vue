@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import { useMonitoringDashboard } from '../composables/useMonitoringDashboard'
 
 const router = useRouter()
@@ -17,10 +18,10 @@ const {
 } = useMonitoringDashboard()
 
 const overviewBadgeClass = computed(() => {
-  if (healthTone.value === 'critical') return 'badge-critical'
-  if (healthTone.value === 'warning') return 'badge-warning'
-  if (healthTone.value === 'healthy') return 'badge-healthy'
-  return 'badge-neutral'
+  if (healthTone.value === 'critical') return 'status-badge-critical'
+  if (healthTone.value === 'warning') return 'status-badge-warning'
+  if (healthTone.value === 'healthy') return 'status-badge-healthy'
+  return 'status-badge-neutral'
 })
 
 const formattedLastUpdated = computed(() => {
@@ -56,35 +57,28 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold text-white">Model Monitoring</h1>
-        <p class="text-sm text-slate-400">Production status, data quality, and prediction performance.</p>
-      </div>
-      <div class="flex items-center gap-3">
+    <BasePageHeader title="Model Monitoring" description="Production status, data quality, and prediction performance.">
+      <template #actions>
         <BaseBtn variant="secondary" @click="gotoModelLibrary">Open Model Library</BaseBtn>
         <BaseBtn variant="primary" @click="refresh">Refresh Now</BaseBtn>
-      </div>
-    </div>
+      </template>
+    </BasePageHeader>
 
-    <BaseCard class="monitoring-overview">
+    <BaseCard>
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-400">Environment</p>
-          <h2 class="text-2xl font-bold text-white mt-1">Production Monitor</h2>
-          <p class="text-sm text-slate-300 mt-2">Window: {{ monitoring.meta?.window || '24h' }} | Last updated: {{ formattedLastUpdated }}</p>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Environment</p>
+          <h2 class="text-lg font-semibold text-slate-100 mt-1">Production Monitor</h2>
+          <p class="text-sm text-slate-400 mt-2">Window: {{ monitoring.meta?.window || '24h' }} | Last updated: {{ formattedLastUpdated }}</p>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="status-dot" :class="overviewBadgeClass"></span>
-          <span class="status-label" :class="overviewBadgeClass">{{ statusLabel }}</span>
-        </div>
+        <span class="status-badge" :class="overviewBadgeClass">{{ statusLabel }}</span>
       </div>
       <p v-if="refreshError" class="text-danger-300 text-sm mt-3">{{ refreshError }}</p>
       <p v-if="isLoading" class="text-slate-400 text-sm mt-3">Loading monitoring data...</p>
     </BaseCard>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="card-title">Active Alerts</p>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <div>
@@ -108,7 +102,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         </div>
       </BaseCard>
 
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="card-title">Model Version & Rollout</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
           <div>
@@ -146,26 +140,26 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="metric-label">Latency p95</p>
         <p class="metric-value">{{ formatNumber(monitoring.health?.latency_p95_ms, 2) }} ms</p>
       </BaseCard>
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="metric-label">Error Rate (5m)</p>
         <p class="metric-value">{{ formatPercent(monitoring.health?.error_rate_5m, 2) }}</p>
       </BaseCard>
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="metric-label">Throughput</p>
         <p class="metric-value">{{ formatNumber(monitoring.health?.throughput_rpm, 2) }} rpm</p>
       </BaseCard>
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="metric-label">Uptime (24h)</p>
         <p class="metric-value">{{ formatPercent(monitoring.health?.uptime_24h, 2) }}</p>
       </BaseCard>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="card-title">Traffic Volume</p>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <div>
@@ -183,7 +177,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         </div>
       </BaseCard>
 
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="card-title">Data Quality</p>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <div>
@@ -203,7 +197,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="card-title">Drift</p>
         <p class="text-sm text-slate-400 mt-1">Global score: {{ formatPercent((monitoring.drift?.global_score || 0) * 100, 2) }}</p>
         <div class="mt-3 space-y-2">
@@ -219,7 +213,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         </div>
       </BaseCard>
 
-      <BaseCard class="monitor-card">
+      <BaseCard>
         <p class="card-title">Performance Trend ({{ monitoring.performance?.metric_name || 'metric' }})</p>
         <p class="text-sm text-slate-400 mt-1">Current: {{ formatPercent((monitoring.performance?.current_value || 0) * 100, 2) }}</p>
         <div class="trend-bars mt-3">
@@ -240,7 +234,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
       </BaseCard>
     </div>
 
-    <BaseCard class="monitor-card">
+    <BaseCard>
       <div class="flex items-center justify-between gap-3">
         <p class="card-title">Recent Monitoring Events</p>
         <BaseBtn variant="secondary" @click="gotoPlayground">Open Runtime Playground</BaseBtn>
@@ -264,80 +258,29 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 </template>
 
 <style scoped>
-.monitoring-overview {
-  background: radial-gradient(1400px 460px at -10% -20%, rgb(var(--brand-500) / 0.22), transparent 62%),
-    radial-gradient(900px 360px at 120% -10%, rgba(251, 191, 36, 0.16), transparent 58%),
-    linear-gradient(125deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.85));
-  border: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.monitor-card {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.48));
-  border: 1px solid rgba(148, 163, 184, 0.12);
-}
-
 .card-title {
-  color: #f8fafc;
-  font-size: 1rem;
-  font-weight: 700;
+  color: rgb(226 232 240);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .metric-label {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.75rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
 .metric-value {
-  color: #f8fafc;
-  font-size: 1.45rem;
-  font-weight: 700;
+  color: #f1f5f9;
+  font-size: 1.4rem;
+  font-weight: 600;
   margin-top: 0.25rem;
 }
 
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   font-size: 1rem;
-}
-
-.status-dot {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 9999px;
-}
-
-.status-label {
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.25rem 0.55rem;
-  border-radius: 9999px;
-  border: 1px solid transparent;
-}
-
-.badge-healthy {
-  background: rgb(var(--success-500) / 0.2);
-  color: rgb(var(--success-300));
-  border-color: rgb(var(--success-500) / 0.4);
-}
-
-.badge-warning {
-  background: rgb(var(--warning-500) / 0.2);
-  color: rgb(var(--warning-300));
-  border-color: rgb(var(--warning-500) / 0.4);
-}
-
-.badge-critical {
-  background: rgb(var(--danger-500) / 0.22);
-  color: rgb(var(--danger-300));
-  border-color: rgb(var(--danger-500) / 0.4);
-}
-
-.badge-neutral {
-  background: rgba(148, 163, 184, 0.2);
-  color: rgb(203, 213, 225); /* slate-300 */
-  border-color: rgba(148, 163, 184, 0.4);
 }
 
 .trend-bars {

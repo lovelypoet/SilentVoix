@@ -42,7 +42,7 @@ const goTraining = () => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Fusion Workspace</h1>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-100 mb-2">Fusion Workspace</h1>
         <p class="text-slate-400">Dedicated home for Early Fusion data capture and Late Fusion training.</p>
       </div>
       <div class="hidden md:block"></div>
@@ -56,7 +56,7 @@ const goTraining = () => {
     </BaseCard>
 
     <BaseCard v-if="activeTab === 'early'">
-      <h2 class="text-xl font-semibold text-white">Early Fusion Module</h2>
+      <h2 class="text-lg font-semibold text-slate-100">Early Fusion Module</h2>
       <p class="text-slate-400 mt-2">
         Use this module to capture synchronized CV + sensor data and export fusion datasets. Training is handled elsewhere.
       </p>
@@ -67,7 +67,7 @@ const goTraining = () => {
     </BaseCard>
 
     <BaseCard v-else>
-      <h2 class="text-xl font-semibold text-white">Dataset Aligner (Late Fusion Prep)</h2>
+      <h2 class="text-lg font-semibold text-slate-100">Dataset Aligner (Late Fusion Prep)</h2>
       <p class="text-slate-400 mt-2">
         Visually synchronize CV landmarks and Glove data. Nudge, trim, and export "Golden" fused datasets for external training.
       </p>

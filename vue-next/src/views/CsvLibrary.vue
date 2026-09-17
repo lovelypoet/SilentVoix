@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import api from '../services/api'
 const toast = useToast()
 const route = useRoute()
@@ -538,17 +539,13 @@ watch([compatibleOnly, pipeline, mode], () => {
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-      <div>
-        <h1 class="text-3xl font-bold text-white">CSV Library</h1>
-        <p class="text-slate-400 text-sm">Admin data controller for schema validation and compatibility checks.</p>
-      </div>
-      <div class="flex gap-2">
+    <BasePageHeader title="CSV Library" description="Admin data controller for schema validation and compatibility checks.">
+      <template #actions>
         <BaseBtn variant="secondary" :disabled="isLoading" @click="loadFiles">
           {{ isLoading ? 'Refreshing...' : 'Refresh' }}
         </BaseBtn>
-      </div>
-    </div>
+      </template>
+    </BasePageHeader>
 
     <BaseCard>
       <div class="grid grid-cols-1 md:grid-cols-7 gap-3">

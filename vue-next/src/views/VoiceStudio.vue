@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import api from '../services/api'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 
 // State
 const activeTab = ref('tts') // Default to TTS
@@ -172,25 +173,21 @@ const uploadFile = async (file) => {
 <template>
   <div class="space-y-6">
     <!-- Header with Tabs -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-white mb-2">Voice Studio</h1>
-        <p class="text-slate-400">Manage audio, speech-to-text, and TTS capabilities.</p>
-      </div>
-      
-      <!-- Tab Navigation -->
-      <div class="flex bg-brand-500/10 border border-brand-500/30 p-1 rounded-lg">
-        <button 
-          v-for="tab in ['tts', 'library', 'live']" 
-          :key="tab"
-          class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          :class="activeTab === tab ? 'bg-brand-500 text-slate-950 shadow shadow-brand-500/30' : 'text-brand-200 hover:text-brand-100'"
-          @click="activeTab = tab"
-        >
-          {{ tab === 'tts' ? 'Text to Speech' : tab === 'library' ? 'Audio Library' : 'Live Voice' }}
-        </button>
-      </div>
-    </div>
+    <BasePageHeader title="Voice Studio" description="Manage audio, speech-to-text, and TTS capabilities.">
+      <template #actions>
+        <div class="flex bg-slate-900 border border-slate-800 p-1 rounded-lg">
+          <button
+            v-for="tab in ['tts', 'library', 'live']"
+            :key="tab"
+            class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            :class="activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-100'"
+            @click="activeTab = tab"
+          >
+            {{ tab === 'tts' ? 'Text to Speech' : tab === 'library' ? 'Audio Library' : 'Live Voice' }}
+          </button>
+        </div>
+      </template>
+    </BasePageHeader>
 
     <!-- Error Alert -->
     <div v-if="error" class="bg-danger-500/10 border border-danger-500/20 text-danger-400 p-4 rounded-lg flex justify-between items-center relative">

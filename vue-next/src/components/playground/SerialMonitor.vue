@@ -12,7 +12,7 @@ const store = usePlaygroundStore()
 
 <template>
   <!-- Input Stats Overlay -->
-  <div v-if="store.isFusionMode || store.isEarlyFusionMode || store.modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-56 overflow-auto bg-slate-950/80 p-3 border-l border-slate-700 backdrop-blur-sm">
+  <div v-if="store.isFusionMode || store.isEarlyFusionMode || store.modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-56 overflow-auto bg-slate-950 p-3 border-l border-slate-700">
     <p class="text-[10px] text-warning-500 font-bold uppercase mb-2">Input Stats</p>
     <div class="mb-2 rounded border border-slate-800 bg-slate-900/60 px-2 py-1">
       <div class="flex items-center justify-between text-[10px]">

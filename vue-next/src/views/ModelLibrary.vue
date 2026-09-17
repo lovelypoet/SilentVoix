@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import { useToast } from 'primevue/usetoast'
 import api from '../services/api'
 
@@ -532,20 +533,16 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-      <div>
-        <h1 class="text-3xl font-bold text-white">Model Library</h1>
-        <p class="text-slate-400 text-sm">Manage uploaded inference models for Realtime AI Playground.</p>
-      </div>
-      <div class="flex gap-2">
+    <BasePageHeader title="Model Library" description="Manage uploaded inference models for Realtime AI Playground.">
+      <template #actions>
         <BaseBtn variant="primary" @click="showUploadModal = true">
           Upload Model
         </BaseBtn>
         <BaseBtn variant="secondary" :disabled="isLoading" @click="fetchModels">
           {{ isLoading ? 'Refreshing...' : 'Refresh' }}
         </BaseBtn>
-      </div>
-    </div>
+      </template>
+    </BasePageHeader>
 
     <BaseCard>
       <p v-if="error" class="text-danger-300 text-sm">{{ error }}</p>
