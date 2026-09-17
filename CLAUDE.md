@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+DO NOT RUN SUBAGENTS
+
 ## What this is
 
 SilentVoix / V-Hand — a multimodal sign-language recognition platform. An ESP32 glove (MPU6050 + 5 flex sensors) streams sensor frames at 50 Hz over WebSocket, and/or a browser camera produces MediaPipe hand landmarks; models classify the gesture and the frontend speaks the result. It doubles as a "model testing ground": upload a `.tflite`/`.keras`/`.h5`/`.pth`/`.pt` model, validate it, activate it, and run live inference.
