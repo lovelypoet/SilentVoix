@@ -679,7 +679,7 @@ watch(terminalLines, () => {
 
     <div v-if="error" class="text-center mt-12">
       <BaseCard class="max-w-md mx-auto">
-        <h3 class="text-xl font-bold text-red-400 mb-2">Permissions Required</h3>
+        <h3 class="text-xl font-bold text-danger-400 mb-2">Permissions Required</h3>
         <p class="text-slate-400 mb-4">
           Camera access is required for {{ permissionTrainingLabel }}. Please grant permissions in your browser settings.
         </p>
@@ -701,25 +701,25 @@ watch(terminalLines, () => {
           <canvas ref="canvasEl" class="absolute inset-0 w-full h-full"></canvas>
 
           <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
-            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">FPS (Target: 30)</div>
               <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
                 {{ actualFps || '--' }}
               </div>
             </div>
-            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Detected Gesture</div>
               <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
             </div>
           </div>
           <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Confidence</div>
               <div class="text-2xl font-bold text-slate-400">{{ confidence }}</div>
             </div>
           </div>
           <div v-if="syncCountdown > 0" class="absolute inset-0 flex items-center justify-center">
-            <div class="bg-black/70 border border-teal-500/40 text-teal-300 rounded-2xl px-8 py-6 text-5xl font-bold">
+            <div class="bg-black/70 border border-brand-500/40 text-brand-300 rounded-2xl px-8 py-6 text-5xl font-bold">
               {{ syncCountdown }}
             </div>
           </div>
@@ -780,7 +780,7 @@ watch(terminalLines, () => {
           <div class="mb-4 rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
             <div class="flex items-center justify-between">
               <p class="text-xs uppercase tracking-wide text-slate-400">Flow Status</p>
-              <span class="text-xs rounded-full px-3 py-1 border" :class="workflowStep === 4 ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'">
+              <span class="text-xs rounded-full px-3 py-1 border" :class="workflowStep === 4 ? 'border-success-500/40 text-success-300' : 'border-warning-500/40 text-warning-300'">
                 Step {{ workflowStep }} of 4
               </span>
             </div>
@@ -788,9 +788,9 @@ watch(terminalLines, () => {
           </div>
 
           <div class="mb-4 grid grid-cols-1 gap-3">
-            <div class="rounded-xl border p-3" :class="isSessionActive ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+            <div class="rounded-xl border p-3" :class="isSessionActive ? 'border-success-500/30 bg-success-500/5' : 'border-slate-800 bg-slate-950/40'">
               <p class="text-[11px] uppercase tracking-wide text-slate-400">1. Camera Session</p>
-              <p class="text-sm mt-1" :class="isSessionActive ? 'text-emerald-300' : 'text-amber-300'">
+              <p class="text-sm mt-1" :class="isSessionActive ? 'text-success-300' : 'text-warning-300'">
                 {{ isSessionActive ? 'Active' : 'Inactive' }}
               </p>
               <BaseBtn class="mt-3 w-full" variant="secondary" :disabled="isRequesting" @click="startSession">
@@ -798,9 +798,9 @@ watch(terminalLines, () => {
               </BaseBtn>
             </div>
 
-            <div class="rounded-xl border p-3" :class="sensorReady ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/40'">
+            <div class="rounded-xl border p-3" :class="sensorReady ? 'border-success-500/30 bg-success-500/5' : 'border-slate-800 bg-slate-950/40'">
               <p class="text-[11px] uppercase tracking-wide text-slate-400">2. Sensor Source</p>
-              <p class="text-sm mt-1" :class="isSensorRunning ? 'text-emerald-300' : 'text-amber-300'">
+              <p class="text-sm mt-1" :class="isSensorRunning ? 'text-success-300' : 'text-warning-300'">
                 {{ isSensorRunning ? 'Service Running' : 'Service Stopped' }}
               </p>
               <p class="text-xs text-slate-500 mt-1">
@@ -840,7 +840,7 @@ watch(terminalLines, () => {
               v-model="currentGestureName"
               type="text"
               placeholder="e.g., hello, thanks"
-              class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+              class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-brand-500 focus:outline-none"
               :disabled="isCollecting || isAwaitingSyncCue"
             />
           </div>
@@ -891,11 +891,11 @@ watch(terminalLines, () => {
 
           <div v-if="showAdvancedControls" class="mt-4 border border-slate-800 bg-black/70 rounded-lg px-4 py-3 font-mono text-xs text-slate-200">
             <div class="text-slate-500 mb-2">
-              Left: <span :class="serialStatus.left_connected ? 'text-green-400' : 'text-red-400'">{{ serialStatus.left_connected ? 'Online' : 'Offline' }}</span>
+              Left: <span :class="serialStatus.left_connected ? 'text-success-400' : 'text-danger-400'">{{ serialStatus.left_connected ? 'Online' : 'Offline' }}</span>
               ({{ serialStatus.left_port || '--' }})
             </div>
             <div class="text-slate-500 mb-2">
-              Right: <span :class="serialStatus.right_connected ? 'text-green-400' : 'text-red-400'">{{ serialStatus.right_connected ? 'Online' : 'Offline' }}</span>
+              Right: <span :class="serialStatus.right_connected ? 'text-success-400' : 'text-danger-400'">{{ serialStatus.right_connected ? 'Online' : 'Offline' }}</span>
               ({{ serialStatus.right_port || '--' }})
             </div>
             <div class="text-slate-500 mb-2">
@@ -907,17 +907,17 @@ watch(terminalLines, () => {
             </div>
             <div v-else class="space-y-1 max-h-28 overflow-y-auto">
               <div v-for="(line, idx) in takeLogs" :key="`take-log-${idx}`">
-                <span class="text-emerald-400">$</span>
+                <span class="text-success-400">$</span>
                 <span class="ml-2">{{ line }}</span>
               </div>
             </div>
           </div>
 
           <div class="mt-4 text-sm">
-            <div v-if="isAwaitingSyncCue" class="text-amber-400 font-semibold">
+            <div v-if="isAwaitingSyncCue" class="text-warning-400 font-semibold">
               Sync cue active. Recording starts when countdown reaches 0.
             </div>
-            <div v-if="isCollecting" class="text-green-400 font-semibold">
+            <div v-if="isCollecting" class="text-success-400 font-semibold">
               Recording "{{ currentGestureName }}"...
             </div>
             <div v-if="exportStatusMessage" class="text-xs text-sky-300 mt-1">
@@ -929,7 +929,7 @@ watch(terminalLines, () => {
             <div v-if="artifactRecorderStatus === 'ready'" class="text-xs text-cyan-300 mt-1">
               Latest capture video is ready for cropper ingestion.
             </div>
-            <div v-if="artifactRecorderWarning" class="text-xs text-amber-300 mt-1">
+            <div v-if="artifactRecorderWarning" class="text-xs text-warning-300 mt-1">
               {{ artifactRecorderWarning }}
             </div>
             <div class="text-slate-400">

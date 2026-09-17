@@ -454,13 +454,13 @@ onMounted(async () => {
       <div class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div class="space-y-4">
           <div>
-            <p class="text-sm uppercase tracking-[0.2em] text-teal-300">Source File</p>
+            <p class="text-sm uppercase tracking-[0.2em] text-brand-300">Source File</p>
             <p class="text-sm text-slate-400 mt-1">Load a `cv_sensor_*.csv` export from the early-fusion capture flow. Optionally add the matching capture video so the worker can run OpenCV motion analysis.</p>
           </div>
           <input
             type="file"
             accept=".csv,text/csv"
-            class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-teal-500 file:px-4 file:py-2 file:text-white"
+            class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-2 file:text-white"
             @change="handleFileChange"
           />
           <input
@@ -469,12 +469,12 @@ onMounted(async () => {
             class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-white"
             @change="handleVideoFileChange"
           />
-          <p v-if="loadStatus" class="text-sm text-emerald-300">{{ loadStatus }}</p>
+          <p v-if="loadStatus" class="text-sm text-success-300">{{ loadStatus }}</p>
           <p v-if="selectedVideoFile" class="text-sm text-cyan-300">Video loaded: {{ selectedVideoFile.name }}</p>
-          <p v-if="parseError" class="text-sm text-rose-300">{{ parseError }}</p>
-          <p v-if="analysisError" class="text-sm text-rose-300">{{ analysisError }}</p>
-          <p v-if="saveError" class="text-sm text-rose-300">{{ saveError }}</p>
-          <p v-if="saveResult?.csv_path" class="text-sm text-emerald-300">Saved to CSV Library: {{ saveResult.csv_path }}</p>
+          <p v-if="parseError" class="text-sm text-danger-300">{{ parseError }}</p>
+          <p v-if="analysisError" class="text-sm text-danger-300">{{ analysisError }}</p>
+          <p v-if="saveError" class="text-sm text-danger-300">{{ saveError }}</p>
+          <p v-if="saveResult?.csv_path" class="text-sm text-success-300">Saved to CSV Library: {{ saveResult.csv_path }}</p>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
@@ -501,7 +501,7 @@ onMounted(async () => {
     <BaseCard>
       <div class="flex flex-col gap-5">
         <div>
-          <p class="text-sm uppercase tracking-[0.2em] text-teal-300">Crop Rules</p>
+          <p class="text-sm uppercase tracking-[0.2em] text-brand-300">Crop Rules</p>
           <p class="text-sm text-slate-400 mt-1">This first pass trims by timestamp window and sensor-match quality. It is designed to separate raw capture from processed fusion data.</p>
         </div>
 
@@ -514,7 +514,7 @@ onMounted(async () => {
 
         <div class="flex flex-wrap items-center gap-3 text-sm text-slate-300">
           <label class="inline-flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2">
-            <input v-model="requireSensorMatch" type="checkbox" class="accent-teal-400" />
+            <input v-model="requireSensorMatch" type="checkbox" class="accent-brand-400" />
             Require `capture_sensor_source !== none`
           </label>
           <span class="rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2">
@@ -542,7 +542,7 @@ onMounted(async () => {
       <BaseCard>
         <div class="space-y-4">
           <div>
-            <p class="text-sm uppercase tracking-[0.2em] text-teal-300">Processed Summary</p>
+            <p class="text-sm uppercase tracking-[0.2em] text-brand-300">Processed Summary</p>
             <p class="text-sm text-slate-400 mt-1">Use this as the acceptance gate before sending the dataset to CSV Library or external training. Worker-backed validation is authoritative when present.</p>
           </div>
 
@@ -550,9 +550,9 @@ onMounted(async () => {
             v-if="validationSummary"
             class="rounded-xl border px-4 py-4"
             :class="{
-              'border-emerald-500/30 bg-emerald-500/10': validationSummary.status === 'pass',
-              'border-amber-500/30 bg-amber-500/10': validationSummary.status === 'warning',
-              'border-rose-500/30 bg-rose-500/10': validationSummary.status === 'reject'
+              'border-success-500/30 bg-success-500/10': validationSummary.status === 'pass',
+              'border-warning-500/30 bg-warning-500/10': validationSummary.status === 'warning',
+              'border-danger-500/30 bg-danger-500/10': validationSummary.status === 'reject'
             }"
           >
             <div class="flex items-center justify-between gap-3">
@@ -627,7 +627,7 @@ onMounted(async () => {
       <BaseCard>
         <div class="space-y-4">
           <div>
-            <p class="text-sm uppercase tracking-[0.2em] text-teal-300">Preview</p>
+            <p class="text-sm uppercase tracking-[0.2em] text-brand-300">Preview</p>
             <p class="text-sm text-slate-400 mt-1">First 12 processed rows after cropping. This is intentionally lightweight; the next step would be a timeline graph.</p>
           </div>
 

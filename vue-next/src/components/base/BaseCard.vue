@@ -2,7 +2,7 @@
 </script>
 
 <template>
-  <div class="liquid-glass rounded-xl p-6 shadow-xl">
+  <div class="panel p-5">
     <slot></slot>
   </div>
 </template>

@@ -1,51 +1,89 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
-import ToastService from 'primevue/toastservice'; // Import ToastService
+import ToastService from 'primevue/toastservice'
 import Aura from '@primevue/themes/aura'
-import { definePreset } from '@primevue/themes'; // Import definePreset
+import { definePreset } from '@primevue/themes'
 import './style.css'
 import App from './App.vue'
 import router from './router'
-import Lenis from 'lenis' // Import Lenis
+import Lenis from 'lenis'
 
-// Define your custom preset
+// Aura ships an emerald `primary` palette, which would leave every PrimeVue
+// component (toasts, dropdowns, sliders) green regardless of our Tailwind
+// tokens. Point PrimeVue at the same --brand-* variables so the whole UI
+// stays on one palette and a re-brand remains a single-file change.
+const brandPalette = Object.fromEntries(
+  [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((shade) => [
+    shade,
+    `rgb(var(--brand-${shade}))`,
+  ])
+)
+
 const MyCustomPreset = definePreset(Aura, {
-    semantic: {
-        focus: {
-            ring: {
-                color: '{teal.500}',
-                width: '2px',
-                style: 'solid',
-                offset: '2px'
-            }
-        }
+  semantic: {
+    primary: brandPalette,
+    focus: {
+      ring: {
+        color: 'rgb(var(--brand-500))',
+        width: '2px',
+        style: 'solid',
+        offset: '2px'
+      }
     }
-});
+  }
+})
 
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
 app.use(PrimeVue, {
-    theme: {
-        preset: MyCustomPreset // Use your custom preset
-    }
+  theme: {
+    preset: MyCustomPreset
+  }
 })
-app.use(ToastService); // Install ToastService
+app.use(ToastService)
 
-// Initialize Lenis for smooth scrolling
-const lenis = new Lenis({
-  lerp: 0.1, // Lower values for smoother scroll
-  smooth: true,
-  direction: "vertical"
-});
+// Smooth scrolling is a decorative enhancement, so honour the OS-level
+// "reduce motion" preference instead of hijacking the scroll for everyone.
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
-function raf(time) {
-  lenis.raf(time);
-  requestAnimationFrame(raf);
+let lenis = null
+let rafId = null
+
+const startSmoothScroll = () => {
+  if (lenis) return
+  lenis = new Lenis({
+    lerp: 0.1,
+    smooth: true,
+    direction: 'vertical'
+  })
+
+  const raf = (time) => {
+    lenis.raf(time)
+    rafId = requestAnimationFrame(raf)
+  }
+  rafId = requestAnimationFrame(raf)
 }
 
-requestAnimationFrame(raf);
+const stopSmoothScroll = () => {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+  if (lenis) {
+    lenis.destroy()
+    lenis = null
+  }
+}
+
+const syncScrollBehaviour = () => {
+  if (prefersReducedMotion.matches) stopSmoothScroll()
+  else startSmoothScroll()
+}
+
+syncScrollBehaviour()
+prefersReducedMotion.addEventListener('change', syncScrollBehaviour)
 
 app.mount('#app')

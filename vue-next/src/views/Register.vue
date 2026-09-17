@@ -47,10 +47,11 @@ const handleRegister = async () => {
 <template>
   <div class="min-h-screen register-page flex items-center justify-center p-4">
     <LoginGalaxyBackground />
-    <div class="register-card bg-slate-900/75 backdrop-blur-md border border-teal-500/20 p-8 rounded-2xl w-full max-w-md shadow-2xl">
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-teal-300 mb-2">Create Account</h1>
-        <p class="text-slate-300">Join SilentVoix</p>
+    <div class="register-card bg-slate-900 border border-slate-800 p-8 rounded-xl w-full max-w-md shadow-2xl">
+      <div class="flex flex-col items-center text-center mb-8">
+        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold text-white mb-3">S</span>
+        <h1 class="text-xl font-semibold tracking-tight text-slate-100">Create Account</h1>
+        <p class="text-sm text-slate-400 mt-1">Join SilentVoix</p>
       </div>
 
       <form class="space-y-5" @submit.prevent="handleRegister">
@@ -78,11 +79,11 @@ const handleRegister = async () => {
           required
         />
 
-        <div v-if="error" class="text-red-500 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+        <div v-if="error" class="text-danger-500 text-sm bg-danger-500/10 p-3 rounded-lg border border-danger-500/20">
           {{ error }}
         </div>
 
-        <div v-if="success" class="text-emerald-300 text-sm bg-emerald-500/10 p-3 rounded-lg border border-emerald-500/20">
+        <div v-if="success" class="text-success-300 text-sm bg-success-500/10 p-3 rounded-lg border border-success-500/20">
           {{ success }}
         </div>
 
@@ -96,9 +97,9 @@ const handleRegister = async () => {
         </BaseBtn>
       </form>
 
-      <div class="mt-6 text-center text-sm text-slate-300">
+      <div class="mt-6 text-center text-sm text-slate-400">
         Already have an account?
-        <button class="text-teal-300 hover:text-teal-200 underline underline-offset-2 ml-1" @click="router.push('/login')">
+        <button class="text-brand-400 hover:text-brand-300 underline underline-offset-2 ml-1" @click="router.push('/login')">
           Sign In
         </button>
       </div>

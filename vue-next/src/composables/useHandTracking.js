@@ -11,7 +11,7 @@ export function useHandTracking(mirrorCameraRef, showLandmarksRef, styleSettings
 
   // Default styles
   const defaultStyle = {
-    landmarkColor: '#22d3ee', // teal-400
+    landmarkColor: '#22d3ee', // cyan-400: high-contrast overlay hue for live video, not brand chrome
     pointColor: '#ffffff',
     lineWidth: 3,
     pointRadius: 4

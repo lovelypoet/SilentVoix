@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import api from '../services/api'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
@@ -45,9 +46,9 @@ const cancelRecordNewGesture = () => {
 }
 
 const getStatus = (count) => {
-  if (count > 2000) return { label: 'ROBUST', class: 'bg-emerald-500/10 text-emerald-300' }
-  if (count > 1000) return { label: 'READY', class: 'bg-teal-500/10 text-teal-300' }
-  if (count > 0) return { label: 'COLLECTING', class: 'bg-amber-500/10 text-amber-300' }
+  if (count > 2000) return { label: 'ROBUST', class: 'bg-success-500/10 text-success-300' }
+  if (count > 1000) return { label: 'READY', class: 'bg-brand-500/10 text-brand-300' }
+  if (count > 0) return { label: 'COLLECTING', class: 'bg-warning-500/10 text-warning-300' }
   return { label: 'NO DATA', class: 'bg-slate-500/10 text-slate-400' }
 }
 
@@ -73,37 +74,33 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-      <div>
-        <h1 class="text-3xl font-bold text-white">Gesture Insights</h1>
-        <p class="text-slate-400">Visual dataset analysis and model reliability metrics.</p>
-      </div>
-      <div class="flex gap-2">
+    <BasePageHeader title="Gesture Insights" description="Visual dataset analysis and model reliability metrics.">
+      <template #actions>
         <BaseBtn variant="secondary" @click="loadInsights" :disabled="isLoading">Refresh</BaseBtn>
         <BaseBtn variant="primary" @click="recordNewGesture">Record New</BaseBtn>
-      </div>
-    </div>
+      </template>
+    </BasePageHeader>
 
     <!-- Active Model Context -->
-    <div v-if="activeModelName" class="bg-teal-500/5 border border-teal-500/20 rounded-lg px-4 py-2 flex items-center gap-2">
-       <span class="text-[10px] font-bold uppercase tracking-widest text-teal-500">Active Model:</span>
-       <span class="text-sm font-medium text-teal-200">{{ activeModelName }}</span>
+    <div v-if="activeModelName" class="bg-brand-500/5 border border-brand-500/20 rounded-lg px-4 py-2 flex items-center gap-2">
+       <span class="text-[10px] font-bold uppercase tracking-widest text-brand-500">Active Model:</span>
+       <span class="text-sm font-medium text-brand-200">{{ activeModelName }}</span>
     </div>
 
     <!-- Filter/Search Bar -->
     <div class="flex gap-4">
-       <input v-model="searchQuery" type="text" placeholder="Search gestures by label..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white w-full sm:w-64 focus:border-teal-500 focus:outline-none" />
+       <input v-model="searchQuery" type="text" placeholder="Search gestures by label..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white w-full sm:w-64 focus:border-brand-500 focus:outline-none" />
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-       <BaseCard v-for="gesture in filteredGestures" :key="gesture.label" class="group hover:border-teal-400/50 transition-all flex flex-col">
+       <BaseCard v-for="gesture in filteredGestures" :key="gesture.label" class="group hover:border-brand-400/50 transition-all flex flex-col">
           <div class="flex justify-between items-start mb-4">
              <div :class="['px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider', getStatus(gesture.sample_count).class]">
                 {{ getStatus(gesture.sample_count).label }}
              </div>
              <div class="flex gap-1">
                 <div v-for="mod in gesture.modalities" :key="mod" class="w-2 h-2 rounded-full" 
-                     :class="mod === 'cv' ? 'bg-blue-400' : mod === 'sensor' ? 'bg-amber-400' : 'bg-purple-400'"
+                     :class="mod === 'cv' ? 'bg-blue-400' : mod === 'sensor' ? 'bg-warning-400' : 'bg-purple-400'"
                      :title="mod.toUpperCase()"></div>
              </div>
           </div>
@@ -115,7 +112,7 @@ onMounted(() => {
              <p class="flex justify-between"><span>CSV Files:</span> <span class="text-slate-200">{{ gesture.csv_count }}</span></p>
              <p class="flex justify-between">
                 <span>Data Quality:</span> 
-                <span :class="gesture.quality_score > 0.8 ? 'text-emerald-400' : 'text-amber-400'">
+                <span :class="gesture.quality_score > 0.8 ? 'text-success-400' : 'text-warning-400'">
                    {{ (gesture.quality_score * 100).toFixed(0) }}%
                 </span>
              </p>
@@ -123,13 +120,13 @@ onMounted(() => {
              <p class="flex justify-between pt-2 border-t border-slate-800/50 text-[10px] uppercase font-bold text-slate-500"><span>Model Performance</span></p>
              <p class="flex justify-between">
                 <span>Validation Accuracy:</span> 
-                <span :class="gesture.offline_accuracy > 0.8 ? 'text-emerald-400' : 'text-amber-400'">
+                <span :class="gesture.offline_accuracy > 0.8 ? 'text-success-400' : 'text-warning-400'">
                    {{ (gesture.offline_accuracy * 100).toFixed(1) }}%
                 </span>
              </p>
              <p class="flex justify-between">
                 <span>Live Reliability:</span> 
-                <span v-if="gesture.total_feedback > 0" :class="gesture.live_reliability > 0.8 ? 'text-emerald-400' : 'text-amber-400'">
+                <span v-if="gesture.total_feedback > 0" :class="gesture.live_reliability > 0.8 ? 'text-success-400' : 'text-warning-400'">
                    {{ (gesture.live_reliability * 100).toFixed(1) }}%
                 </span>
                 <span v-else class="text-slate-600 italic">No feedback yet</span>
@@ -145,7 +142,7 @@ onMounted(() => {
              <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div 
                    class="h-full rounded-full transition-all duration-500" 
-                   :class="gesture.live_reliability > 0.8 ? 'bg-emerald-500' : 'bg-amber-500'"
+                   :class="gesture.live_reliability > 0.8 ? 'bg-success-500' : 'bg-warning-500'"
                    :style="{ width: (gesture.total_feedback > 0 ? (gesture.live_reliability * 100) : 0) + '%' }"
                 ></div>
              </div>
@@ -168,7 +165,7 @@ onMounted(() => {
        </BaseCard>
        
        <div v-if="isLoading" class="col-span-full py-20 text-center">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-500 mb-4"></div>
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mb-4"></div>
           <p class="text-slate-400">Analyzing dataset insights...</p>
        </div>
     </div>
@@ -187,7 +184,7 @@ onMounted(() => {
       id="gestureName"
       v-model="newGestureNameInput"
       autofocus
-      class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+      class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500 transition-all duration-200"
       @keyup.enter="confirmRecordNewGesture"
     />
   </div>

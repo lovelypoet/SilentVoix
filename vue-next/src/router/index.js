@@ -97,6 +97,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/emotion',
+            name: 'emotion',
+            component: () => import('../views/EmotionStudio.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/gesture-insights',
             name: 'gesture-insights',
             component: () => import('../views/GestureInsights.vue'),

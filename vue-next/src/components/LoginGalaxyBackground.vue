@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import * as THREE from 'three'
+import { token, tokenRgb } from '@/utils/tokens'
 
 const containerRef = ref(null)
 
@@ -39,9 +40,9 @@ const createParticleTexture = () => {
 
   const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
   gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
-  gradient.addColorStop(0.12, 'rgba(196, 255, 251, 0.95)')
-  gradient.addColorStop(0.35, 'rgba(45, 212, 191, 0.55)')
-  gradient.addColorStop(0.7, 'rgba(20, 184, 166, 0.2)')
+  gradient.addColorStop(0.12, token('brand-100', 0.95))
+  gradient.addColorStop(0.35, token('brand-400', 0.55))
+  gradient.addColorStop(0.7, token('brand-500', 0.2))
   gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
 
   ctx.fillStyle = gradient
@@ -71,17 +72,17 @@ const buildFarStars = (texture) => {
 
     const colorType = Math.random()
     if (colorType < 0.65) {
-      colors[i3] = 0.92
-      colors[i3 + 1] = 1
-      colors[i3 + 2] = 0.98
+      colors[i3] = 0.95
+      colors[i3 + 1] = 0.96
+      colors[i3 + 2] = 1
     } else if (colorType < 0.85) {
-      colors[i3] = 0.65
-      colors[i3 + 1] = 0.95
+      colors[i3] = 0.72
+      colors[i3 + 1] = 0.75
       colors[i3 + 2] = 1
     } else {
-      colors[i3] = 0.45
-      colors[i3 + 1] = 0.9
-      colors[i3 + 2] = 0.85
+      colors[i3] = 0.65
+      colors[i3 + 1] = 0.6
+      colors[i3 + 2] = 1
     }
   }
 
@@ -121,9 +122,9 @@ const buildNebula = (texture) => {
 
     const color = new THREE.Color()
     if (Math.random() < 0.5) {
-      color.setHSL(0.47, 0.75, 0.34)
+      color.setHSL(0.664, 0.75, 0.34)
     } else {
-      color.setHSL(0.53, 0.85, 0.4)
+      color.setHSL(0.717, 0.85, 0.4)
     }
     colors[i3] = color.r
     colors[i3 + 1] = color.g
@@ -156,11 +157,11 @@ const buildGalaxy = (texture) => {
   const colors = new Float32Array(count * 3)
   const sizes = new Float32Array(count)
 
-  const coreColor = new THREE.Color(0xe9fffb)
-  const armColor1 = new THREE.Color(0x38bdf8)
-  const armColor2 = new THREE.Color(0x14b8a6)
-  const armColor3 = new THREE.Color(0x2dd4bf)
-  const outerColor = new THREE.Color(0x0f766e)
+  const coreColor = new THREE.Color(tokenRgb('brand-50'))
+  const armColor1 = new THREE.Color(tokenRgb('brand-300'))
+  const armColor2 = new THREE.Color(tokenRgb('brand-500'))
+  const armColor3 = new THREE.Color(tokenRgb('brand-alt-500'))
+  const outerColor = new THREE.Color(tokenRgb('brand-800'))
 
   for (let i = 0; i < count; i++) {
     const i3 = i * 3
@@ -228,9 +229,9 @@ const buildCloseStars = (texture) => {
     positions[i3 + 1] = (Math.random() - 0.5) * 16
     positions[i3 + 2] = (Math.random() - 0.5) * 10 - 2
     sizes[i] = Math.random() * 1.5 + 0.5
-    colors[i3] = 0.95
-    colors[i3 + 1] = 1
-    colors[i3 + 2] = 0.98
+    colors[i3] = 0.96
+    colors[i3 + 1] = 0.96
+    colors[i3 + 2] = 1
   }
 
   closeStarsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
@@ -375,6 +376,6 @@ onBeforeUnmount(() => {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse at center, #07131f 0%, #020617 60%, #000000 100%);
+    radial-gradient(ellipse at center, #0b0f22 0%, #020617 60%, #000000 100%);
 }
 </style>

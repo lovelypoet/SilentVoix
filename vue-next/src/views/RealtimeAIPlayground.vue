@@ -62,7 +62,7 @@ onUnmounted(() => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Realtime AI Playground</h1>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-100 mb-2">Realtime AI Playground</h1>
         <p class="text-slate-400">Upload exported model package metadata and test live CV or sensor inference.</p>
       </div>
     </section>
@@ -80,7 +80,7 @@ onUnmounted(() => {
     <!-- Preview & Inference -->
     <BaseCard>
       <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h2 class="text-xl text-white font-semibold">Live Preview</h2>
+        <h2 class="text-lg font-semibold text-slate-100">Live Preview</h2>
         <div class="flex gap-2">
            <BaseBtn variant="secondary" @click="toggleLive">
              {{ store.isLive ? 'Stop Live' : 'Start Live' }}

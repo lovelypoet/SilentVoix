@@ -25,8 +25,8 @@ defineProps({
         <svg viewBox="0 0 100 24" class="w-full h-full">
           <defs>
             <linearGradient id="spark" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.2" />
-              <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.9" />
+              <stop offset="0%" style="stop-color: rgb(var(--brand-500))" stop-opacity="0.2" />
+              <stop offset="100%" style="stop-color: rgb(var(--brand-500))" stop-opacity="0.9" />
             </linearGradient>
           </defs>
           <rect x="0" y="0" width="100" height="24" fill="transparent" />
@@ -49,7 +49,7 @@ defineProps({
             x2="100"
             :y1="sparkThreshold"
             :y2="sparkThreshold"
-            stroke="#f59e0b"
+            style="stroke: rgb(var(--warning-500))"
             stroke-width="1"
             stroke-dasharray="4 3"
             opacity="0.9"
@@ -65,28 +65,28 @@ defineProps({
             stroke-dasharray="2 3"
             opacity="0.7"
           />
-          <circle v-if="sparkPath" :cx="sparkPeak.x" :cy="sparkPeak.y" r="2.5" fill="#22c55e" />
+          <circle v-if="sparkPath" :cx="sparkPeak.x" :cy="sparkPeak.y" r="2.5" style="fill: rgb(var(--success-500))" />
           <circle v-if="cvPath" :cx="cvPeak.x" :cy="cvPeak.y" r="2.2" fill="#f472b6" />
-          <circle v-if="sparkSpike" :cx="sparkSpike.x" :cy="sparkSpike.y" r="2.8" fill="#f59e0b" />
+          <circle v-if="sparkSpike" :cx="sparkSpike.x" :cy="sparkSpike.y" r="2.8" style="fill: rgb(var(--warning-500))" />
           <circle v-if="cvSpike" :cx="cvSpike.x" :cy="cvSpike.y" r="2.6" fill="#f472b6" />
         </svg>
       </div>
       <div
         class="text-[10px] font-semibold"
-        :class="sensorSpikeActive || cvSpikeActive ? 'text-amber-300' : 'text-slate-500'"
+        :class="sensorSpikeActive || cvSpikeActive ? 'text-warning-300' : 'text-slate-500'"
       >
         {{ sensorSpikeActive || cvSpikeActive ? 'spike' : 'live' }}
       </div>
       <div
         class="text-[10px] font-semibold"
-        :class="syncWsConnected ? 'text-emerald-400' : 'text-slate-500'"
+        :class="syncWsConnected ? 'text-success-400' : 'text-slate-500'"
       >
         {{ syncWsConnected ? 'ws:on' : 'ws:off' }}
       </div>
       <div
         v-if="syncOffsetMs !== null"
         class="text-[10px] font-semibold"
-        :class="Math.abs(syncOffsetMs) <= 150 ? 'text-emerald-300' : 'text-amber-300'"
+        :class="Math.abs(syncOffsetMs) <= 150 ? 'text-success-300' : 'text-warning-300'"
       >
         Δ {{ syncOffsetMs }}ms
       </div>

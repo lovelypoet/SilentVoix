@@ -694,7 +694,7 @@ watch(
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-100 mb-2">
           {{ trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center' }}
         </h1>
         <p class="text-slate-400">
@@ -707,7 +707,7 @@ watch(
     <!-- Permissions Denied -->
     <div v-if="error" class="text-center mt-12">
       <BaseCard class="max-w-md mx-auto">
-        <h3 class="text-xl font-bold text-red-400 mb-2">
+        <h3 class="text-xl font-bold text-danger-400 mb-2">
           Permissions Required
         </h3>
         <p class="text-slate-400 mb-4">
@@ -745,23 +745,23 @@ watch(
           @update:lighting-status="currentLightingStatus = $event"
         />
         <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
-          <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+          <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">FPS (Target: 30)</div>
             <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
               {{ actualFps || '--' }}
             </div>
           </div>
-          <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+          <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Condition</div>
             <div class="text-2xl font-bold" :class="currentLightingStatus.colorClass">{{ currentLightingStatus.status }}</div>
           </div>
         </div>
         <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-          <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+          <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Detected Gesture</div>
             <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
           </div>
-          <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+          <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Confidence</div>
             <div class="text-2xl font-bold text-slate-400">{{ confidence }}</div>
           </div>
@@ -795,23 +795,23 @@ watch(
             @update:lighting-status="currentLightingStatus = $event"
           />
           <div class="absolute top-7 left-7 right-7 flex justify-between items-end">
-            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">FPS (Target: 30)</div>
               <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
                 {{ actualFps || '--' }}
               </div>
             </div>
-            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Condition</div>
               <div class="text-2xl font-bold" :class="currentLightingStatus.colorClass">{{ currentLightingStatus.status }}</div>
             </div>
           </div>
           <div class="absolute bottom-7 left-7 right-7 flex justify-between items-end">
-            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Detected Gesture</div>
               <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
             </div>
-            <div class="bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
+            <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Confidence</div>
               <div class="text-2xl font-bold text-slate-400">{{ confidence }}</div>
             </div>
@@ -838,7 +838,7 @@ watch(
             v-model="currentGestureName"
             type="text" 
             placeholder="e.g., hello, thanks, yes, no"
-            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-teal-500 focus:outline-none"
+            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-brand-500 focus:outline-none"
             :disabled="isCollecting"
           />
         </div>
@@ -891,14 +891,14 @@ watch(
           </div>
           <div v-else class="space-y-1 max-h-28 overflow-y-auto">
             <div v-for="(line, idx) in takeLogs" :key="`take-log-${idx}`">
-              <span class="text-emerald-400">$</span>
+              <span class="text-success-400">$</span>
               <span class="ml-2">{{ line }}</span>
             </div>
           </div>
         </div>
 
         <div class="mt-4 text-sm">
-          <div v-if="isCollecting" class="text-green-400 font-semibold">
+          <div v-if="isCollecting" class="text-success-400 font-semibold">
             Recording "{{ currentGestureName }}"...
           </div>
           <div class="text-slate-400">
@@ -929,16 +929,16 @@ watch(
         v-for="card in trainingCards"
         :key="`${loopIndex}-${card.id}`"
         class="card w-[280px] sm:w-[320px] xl:w-[340px] h-[430px] flex-none flex flex-col transition-colors"
-        :class="card.locked ? 'group opacity-50 cursor-not-allowed' : 'group hover:border-teal-400/50 cursor-pointer'"
+        :class="card.locked ? 'group opacity-50 cursor-not-allowed' : 'group hover:border-brand-400/50 cursor-pointer'"
         @click="handleTrainingCardClick(card)"
       >
         <div
           class="h-40 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 transition-colors"
-          :class="card.locked ? '' : 'group-hover:text-teal-400'"
+          :class="card.locked ? '' : 'group-hover:text-brand-400'"
         >
           <span class="text-5xl">{{ card.icon }}</span>
         </div>
-        <h3 class="text-xl font-bold text-teal-300 mb-2">
+        <h3 class="text-lg font-semibold text-slate-100 mb-2">
           {{ card.title }}
         </h3>
         <p class="text-slate-400 text-sm flex-1">

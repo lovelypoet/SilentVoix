@@ -46,7 +46,7 @@ const openCorrectionDialog = () => {
   <div class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm">
     <div class="flex items-center justify-between mb-2">
        <p class="text-slate-400">Final Prediction</p>
-       <span v-if="store.isFusionMode" class="text-[10px] bg-teal-500/20 text-teal-400 px-2 py-0.5 rounded font-bold uppercase">Weighted Fusion</span>
+       <span v-if="store.isFusionMode" class="text-[10px] bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded font-bold uppercase">Weighted Fusion</span>
     </div>
 
     <div v-if="store.prediction" class="flex items-end justify-between">
@@ -76,18 +76,18 @@ const openCorrectionDialog = () => {
           <template v-if="!feedbackSent">
             <button 
               @click="submitFeedback(true)"
-              class="flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold transition-colors"
+              class="flex items-center gap-1.5 px-2 py-1 rounded bg-success-500/10 text-success-400 hover:bg-success-500/20 text-xs font-semibold transition-colors"
             >
               Correct
             </button>
             <button 
               @click="openCorrectionDialog"
-              class="flex items-center gap-1.5 px-2 py-1 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold transition-colors"
+              class="flex items-center gap-1.5 px-2 py-1 rounded bg-danger-500/10 text-danger-400 hover:bg-danger-500/20 text-xs font-semibold transition-colors"
             >
               Wrong
             </button>
           </template>
-          <div v-else class="flex items-center gap-1.5 text-xs text-teal-400 font-medium italic opacity-80">
+          <div v-else class="flex items-center gap-1.5 text-xs text-brand-400 font-medium italic opacity-80">
              Feedback saved
           </div>
        </div>

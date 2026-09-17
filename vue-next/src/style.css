@@ -2,72 +2,192 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ---------------------------------------------------------------------------
+ * Design tokens
+ * ---------------------------------------------------------------------------
+ * Space-separated RGB channels so Tailwind can apply slash-opacity, e.g.
+ * `bg-brand-500/10` -> rgb(var(--brand-500) / 0.1).
+ *
+ * To re-brand the app, change ONLY the --brand-* / --brand-alt-* blocks
+ * below. Nothing else in the codebase hardcodes the brand hue.
+ *
+ * Visual language is a flat, neutral "product UI": one restrained accent
+ * (brand), a slate neutral scale for surfaces/text, borders do the work of
+ * separating regions instead of shadows or gradients. Reach for `.panel` /
+ * `.surface-*` / `.text-*` tokens below rather than one-off greys so every
+ * page reads as the same system.
+ */
 :root {
-  --liquid-glass-bg: rgba(15, 23, 42, 0.48);
-  --liquid-glass-border: rgba(255, 255, 255, 0.12);
-  --liquid-glass-highlight: rgba(255, 255, 255, 0.28);
-  --liquid-glass-shadow: rgba(2, 6, 23, 0.48);
-}
+  /* Brand accent - indigo. Used sparingly: primary actions, active nav, links, focus. */
+  --brand-50: 238 242 255;
+  --brand-100: 224 231 255;
+  --brand-200: 199 210 254;
+  --brand-300: 165 180 252;
+  --brand-400: 129 140 248;
+  --brand-500: 99 102 241;
+  --brand-600: 79 70 229;
+  --brand-700: 67 56 202;
+  --brand-800: 55 48 163;
+  --brand-900: 49 46 129;
+  --brand-950: 30 27 75;
 
-.liquid-glass {
-  position: relative;
-  background: linear-gradient(180deg, rgba(148, 163, 184, 0.12), var(--liquid-glass-bg));
-  border: 1px solid var(--liquid-glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--liquid-glass-highlight),
-    0 18px 36px -16px var(--liquid-glass-shadow);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-}
+  /* Brand companion - violet. Reserved for chart series / data viz accents only. */
+  --brand-alt-50: 245 243 255;
+  --brand-alt-100: 237 233 254;
+  --brand-alt-200: 221 214 254;
+  --brand-alt-300: 196 181 253;
+  --brand-alt-400: 167 139 250;
+  --brand-alt-500: 139 92 246;
+  --brand-alt-600: 124 58 237;
+  --brand-alt-700: 109 40 217;
+  --brand-alt-800: 91 33 182;
+  --brand-alt-900: 76 29 149;
+  --brand-alt-950: 46 16 101;
 
-@supports (backdrop-filter: url(#frosted)) or (-webkit-backdrop-filter: url(#frosted)) {
-  .liquid-glass {
-    backdrop-filter: url(#frosted) blur(12px) saturate(130%);
-    -webkit-backdrop-filter: url(#frosted) blur(12px) saturate(130%);
-  }
-}
+  /* Status - success (emerald) */
+  --success-50: 236 253 245;
+  --success-100: 209 250 229;
+  --success-200: 167 243 208;
+  --success-300: 110 231 183;
+  --success-400: 52 211 153;
+  --success-500: 16 185 129;
+  --success-600: 5 150 105;
+  --success-700: 4 120 87;
+  --success-800: 6 95 70;
+  --success-900: 6 78 59;
+  --success-950: 2 44 34;
 
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .liquid-glass {
-    background: rgba(15, 23, 42, 0.86);
-  }
+  /* Status - warning (amber) */
+  --warning-50: 255 251 235;
+  --warning-100: 254 243 199;
+  --warning-200: 253 230 138;
+  --warning-300: 252 211 77;
+  --warning-400: 251 191 36;
+  --warning-500: 245 158 11;
+  --warning-600: 217 119 6;
+  --warning-700: 180 83 9;
+  --warning-800: 146 64 14;
+  --warning-900: 120 53 15;
+  --warning-950: 69 26 3;
+
+  /* Status - danger (rose) */
+  --danger-50: 255 241 242;
+  --danger-100: 255 228 230;
+  --danger-200: 254 205 211;
+  --danger-300: 253 164 175;
+  --danger-400: 251 113 133;
+  --danger-500: 244 63 94;
+  --danger-600: 225 29 72;
+  --danger-700: 190 18 60;
+  --danger-800: 159 18 57;
+  --danger-900: 136 19 55;
+  --danger-950: 76 5 25;
+
+  /*
+   * Surfaces - flat neutral scale (mirrors Tailwind's slate values so
+   * `bg-slate-900` and `rgb(var(--surface-2))` always agree). Three levels:
+   * canvas (page background), surface (default card/panel), raised (hover /
+   * nested / popover). No translucency, no blur, no glow shadows.
+   */
+  --canvas: 2 6 23;
+  --surface: 15 23 42;
+  --surface-raised: 30 41 59;
+  --border-subtle: 30 41 59;
+  --border-default: 51 65 85;
 }
 
 .app-bg {
-  position: relative;
+  background: rgb(var(--canvas));
 }
 
-.app-bg::before {
+/* Default card/panel surface. One consistent look for every grouped region. */
+.panel {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--border-default));
+  border-radius: 0.625rem;
+}
+
+/*
+ * Status badge - small pill used for health/state indicators (model status,
+ * alert severity, runtime health). One shared implementation so every page
+ * that shows a status uses the same shape instead of redefining it locally.
+ */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  line-height: 1;
+}
+
+.status-badge::before {
   content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background:
-    radial-gradient(1400px 700px at -10% -20%, rgba(20, 184, 166, 0.14), transparent 60%),
-    radial-gradient(1100px 600px at 110% 0%, rgba(56, 189, 248, 0.12), transparent 55%),
-    radial-gradient(800px 500px at 50% 120%, rgba(45, 212, 191, 0.1), transparent 60%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
-.app-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.02),
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-  opacity: 0.2;
-  mix-blend-mode: soft-light;
-  pointer-events: none;
+.status-badge-healthy {
+  background: rgb(var(--success-500) / 0.12);
+  color: rgb(var(--success-400));
+  border-color: rgb(var(--success-500) / 0.28);
 }
 
-.app-bg > * {
-  position: relative;
-  z-index: 1;
+.status-badge-warning {
+  background: rgb(var(--warning-500) / 0.12);
+  color: rgb(var(--warning-400));
+  border-color: rgb(var(--warning-500) / 0.28);
+}
+
+.status-badge-critical {
+  background: rgb(var(--danger-500) / 0.12);
+  color: rgb(var(--danger-400));
+  border-color: rgb(var(--danger-500) / 0.28);
+}
+
+.status-badge-neutral {
+  background: rgb(var(--surface-raised) / 0.6);
+  color: rgb(148 163 184);
+  border-color: rgb(var(--border-default));
+}
+
+/*
+ * Shared focus-visible treatment. Keyboard users get a clear brand ring;
+ * mouse users are unaffected.
+ */
+.focus-ring:focus-visible {
+  outline: 2px solid rgb(var(--brand-400));
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * PrimeVue toasts are 25rem wide by default, which overhangs narrow viewports
+ * and covers the mobile header. Keep them inside the screen instead.
+ */
+@media (max-width: 30rem) {
+  .p-toast {
+    width: calc(100vw - 2rem);
+    max-width: 100%;
+  }
 }

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch, onUnmounted } from 'vue'
+import { token } from '@/utils/tokens'
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
@@ -104,7 +105,7 @@ const drawWaveforms = () => {
   ctx.fillRect((trimOut.value / 100) * width, 0, width, height)
 
   // Track Dividers
-  ctx.strokeStyle = '#1e293b'
+  ctx.strokeStyle = 'rgb(30, 41, 59)' // slate-800 track
   ctx.lineWidth = 1
   ctx.beginPath()
   ctx.moveTo(0, trackHeight)
@@ -115,6 +116,7 @@ const drawWaveforms = () => {
   const cvRows = cvData.value.rows
   const cvMax = Math.max(...cvRows.map(r => Math.abs(Number(r[selectedCvCol.value])))) || 1
   
+  // Cyan: a distinct data-series hue for the CV trace, deliberately not brand chrome.
   ctx.strokeStyle = '#22d3ee'
   ctx.lineWidth = 1.5
   ctx.beginPath()
@@ -135,7 +137,7 @@ const drawWaveforms = () => {
   const pixelsPerMs = width / (cvRows.length * 33.3) // approx 30fps
   const nudgePx = offsetMs.value * pixelsPerMs
   
-  ctx.strokeStyle = '#fbbf24'
+  ctx.strokeStyle = token('warning-400')
   ctx.beginPath()
   sensorRows.forEach((row, i) => {
      const x = ((i / sensorRows.length) * width) + nudgePx
@@ -147,7 +149,7 @@ const drawWaveforms = () => {
   ctx.stroke()
 
   // Trim Handles
-  ctx.strokeStyle = '#4ade80'
+  ctx.strokeStyle = token('success-400')
   ctx.lineWidth = 2
   ctx.setLineDash([5, 5])
   
@@ -166,7 +168,7 @@ const drawWaveforms = () => {
   ctx.setLineDash([])
 
   // Playhead
-  ctx.strokeStyle = '#f43f5e'
+  ctx.strokeStyle = token('danger-500')
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.moveTo(playheadX.value, 0)
@@ -239,8 +241,8 @@ onUnmounted(() => {
 
       <div class="flex items-center gap-3">
          <div class="inline-flex rounded-md border border-slate-700 overflow-hidden bg-slate-900 h-9">
-            <button class="px-4 text-xs font-bold uppercase transition-colors" :class="mode === 'single' ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'" @click="mode = 'single'">Single</button>
-            <button class="px-4 text-xs font-bold uppercase border-l border-slate-700 transition-colors" :class="mode === 'dual' ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'" @click="mode = 'dual'">Dual</button>
+            <button class="px-4 text-xs font-bold uppercase transition-colors" :class="mode === 'single' ? 'bg-brand-500 text-slate-950' : 'text-slate-400 hover:text-white'" @click="mode = 'single'">Single</button>
+            <button class="px-4 text-xs font-bold uppercase border-l border-slate-700 transition-colors" :class="mode === 'dual' ? 'bg-brand-500 text-slate-950' : 'text-slate-400 hover:text-white'" @click="mode = 'dual'">Dual</button>
          </div>
          <BaseBtn variant="secondary" class="h-9 text-xs" @click="openCsvLibrary">Select Datasets</BaseBtn>
          <BaseBtn variant="primary" class="h-9 text-xs" :disabled="!isCompletePair || isExporting" @click="exportGoldenFusion">
@@ -254,8 +256,8 @@ onUnmounted(() => {
        <div class="flex-1 bg-black relative cursor-crosshair group" ref="containerRef" @mousemove="handleMouseMove">
           <canvas ref="canvasRef" class="w-full h-full"></canvas>
           
-          <div v-if="isDataLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
-             <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-500 mb-2"></div>
+          <div v-if="isDataLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-black/85">
+             <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mb-2"></div>
              <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Loading High-Fidelity Data...</p>
           </div>
 
@@ -266,13 +268,13 @@ onUnmounted(() => {
 
           <!-- Metadata Overlays -->
           <div v-if="cvData && sensorData" class="absolute top-4 left-4 pointer-events-none space-y-2">
-             <div class="bg-black/60 border border-slate-700 p-2 rounded backdrop-blur-md">
+             <div class="bg-black/85 border border-slate-700 p-2 rounded">
                 <p class="text-[9px] text-slate-500 uppercase font-bold">Reference: {{ cvData.name }}</p>
-                <p class="text-xs text-teal-400 font-bold">{{ cvData.total_rows }} frames @ master clock</p>
+                <p class="text-xs text-brand-400 font-bold">{{ cvData.total_rows }} frames @ master clock</p>
              </div>
-             <div class="bg-black/60 border border-slate-700 p-2 rounded backdrop-blur-md">
+             <div class="bg-black/85 border border-slate-700 p-2 rounded">
                 <p class="text-[9px] text-slate-500 uppercase font-bold">Target: {{ sensorData.name }}</p>
-                <p class="text-xs text-amber-400 font-bold">{{ sensorData.total_rows }} rows (Interpolated on export)</p>
+                <p class="text-xs text-warning-400 font-bold">{{ sensorData.total_rows }} rows (Interpolated on export)</p>
              </div>
           </div>
        </div>
@@ -284,14 +286,14 @@ onUnmounted(() => {
              <div class="space-y-3">
                 <div class="flex justify-between items-center">
                    <label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Latency Nudge (ms)</label>
-                   <span class="text-xs font-mono text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                   <span class="text-xs font-mono text-warning-400 bg-warning-400/10 px-2 py-0.5 rounded border border-warning-400/20">
                       {{ offsetMs > 0 ? '+' : '' }}{{ offsetMs }}ms
                    </span>
                 </div>
-                <input type="range" v-model.number="offsetMs" min="-500" max="500" step="10" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                <input type="range" v-model.number="offsetMs" min="-500" max="500" step="10" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-warning-500" />
                 <div class="flex justify-between text-[9px] text-slate-600 font-bold">
                    <span>-500ms</span>
-                   <button @click="offsetMs = 0" class="hover:text-teal-400 transition-colors uppercase">Reset Latency</button>
+                   <button @click="offsetMs = 0" class="hover:text-brand-400 transition-colors uppercase">Reset Latency</button>
                    <span>+500ms</span>
                 </div>
              </div>
@@ -301,18 +303,18 @@ onUnmounted(() => {
                 <div class="flex justify-between items-center">
                    <label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Trimming Window (%)</label>
                    <div class="flex gap-2">
-                      <span class="text-[10px] font-mono text-emerald-400">IN: {{ trimIn }}%</span>
-                      <span class="text-[10px] font-mono text-emerald-400">OUT: {{ trimOut }}%</span>
+                      <span class="text-[10px] font-mono text-success-400">IN: {{ trimIn }}%</span>
+                      <span class="text-[10px] font-mono text-success-400">OUT: {{ trimOut }}%</span>
                    </div>
                 </div>
                 <div class="relative h-2 bg-slate-800 rounded-lg mt-4">
                    <input type="range" v-model.number="trimIn" min="0" max="40" step="1" class="absolute inset-0 w-full h-2 bg-transparent appearance-none pointer-events-none z-20 slider-handle-in" />
                    <input type="range" v-model.number="trimOut" min="60" max="100" step="1" class="absolute inset-0 w-full h-2 bg-transparent appearance-none pointer-events-none z-20 slider-handle-out" />
-                   <div class="absolute inset-y-0 bg-teal-500/20 border-x border-teal-500/40" :style="{ left: trimIn + '%', right: (100 - trimOut) + '%' }"></div>
+                   <div class="absolute inset-y-0 bg-brand-500/20 border-x border-brand-500/40" :style="{ left: trimIn + '%', right: (100 - trimOut) + '%' }"></div>
                 </div>
                 <div class="flex justify-between text-[9px] text-slate-600 font-bold">
                    <span>CROP START</span>
-                   <span class="text-teal-400">ACTIVE DATA</span>
+                   <span class="text-brand-400">ACTIVE DATA</span>
                    <span>CROP END</span>
                 </div>
              </div>
@@ -321,13 +323,13 @@ onUnmounted(() => {
              <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-1">
                    <label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Reference Axis (CV)</label>
-                   <select v-model="selectedCvCol" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded px-2 py-1.5 focus:border-teal-500 outline-none">
+                   <select v-model="selectedCvCol" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded px-2 py-1.5 focus:border-brand-500 outline-none">
                       <option v-for="h in cvData?.header" :key="h" :value="h">{{ h }}</option>
                    </select>
                 </div>
                 <div class="space-y-1">
                    <label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Alignment Channel (Glove)</label>
-                   <select v-model="selectedSensorCol" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded px-2 py-1.5 focus:border-amber-500 outline-none">
+                   <select v-model="selectedSensorCol" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded px-2 py-1.5 focus:border-warning-500 outline-none">
                       <option v-for="h in sensorData?.header" :key="h" :value="h">{{ h }}</option>
                    </select>
                 </div>
@@ -348,18 +350,18 @@ input[type=range]::-webkit-slider-thumb {
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #f59e0b;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  background: rgb(var(--warning-500));
+  box-shadow: 0 0 10px rgb(var(--warning-500) / 0.4);
   cursor: pointer;
   pointer-events: auto;
 }
 
 .slider-handle-in::-webkit-slider-thumb {
-  background: #4ade80 !important;
+  background: rgb(var(--success-400)) !important;
 }
 
 .slider-handle-out::-webkit-slider-thumb {
-  background: #4ade80 !important;
+  background: rgb(var(--success-400)) !important;
 }
 
 input[type=range] {
