@@ -218,6 +218,22 @@ export default {
       api.get('/dashboard/monitoring', window ? { params: { window } } : undefined),
   },
 
+  // ===================== Media URL Helper =====================
+  // Backend responses (e.g. TTS audio_url) return API-root-relative paths
+  // like /static/tts/x.mp3, meant to resolve through the same origin as the
+  // API. That's only true when the dev proxy is doing the resolving; once
+  // VITE_API_URL points straight at the backend (bypassing the proxy), a
+  // bare relative path resolves against the frontend's own origin instead
+  // and 404s. Mirrors createWebSocket's origin-resolution below.
+  resolveMediaUrl(path) {
+    if (!path) return path;
+    if (/^https?:\/\//.test(path)) return path;
+    if (BASE_URL && /^https?:\/\//.test(BASE_URL)) {
+      return new URL(path, BASE_URL).href;
+    }
+    return path;
+  },
+
   // ===================== WebSocket Helper =====================
   createWebSocket(path = '/ws') {
     const token = localStorage.getItem('access_token');

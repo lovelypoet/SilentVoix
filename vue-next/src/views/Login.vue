@@ -226,10 +226,10 @@ const handleLogin = async () => {
         <p class="graphics-status">{{ autoStatus }}</p>
       </div>
     </div>
-    <div class="login-card bg-slate-900 border border-slate-800 p-8 rounded-xl w-full max-w-md shadow-2xl">
+    <div class="login-card bg-[rgb(var(--surface))] border border-[rgb(var(--border-default))] p-8 rounded-xl w-full max-w-md shadow-2xl">
       <div class="flex flex-col items-center text-center mb-8">
-        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold text-white mb-3">S</span>
-        <h1 class="text-xl font-semibold tracking-tight text-slate-100">SilentVoix</h1>
+        <span class="brand-orbit mb-4"><span></span></span>
+        <h1 class="text-xl font-medium tracking-tight text-slate-100">SilentVoix</h1>
         <p class="text-sm text-slate-400 mt-1">Sign Language Translation System</p>
       </div>
 
@@ -297,7 +297,7 @@ const handleLogin = async () => {
   height: 2.5rem;
   border-radius: 9999px;
   border: 1px solid rgb(var(--border-default));
-  background: rgb(15, 23, 42);
+  background: rgb(var(--surface));
   color: rgb(148 163 184);
   display: grid;
   place-items: center;
@@ -319,7 +319,7 @@ const handleLogin = async () => {
   width: min(18rem, 90vw);
   border: 1px solid rgb(var(--border-default));
   border-radius: 0.75rem;
-  background: rgb(2, 6, 23);
+  background: rgb(var(--canvas));
   padding: 0.75rem;
   color: rgb(226 232 240);
 }
@@ -340,7 +340,7 @@ const handleLogin = async () => {
 .graphics-option-btn {
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 0.55rem;
-  background: rgb(15, 23, 42);
+  background: rgb(var(--surface));
   color: #cbd5e1;
   font-size: 0.8rem;
   padding: 0.45rem 0.35rem;

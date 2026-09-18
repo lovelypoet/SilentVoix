@@ -80,7 +80,7 @@ const speakText = async () => {
     // Check res directly (interceptors return response.data)
     if (res.status === 'success' && res.audio_url) {
       ttsStatus.value = 'Playing...'
-      const audio = new Audio(res.audio_url)
+      const audio = new Audio(api.resolveMediaUrl(res.audio_url))
       await audio.play()
       ttsStatus.value = 'Played successfully'
     } else if (res.status === 'success') {
@@ -254,7 +254,7 @@ const uploadFile = async (file) => {
         <!-- New Upload Zone -->
       <div 
         class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer group" 
-        :class="isDragging ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-indigo-500/50 hover:bg-slate-800/50'" 
+        :class="isDragging ? 'border-brand-500 bg-brand-500/10' : 'border-slate-700 hover:border-brand-500/50 hover:bg-slate-800/50'"
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
         @drop.prevent="onDrop"

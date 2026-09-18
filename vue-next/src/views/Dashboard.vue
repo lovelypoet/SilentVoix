@@ -1,9 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { PhTimer, PhWarningCircle, PhArrowsLeftRight, PhShieldCheck } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
+import BaseStatTile from '../components/base/BaseStatTile.vue'
 import { useMonitoringDashboard } from '../composables/useMonitoringDashboard'
 
 const router = useRouter()
@@ -14,6 +16,7 @@ const {
   refreshError,
   lastUpdated,
   healthTone,
+  healthHistory,
   refresh,
 } = useMonitoringDashboard()
 
@@ -44,6 +47,23 @@ const statusLabel = computed(() => {
 const formatPercent = (value, digits = 2) => `${Number(value || 0).toFixed(digits)}%`
 const formatNumber = (value, digits = 2) => Number(value || 0).toFixed(digits)
 
+// Delta vs the previous poll, computed from the same client-side history the
+// sparklines draw from - real observed change, not a fabricated trend.
+const deltaFor = (key, digits, suffix) => {
+  const series = healthHistory.value[key] || []
+  if (series.length < 2) return { text: '', direction: 'neutral' }
+  const diff = series[series.length - 1] - series[series.length - 2]
+  if (Math.abs(diff) < Math.pow(10, -digits) / 2) return { text: 'flat', direction: 'neutral' }
+  const direction = diff > 0 ? 'up' : 'down'
+  const sign = diff > 0 ? '+' : ''
+  return { text: `${sign}${diff.toFixed(digits)}${suffix}`, direction }
+}
+
+const latencyDelta = computed(() => deltaFor('latency_p95_ms', 2, 'ms'))
+const errorRateDelta = computed(() => deltaFor('error_rate_5m', 2, '%'))
+const throughputDelta = computed(() => deltaFor('throughput_rpm', 2, ' rpm'))
+const uptimeDelta = computed(() => deltaFor('uptime_24h', 2, '%'))
+
 const eventTimestamp = (raw) => {
   if (!raw) return 'Unknown time'
   const parsed = new Date(raw)
@@ -57,7 +77,11 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 
 <template>
   <div class="space-y-6">
-    <BasePageHeader title="Model Monitoring" description="Production status, data quality, and prediction performance.">
+    <BasePageHeader
+      title="Model Monitoring"
+      description="Production status, data quality, and prediction performance."
+      eyebrow="Overview"
+    >
       <template #actions>
         <BaseBtn variant="secondary" @click="gotoModelLibrary">Open Model Library</BaseBtn>
         <BaseBtn variant="primary" @click="refresh">Refresh Now</BaseBtn>
@@ -140,22 +164,42 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <BaseCard>
-        <p class="metric-label">Latency p95</p>
-        <p class="metric-value">{{ formatNumber(monitoring.health?.latency_p95_ms, 2) }} ms</p>
-      </BaseCard>
-      <BaseCard>
-        <p class="metric-label">Error Rate (5m)</p>
-        <p class="metric-value">{{ formatPercent(monitoring.health?.error_rate_5m, 2) }}</p>
-      </BaseCard>
-      <BaseCard>
-        <p class="metric-label">Throughput</p>
-        <p class="metric-value">{{ formatNumber(monitoring.health?.throughput_rpm, 2) }} rpm</p>
-      </BaseCard>
-      <BaseCard>
-        <p class="metric-label">Uptime (24h)</p>
-        <p class="metric-value">{{ formatPercent(monitoring.health?.uptime_24h, 2) }}</p>
-      </BaseCard>
+      <BaseStatTile
+        label="Latency p95"
+        :icon="PhTimer"
+        :value="`${formatNumber(monitoring.health?.latency_p95_ms, 2)} ms`"
+        :points="healthHistory.latency_p95_ms"
+        :delta="latencyDelta.text"
+        :delta-direction="latencyDelta.direction"
+        :rising-is-good="false"
+      />
+      <BaseStatTile
+        label="Error Rate (5m)"
+        :icon="PhWarningCircle"
+        :value="formatPercent(monitoring.health?.error_rate_5m, 2)"
+        :points="healthHistory.error_rate_5m"
+        :delta="errorRateDelta.text"
+        :delta-direction="errorRateDelta.direction"
+        :rising-is-good="false"
+      />
+      <BaseStatTile
+        label="Throughput"
+        :icon="PhArrowsLeftRight"
+        :value="`${formatNumber(monitoring.health?.throughput_rpm, 2)} rpm`"
+        :points="healthHistory.throughput_rpm"
+        :delta="throughputDelta.text"
+        :delta-direction="throughputDelta.direction"
+        :rising-is-good="null"
+      />
+      <BaseStatTile
+        label="Uptime (24h)"
+        :icon="PhShieldCheck"
+        :value="formatPercent(monitoring.health?.uptime_24h, 2)"
+        :points="healthHistory.uptime_24h"
+        :delta="uptimeDelta.text"
+        :delta-direction="uptimeDelta.direction"
+        :rising-is-good="true"
+      />
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">

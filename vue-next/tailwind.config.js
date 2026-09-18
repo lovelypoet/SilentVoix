@@ -18,13 +18,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand accent (indigo) and its companion for gradients/glows (violet).
+        // Brand accent (cyan) and its companions for gradients/glows (violet, pink).
         brand: tokenScale('brand'),
         'brand-alt': tokenScale('brand-alt'),
+        'brand-pink': tokenScale('brand-pink'),
         // Status colors. Semantic names so intent survives the next recolor.
         success: tokenScale('success'),
         warning: tokenScale('warning'),
         danger: tokenScale('danger'),
+      },
+      fontFamily: {
+        display: ['"Space Grotesk"', '"DM Sans"', 'sans-serif'],
       },
       boxShadow: {
         'brand-glow': '0 18px 40px -18px rgb(var(--brand-500) / 0.55)',

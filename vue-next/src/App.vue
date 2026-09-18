@@ -140,7 +140,7 @@ onBeforeUnmount(() => {
 })
 
 const navLinkClass =
-  'nav-link focus-ring flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-slate-100 transition-colors'
+  'nav-link focus-ring flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors'
 </script>
 
 <template>
@@ -150,12 +150,12 @@ const navLinkClass =
     <!-- Desktop sidebar -->
     <aside
       v-if="!isFullscreenLayout"
-      class="hidden lg:flex w-60 p-4 flex-col gap-6 sticky top-0 h-screen shrink-0 border-r border-slate-900"
+      class="hidden lg:flex w-60 p-4 flex-col gap-6 sticky top-0 h-screen shrink-0 shell-border-r"
       aria-label="Main navigation"
     >
-      <RouterLink to="/dashboard" class="focus-ring flex items-center gap-2.5 px-2 py-1 cursor-pointer">
-        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-600 text-sm font-bold text-white">S</span>
-        <span class="text-[15px] font-semibold tracking-tight text-slate-100">SilentVoix</span>
+      <RouterLink to="/dashboard" class="focus-ring brand-mark px-2 py-1 cursor-pointer">
+        <span class="brand-orbit"><span></span></span>
+        <span class="text-[15px] font-medium tracking-tight text-slate-100">Silent<span class="text-brand-400">Voix</span></span>
       </RouterLink>
 
       <nav class="flex flex-col gap-6 overflow-y-auto">
@@ -189,20 +189,20 @@ const navLinkClass =
       v-if="!isFullscreenLayout"
       id="mobile-navigation"
       ref="mobileNavRef"
-      class="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-900 bg-slate-950 p-5 flex flex-col gap-6 transform transition-transform duration-200 lg:hidden overflow-y-auto"
+      class="shell-drawer fixed inset-y-0 left-0 z-50 w-72 p-5 flex flex-col gap-6 transform transition-transform duration-200 lg:hidden overflow-y-auto"
       :class="isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
       :aria-hidden="!isMobileNavOpen"
       :inert="!isMobileNavOpen || undefined"
       aria-label="Main navigation"
     >
       <div class="flex items-center justify-between">
-        <RouterLink to="/dashboard" class="focus-ring flex items-center gap-2.5 cursor-pointer">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-600 text-sm font-bold text-white">S</span>
-          <span class="text-[15px] font-semibold tracking-tight text-slate-100">SilentVoix</span>
+        <RouterLink to="/dashboard" class="focus-ring brand-mark cursor-pointer">
+          <span class="brand-orbit"><span></span></span>
+          <span class="text-[15px] font-medium tracking-tight text-slate-100">Silent<span class="text-brand-400">Voix</span></span>
         </RouterLink>
         <button
           type="button"
-          class="focus-ring p-2 rounded-md border border-slate-800 text-slate-400 hover:text-slate-100 hover:border-slate-700 transition-colors"
+          class="focus-ring icon-btn p-2 rounded-md text-slate-400 hover:text-slate-100 transition-colors"
           aria-label="Close navigation menu"
           @click="isMobileNavOpen = false"
         >
@@ -241,7 +241,7 @@ const navLinkClass =
         <button
           ref="mobileNavToggleRef"
           type="button"
-          class="focus-ring p-2 rounded-md border border-slate-800 text-slate-300 hover:text-slate-100 hover:border-slate-700 transition-colors"
+          class="focus-ring icon-btn p-2 rounded-md text-slate-300 hover:text-slate-100 transition-colors"
           aria-label="Open navigation menu"
           aria-controls="mobile-navigation"
           :aria-expanded="isMobileNavOpen"
@@ -258,16 +258,30 @@ const navLinkClass =
 
 <style>
 body {
-  @apply bg-slate-950;
+  background: rgb(5 7 14);
+}
+
+.shell-border-r {
+  border-right: 1px solid rgb(var(--border-default));
+}
+
+.shell-drawer {
+  background: rgb(var(--canvas));
+  border-right: 1px solid rgb(var(--border-default));
 }
 
 .nav-link {
   position: relative;
 }
 
+.nav-link:hover {
+  background: rgb(var(--surface-raised) / 0.5);
+}
+
 .nav-active {
-  background: rgb(var(--surface-raised) / 0.6);
+  background: rgb(var(--surface-raised) / 0.7);
   color: rgb(248 250 252);
+  box-shadow: inset 2px 0 0 rgb(var(--brand-400));
 }
 
 .nav-active svg {

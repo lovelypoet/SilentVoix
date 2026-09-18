@@ -15,7 +15,7 @@ defineProps({
 <template>
   <button
     v-bind="$attrs"
-    class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+    class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
     :class="{
       'btn-primary': variant === 'primary',
       'btn-secondary': variant === 'secondary',
@@ -30,22 +30,25 @@ defineProps({
 <style scoped>
 /*
  * All button colors resolve to the design tokens in src/style.css.
- * Nothing here hardcodes a hue. Flat surfaces, border does the separating -
- * no gradients or colored glow shadows.
+ * Primary matches the landing page's gradient CTA (button-primary/nav-cta)
+ * so the "Sign in" -> app transition feels continuous.
  */
 .btn-primary {
-  background: rgb(var(--brand-600));
+  background: linear-gradient(100deg, rgb(var(--brand-500)), rgb(var(--brand-alt-500)));
+  border: 1px solid rgb(var(--brand-400) / 0.6);
   color: white;
-  --tw-ring-color: rgb(var(--brand-500));
+  box-shadow: 0 0 20px rgb(var(--brand-400) / 0.18);
+  --tw-ring-color: rgb(var(--brand-400));
 }
 
 .btn-primary:hover,
 .btn-primary:focus-visible {
-  background: rgb(var(--brand-500));
+  transform: translateY(-1px);
+  box-shadow: 0 0 26px rgb(var(--brand-400) / 0.32);
 }
 
 .btn-secondary {
-  background: rgb(var(--surface-raised));
+  background: rgb(var(--surface-raised) / 0.6);
   color: rgb(226 232 240);
   border: 1px solid rgb(var(--border-default));
   --tw-ring-color: rgb(var(--brand-400) / 0.6);
@@ -53,7 +56,7 @@ defineProps({
 
 .btn-secondary:hover,
 .btn-secondary:focus-visible {
-  background: rgb(51 65 85);
+  border-color: rgb(var(--brand-400) / 0.5);
   color: white;
 }
 

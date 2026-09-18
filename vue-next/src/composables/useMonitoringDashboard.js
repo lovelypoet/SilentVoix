@@ -6,6 +6,13 @@ const BASE_INTERVAL_MS = 30_000
 const MIN_INTERVAL_MS = 10_000
 const MAX_INTERVAL_MS = 120_000
 
+// Stat-tile sparklines need a history, but the backend only reports current
+// values for these fields (no server-side series). Rather than fabricate a
+// trend, build a real one client-side from what each poll actually observes.
+// Capped so a long-open tab doesn't grow this unbounded.
+const HISTORY_LIMIT = 20
+const HEALTH_METRICS = ['latency_p95_ms', 'error_rate_5m', 'throughput_rpm', 'uptime_24h']
+
 const createDefaultState = () => ({
   health: {
     status: 'unknown',
@@ -63,6 +70,9 @@ export const useMonitoringDashboard = () => {
   const lastUpdated = ref(null)
   const pollIntervalMs = ref(BASE_INTERVAL_MS)
   const activeWindow = ref('24h')
+  const healthHistory = ref(
+    Object.fromEntries(HEALTH_METRICS.map((key) => [key, []]))
+  )
 
   let pollTimer = null
 
@@ -97,9 +107,14 @@ export const useMonitoringDashboard = () => {
 
   const queueNextPoll = () => {
     clearTimer()
+    // Stat-tile sparklines need a second point before they draw anything.
+    // Rather than leave them empty for a full poll cycle, seed that second
+    // reading quickly once, then fall back to the normal cadence.
+    const hasSeedHistory = HEALTH_METRICS.every((key) => healthHistory.value[key].length >= 2)
+    const delay = hasSeedHistory ? pollIntervalMs.value : Math.min(5000, pollIntervalMs.value)
     pollTimer = setTimeout(() => {
       fetchMonitoringData({ silent: true })
-    }, pollIntervalMs.value)
+    }, delay)
   }
 
   const fetchMonitoringData = async ({ silent = false } = {}) => {
@@ -118,6 +133,15 @@ export const useMonitoringDashboard = () => {
       }
       lastUpdated.value = new Date()
       applyUserDefaults()
+
+      const health = monitoring.value.health || {}
+      for (const key of HEALTH_METRICS) {
+        const value = Number(health[key])
+        if (!Number.isFinite(value)) continue
+        const series = healthHistory.value[key]
+        series.push(value)
+        if (series.length > HISTORY_LIMIT) series.shift()
+      }
     } catch (error) {
       const status = error?.response?.status
       if (status === 401) {
@@ -150,6 +174,7 @@ export const useMonitoringDashboard = () => {
     lastUpdated,
     healthTone,
     activeWindow,
+    healthHistory,
     refresh: () => fetchMonitoringData(),
   }
 }

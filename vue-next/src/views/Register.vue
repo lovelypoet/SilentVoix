@@ -47,10 +47,10 @@ const handleRegister = async () => {
 <template>
   <div class="min-h-screen register-page flex items-center justify-center p-4">
     <LoginGalaxyBackground />
-    <div class="register-card bg-slate-900 border border-slate-800 p-8 rounded-xl w-full max-w-md shadow-2xl">
+    <div class="register-card bg-[rgb(var(--surface))] border border-[rgb(var(--border-default))] p-8 rounded-xl w-full max-w-md shadow-2xl">
       <div class="flex flex-col items-center text-center mb-8">
-        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold text-white mb-3">S</span>
-        <h1 class="text-xl font-semibold tracking-tight text-slate-100">Create Account</h1>
+        <span class="brand-orbit mb-4"><span></span></span>
+        <h1 class="text-xl font-medium tracking-tight text-slate-100">Create Account</h1>
         <p class="text-sm text-slate-400 mt-1">Join SilentVoix</p>
       </div>
 
