@@ -17,3 +17,6 @@ AI/models/
 # Local model binaries placed in backend root for ad-hoc testing/import
 *.pth
 *.pt
+
+# Generated TTS audio cache (settings.TTS_CACHE_DIR)
+tts_cache/

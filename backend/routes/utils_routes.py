@@ -285,9 +285,6 @@ async def update_gesture_mapping(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update gesture mapping: {str(e)}")
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"TTS test failed: {str(e)}")
-
 @router.post("/tts/test")
 async def test_tts(
     request: Request,
@@ -299,24 +296,34 @@ async def test_tts(
     try:
         # Generate audio
         result = await tts_service.speak(text)
-        
-        # Construct playback info
-        response_data = {"result": result}
-        
-        if result.get("status") == "success" and "audio_path" in result:
+
+        # Surface the provider's actual status instead of always claiming
+        # success - a provider error (e.g. an unavailable TTS engine) was
+        # previously masked, so the frontend never saw the real failure.
+        if result.get("status") != "success":
+            raise HTTPException(
+                status_code=502,
+                detail=result.get("message", "TTS provider failed to generate audio")
+            )
+
+        response_data = {"status": "success", "result": result}
+
+        if "audio_path" in result:
             # Return a relative URL so frontend origin/proxy can resolve correctly
             # in both docker-compose nginx and Vite dev proxy environments.
             filename = os.path.basename(result["audio_path"])
             response_data["audio_url"] = f"/static/tts/{filename}"
-            
+
             # Play on laptop if requested (optional/debug)
             if play_on_laptop:
                 try:
                     await tts_service.play_on_laptop(result["audio_path"])
                 except Exception as e:
                     response_data["laptop_playback_error"] = str(e)
-            
-        return {"status": "success", **response_data}
+
+        return response_data
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS test failed: {str(e)}")
 

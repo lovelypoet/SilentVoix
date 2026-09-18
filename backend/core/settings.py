@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     # TTS config
     TTS_ENABLED: bool = Field(True)
-    TTS_PROVIDER: str = Field("pyttsx3")
+    TTS_PROVIDER: str = Field("gtts")
     TTS_VOICE: str = Field("ur-IN-SalmanNeural")
     TTS_RATE: int = Field(150)
     TTS_VOLUME: float = Field(2.0)
