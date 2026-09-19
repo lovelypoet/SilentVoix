@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import api from '../services/api'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseInput from '../components/base/BaseInput.vue'
@@ -60,6 +60,7 @@ const handleRegister = async () => {
           label="Email"
           type="email"
           placeholder="you@example.com"
+          autocomplete="username"
           required
         />
 
@@ -68,6 +69,8 @@ const handleRegister = async () => {
           label="Password"
           type="password"
           placeholder="At least 8 characters"
+          autocomplete="new-password"
+          minlength="8"
           required
         />
 
@@ -76,14 +79,15 @@ const handleRegister = async () => {
           label="Confirm Password"
           type="password"
           placeholder="Re-enter password"
+          autocomplete="new-password"
           required
         />
 
-        <div v-if="error" class="text-danger-500 text-sm bg-danger-500/10 p-3 rounded-lg border border-danger-500/20">
+        <div v-if="error" role="alert" class="text-danger-500 text-sm bg-danger-500/10 p-3 rounded-lg border border-danger-500/20">
           {{ error }}
         </div>
 
-        <div v-if="success" class="text-success-300 text-sm bg-success-500/10 p-3 rounded-lg border border-success-500/20">
+        <div v-if="success" role="status" class="text-success-300 text-sm bg-success-500/10 p-3 rounded-lg border border-success-500/20">
           {{ success }}
         </div>
 
@@ -99,9 +103,9 @@ const handleRegister = async () => {
 
       <div class="mt-6 text-center text-sm text-slate-400">
         Already have an account?
-        <button class="text-brand-400 hover:text-brand-300 underline underline-offset-2 ml-1" @click="router.push('/login')">
+        <RouterLink to="/login" class="focus-ring text-brand-400 hover:text-brand-300 underline underline-offset-2 ml-1">
           Sign In
-        </button>
+        </RouterLink>
       </div>
     </div>
   </div>

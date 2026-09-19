@@ -40,7 +40,13 @@ app.use(createPinia())
 app.use(router)
 app.use(PrimeVue, {
   theme: {
-    preset: MyCustomPreset
+    preset: MyCustomPreset,
+    // Matches the attribute src/stores/theme.js sets on <html>, so Toast /
+    // Dialog / Popover switch their own light-dark tokens in sync with the
+    // rest of the app instead of staying stuck on PrimeVue's light default.
+    options: {
+      darkModeSelector: '[data-theme="dark"]'
+    }
   }
 })
 app.use(ToastService)

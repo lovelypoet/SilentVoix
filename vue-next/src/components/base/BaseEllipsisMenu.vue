@@ -14,6 +14,12 @@ const props = defineProps({
   menuClass: {
     type: String,
     default: 'w-44 py-1'
+  },
+  // Screen readers only ever hear "…" otherwise - name what the menu is for
+  // ("Row actions", "Model actions") when more than one lives on a page.
+  label: {
+    type: String,
+    default: 'More actions'
   }
 })
 
@@ -61,8 +67,11 @@ const handleHide = () => {
 <template>
   <button
     type="button"
-    class="h-8 w-8 rounded-md border border-slate-700 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+    class="focus-ring icon-btn h-8 w-8 rounded-md text-slate-300 hover:text-slate-100 disabled:opacity-50"
     :disabled="disabled"
+    :aria-label="label"
+    aria-haspopup="menu"
+    :aria-expanded="isOpen"
     @click.stop="toggle"
   >
     &hellip;
@@ -71,7 +80,7 @@ const handleHide = () => {
     ref="panelRef"
     :dismissable="true"
     :show-close-icon="false"
-    :class="panelClass || '!bg-slate-950 !border !border-slate-700 !text-slate-100 !shadow-2xl'"
+    :class="panelClass || '!bg-[rgb(var(--surface))] !border !border-[rgb(var(--border-default))] !text-slate-100 !shadow-2xl'"
     @hide="handleHide"
   >
     <div :class="menuClass">

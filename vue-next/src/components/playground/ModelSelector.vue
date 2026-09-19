@@ -46,7 +46,7 @@ onMounted(loadModels)
       <label class="text-sm text-slate-300">
         Switch Classifier
         <div class="mt-1 flex flex-col gap-2 md:flex-row">
-          <select v-model="selectedId" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="selectedId" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="">Select a classifier...</option>
             <option v-for="model in store.savedModels.filter(m => m.metadata?.model_family !== 'yolo-pose')" :key="model.id" :value="model.id">
               {{ model.display_name || model.id }} | {{ model.metadata?.export_format || '--' }}

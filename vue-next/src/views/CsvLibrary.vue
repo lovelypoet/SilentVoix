@@ -6,6 +6,7 @@ import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
+import BaseModal from '../components/base/BaseModal.vue'
 import api from '../services/api'
 const toast = useToast()
 const route = useRoute()
@@ -551,7 +552,7 @@ watch([compatibleOnly, pipeline, mode], () => {
       <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
         <label class="text-sm text-slate-300 md:col-span-1">
           Pipeline
-          <select v-model="pipeline" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="pipeline" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="early">Early</option>
             <option value="late">Late</option>
           </select>
@@ -559,7 +560,7 @@ watch([compatibleOnly, pipeline, mode], () => {
 
         <label class="text-sm text-slate-300 md:col-span-1">
           Mode
-          <select v-model="mode" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="mode" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="single">Single</option>
             <option value="dual">Dual</option>
           </select>
@@ -567,14 +568,14 @@ watch([compatibleOnly, pipeline, mode], () => {
 
         <label class="text-sm text-slate-300 md:col-span-1">
           Schema
-          <select v-model="schemaFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="schemaFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option v-for="item in schemaOptions" :key="item" :value="item">{{ item }}</option>
           </select>
         </label>
 
         <label class="text-sm text-slate-300 md:col-span-1">
           Validation
-          <select v-model="validationFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="validationFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="all">all</option>
             <option value="pass">pass</option>
             <option value="warning">warning</option>
@@ -585,7 +586,7 @@ watch([compatibleOnly, pipeline, mode], () => {
 
         <label class="text-sm text-slate-300 md:col-span-1">
           Sort
-          <select v-model="sortBy" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="sortBy" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="manual">manual order</option>
             <option value="modified_desc">modified: newest</option>
             <option value="modified_asc">modified: oldest</option>
@@ -771,45 +772,44 @@ watch([compatibleOnly, pipeline, mode], () => {
       </div>
     </BaseCard>
 
-    <div v-if="previewModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closePreviewModal">
-      <div class="w-full max-w-5xl rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-white">CSV Preview</h2>
-          <BaseBtn variant="secondary" @click="closePreviewModal">Close</BaseBtn>
+    <BaseModal
+      :model-value="previewModalOpen"
+      title="CSV Preview"
+      max-width="max-w-5xl"
+      @update:model-value="(v) => !v && closePreviewModal()"
+    >
+      <p v-if="previewLoading" role="status" class="text-slate-400">Loading preview...</p>
+      <p v-else-if="previewError" role="alert" class="text-danger-300">{{ previewError }}</p>
+      <p v-else-if="!previewData" class="text-slate-500">No preview data.</p>
+      <div v-else>
+        <div class="text-sm text-slate-300 mb-3">
+          {{ previewData.name }} | schema: {{ previewData.schema_id }} | check: {{ previewData.schema_check }}
         </div>
-        <p v-if="previewLoading" class="text-slate-400">Loading preview...</p>
-        <p v-else-if="previewError" class="text-danger-300">{{ previewError }}</p>
-        <p v-else-if="!previewData" class="text-slate-500">No preview data.</p>
-        <div v-else>
-          <div class="text-sm text-slate-300 mb-3">
-            {{ previewData.name }} | schema: {{ previewData.schema_id }} | check: {{ previewData.schema_check }}
-          </div>
-          <div class="max-h-[60vh] overflow-x-auto overflow-y-auto border border-slate-800 rounded">
-            <table class="w-full text-xs">
-              <thead>
-                <tr class="bg-slate-900 text-slate-400">
-                  <th v-for="h in previewData.header" :key="h" class="px-2 py-2 text-left">{{ h }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, idx) in previewData.rows" :key="`p-${idx}`" class="border-t border-slate-900">
-                  <td v-for="h in previewData.header" :key="`c-${idx}-${h}`" class="px-2 py-1 text-slate-300">{{ row[h] }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="max-h-[60vh] overflow-x-auto overflow-y-auto border border-slate-800 rounded">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-900 text-slate-400">
+                <th v-for="h in previewData.header" :key="h" class="px-2 py-2 text-left">{{ h }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, idx) in previewData.rows" :key="`p-${idx}`" class="border-t border-slate-900">
+                <td v-for="h in previewData.header" :key="`c-${idx}-${h}`" class="px-2 py-1 text-slate-300">{{ row[h] }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+    </BaseModal>
 
-    <div v-if="statsModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closeStatsModal">
-      <div class="w-full max-w-3xl rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-white">CSV Stats</h2>
-          <BaseBtn variant="secondary" @click="closeStatsModal">Close</BaseBtn>
-        </div>
-        <p v-if="statsLoading" class="text-slate-400">Loading stats...</p>
-        <p v-else-if="statsError" class="text-danger-300">{{ statsError }}</p>
+    <BaseModal
+      :model-value="statsModalOpen"
+      title="CSV Stats"
+      max-width="max-w-3xl"
+      @update:model-value="(v) => !v && closeStatsModal()"
+    >
+        <p v-if="statsLoading" role="status" class="text-slate-400">Loading stats...</p>
+        <p v-else-if="statsError" role="alert" class="text-danger-300">{{ statsError }}</p>
         <p v-else-if="!statsData" class="text-slate-500">No stats data.</p>
         <div v-else class="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-1">
           <div class="text-slate-300">
@@ -909,56 +909,64 @@ watch([compatibleOnly, pipeline, mode], () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </BaseModal>
 
-    <div v-if="confirmDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
-        <h3 class="text-lg font-semibold text-white">Confirm Permanent Delete</h3>
-        <p class="mt-2 text-sm text-slate-300">
-          Delete <span class="font-semibold text-white">{{ confirmFileName }}</span> permanently. This cannot be undone.
-        </p>
-        <div class="mt-3">
-          <label class="block text-xs text-slate-400 mb-1">Type exact file name to confirm</label>
-          <input
-            v-model="confirmTypedName"
-            type="text"
-            class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
-            :placeholder="confirmFileName"
-          />
-        </div>
-        <div class="mt-5 flex justify-end gap-2">
-          <BaseBtn variant="secondary" @click="closeConfirmDialog">Cancel</BaseBtn>
-          <BaseBtn variant="danger" @click="confirmDialogSubmit">
-            Delete Permanently
-          </BaseBtn>
-        </div>
+    <BaseModal
+      :model-value="confirmDialogOpen"
+      title="Confirm Permanent Delete"
+      max-width="max-w-lg"
+      @update:model-value="(v) => !v && closeConfirmDialog()"
+    >
+      <p class="mt-2 text-sm text-slate-300">
+        Delete <span class="font-semibold text-slate-100">{{ confirmFileName }}</span> permanently. This cannot be undone.
+      </p>
+      <div class="mt-3">
+        <label for="csv-confirm-delete-name" class="block text-xs text-slate-400 mb-1">Type exact file name to confirm</label>
+        <input
+          id="csv-confirm-delete-name"
+          v-model="confirmTypedName"
+          type="text"
+          class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+          :placeholder="confirmFileName"
+          autocomplete="off"
+        />
       </div>
-    </div>
 
-    <div v-if="reviewDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" @click.self="closeReviewDialog">
-      <div class="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
-        <h3 class="text-lg font-semibold text-white">Save Review</h3>
-        <p class="mt-2 text-sm text-slate-300">
-          Mark <span class="font-semibold text-white">{{ reviewFileName }}</span> as
-          <span class="font-semibold text-white">{{ reviewLabel(reviewDecision) }}</span>.
-        </p>
-        <div class="mt-3">
-          <label class="block text-xs text-slate-400 mb-1">Review notes (optional)</label>
-          <textarea
-            v-model="reviewNotes"
-            rows="4"
-            class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
-            placeholder="Explain why this dataset was approved, flagged, or overridden."
-          />
-        </div>
-        <div class="mt-5 flex justify-end gap-2">
-          <BaseBtn variant="secondary" @click="closeReviewDialog">Cancel</BaseBtn>
-          <BaseBtn variant="primary" :disabled="reviewingByName[reviewFileName]" @click="submitReviewDialog">
-            {{ reviewingByName[reviewFileName] ? 'Saving...' : 'Save Review' }}
-          </BaseBtn>
-        </div>
+      <template #footer>
+        <BaseBtn variant="secondary" @click="closeConfirmDialog">Cancel</BaseBtn>
+        <BaseBtn variant="danger" :disabled="confirmTypedName !== confirmFileName" @click="confirmDialogSubmit">
+          Delete Permanently
+        </BaseBtn>
+      </template>
+    </BaseModal>
+
+    <BaseModal
+      :model-value="reviewDialogOpen"
+      title="Save Review"
+      max-width="max-w-lg"
+      @update:model-value="(v) => !v && closeReviewDialog()"
+    >
+      <p class="mt-2 text-sm text-slate-300">
+        Mark <span class="font-semibold text-slate-100">{{ reviewFileName }}</span> as
+        <span class="font-semibold text-slate-100">{{ reviewLabel(reviewDecision) }}</span>.
+      </p>
+      <div class="mt-3">
+        <label for="csv-review-notes" class="block text-xs text-slate-400 mb-1">Review notes (optional)</label>
+        <textarea
+          id="csv-review-notes"
+          v-model="reviewNotes"
+          rows="4"
+          class="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+          placeholder="Explain why this dataset was approved, flagged, or overridden."
+        />
       </div>
-    </div>
+
+      <template #footer>
+        <BaseBtn variant="secondary" @click="closeReviewDialog">Cancel</BaseBtn>
+        <BaseBtn variant="primary" :disabled="reviewingByName[reviewFileName]" @click="submitReviewDialog">
+          {{ reviewingByName[reviewFileName] ? 'Saving...' : 'Save Review' }}
+        </BaseBtn>
+      </template>
+    </BaseModal>
   </div>
 </template>

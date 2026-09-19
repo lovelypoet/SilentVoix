@@ -1,5 +1,15 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import {
+  PhInfo,
+  PhLaptop,
+  PhUploadSimple,
+  PhMusicNotes,
+  PhFileAudio,
+  PhSpeakerHigh,
+  PhTrash,
+  PhMicrophone
+} from '@phosphor-icons/vue'
 import api from '../services/api'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
@@ -180,7 +190,7 @@ const uploadFile = async (file) => {
             v-for="tab in ['tts', 'library', 'live']"
             :key="tab"
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
-            :class="activeTab === tab ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-100'"
+            :class="activeTab === tab ? 'bg-brand-600 text-slate-100' : 'text-slate-400 hover:text-slate-100'"
             @click="activeTab = tab"
           >
             {{ tab === 'tts' ? 'Text to Speech' : tab === 'library' ? 'Audio Library' : 'Live Voice' }}
@@ -192,7 +202,7 @@ const uploadFile = async (file) => {
     <!-- Error Alert -->
     <div v-if="error" class="bg-danger-500/10 border border-danger-500/20 text-danger-400 p-4 rounded-lg flex justify-between items-center relative">
       <span>{{ error }}</span>
-      <button class="text-sm hover:text-white absolute right-4" @click="error = null">&times;</button>
+      <button class="text-sm hover:text-slate-100 absolute right-4" @click="error = null">&times;</button>
     </div>
 
     <!-- ===================== TTS TAB ===================== -->
@@ -217,9 +227,9 @@ const uploadFile = async (file) => {
                  Device Default
                </button>
             </div>
-            <div class="flex items-center text-xs text-slate-500">
-                <i class="ph ph-info mr-1"></i>
-                {{ ttsEngine === 'gtts' ? 'It\'s on lystiger' : 'It\'s on your device' }}
+            <div class="flex items-center gap-1 text-xs text-slate-500">
+                <PhInfo size="14" aria-hidden="true" />
+                {{ ttsEngine === 'gtts' ? 'Runs on the server' : 'Runs on your device' }}
             </div>
           </div>
 
@@ -229,7 +239,7 @@ const uploadFile = async (file) => {
             <textarea 
               v-model="ttsText"
               rows="4"
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all resize-none"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all resize-none"
               placeholder="Type something here (e.g., 'Hello, how can I help you?')..."
             ></textarea>
           </div>
@@ -237,8 +247,8 @@ const uploadFile = async (file) => {
           <!-- Actions -->
           <div class="flex items-center gap-4">
             <BaseBtn :disabled="!ttsText || isLoading" class="flex items-center gap-2" @click="speakText">
-              <i class="ph ph-laptop text-lg"></i>
-              Play
+              <PhLaptop size="18" aria-hidden="true" />
+              {{ isLoading ? 'Generating...' : 'Play' }}
             </BaseBtn>
             
             <div v-if="ttsStatus" class="text-sm text-brand-300 animate-pulse">
@@ -263,10 +273,10 @@ const uploadFile = async (file) => {
         <input ref="fileInput" type="file" class="hidden" accept="audio/*" @change="handleFileUpload">
         <div class="flex flex-col items-center gap-3">
           <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-brand-500/20 transition-colors">
-            <i class="ph ph-upload-simple text-2xl text-slate-400 group-hover:text-brand-300"></i>
+            <PhUploadSimple size="24" class="text-slate-400 group-hover:text-brand-300" aria-hidden="true" />
           </div>
           <div>
-            <h3 class="font-medium text-white mb-1">Upload Audio File</h3>
+            <h3 class="font-medium text-slate-100 mb-1">Upload Audio File</h3>
             <p class="text-sm text-slate-500">Drag & drop or click to browse (MP3, WAV)</p>
           </div>
         </div>
@@ -275,9 +285,9 @@ const uploadFile = async (file) => {
       <!-- File List -->
       <div v-if="audioFiles.length === 0 && !isLoading" class="text-center py-12">
         <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="ph ph-music-notes text-3xl text-slate-500"></i>
+            <PhMusicNotes size="32" class="text-slate-500" aria-hidden="true" />
         </div>
-        <h3 class="text-lg font-medium text-white mb-1">No audio files found</h3>
+        <h3 class="text-lg font-medium text-slate-100 mb-1">No audio files found</h3>
         <p class="text-slate-500">Upload a file to get started</p>
       </div>
 
@@ -286,10 +296,10 @@ const uploadFile = async (file) => {
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
               <div class="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-300">
-                <i class="ph ph-file-audio text-xl"></i>
+                <PhFileAudio size="20" aria-hidden="true" />
               </div>
               <div>
-                <h3 class="font-medium text-white group-hover:text-brand-200 transition-colors">{{ file.filename }}</h3>
+                <h3 class="font-medium text-slate-100 group-hover:text-brand-200 transition-colors">{{ file.filename }}</h3>
                 <div class="text-xs text-slate-500 flex items-center gap-2">
                   <span>{{ new Date(file.upload_time).toLocaleDateString() }}</span>
                   <span>•</span>
@@ -299,14 +309,14 @@ const uploadFile = async (file) => {
             </div>
             
             <div class="flex items-center gap-2">
-              <button class="p-2 rounded-lg hover:bg-brand-500/20 text-slate-400 hover:text-brand-300 transition-colors" title="Play on Glove" @click="playOnGlove(file.filename)">
-                <i class="ph ph-speaker-high text-xl"></i>
+              <button type="button" class="focus-ring p-2 rounded-lg hover:bg-brand-500/20 text-slate-400 hover:text-brand-300 transition-colors" title="Play on Glove" :aria-label="`Play ${file.filename} on glove`" @click="playOnGlove(file.filename)">
+                <PhSpeakerHigh size="20" aria-hidden="true" />
               </button>
-              <button class="p-2 rounded-lg hover:bg-brand-500/20 text-slate-400 hover:text-brand-300 transition-colors" title="Play on Laptop" @click="playOnLaptop(file.filename)">
-                <i class="ph ph-laptop text-xl"></i>
+              <button type="button" class="focus-ring p-2 rounded-lg hover:bg-brand-500/20 text-slate-400 hover:text-brand-300 transition-colors" title="Play on Laptop" :aria-label="`Play ${file.filename} on laptop`" @click="playOnLaptop(file.filename)">
+                <PhLaptop size="20" aria-hidden="true" />
               </button>
-              <button class="p-2 rounded-lg hover:bg-danger-500/20 text-slate-400 hover:text-danger-400 transition-colors" title="Delete" @click="deleteFile(file.filename)">
-                <i class="ph ph-trash text-xl"></i>
+              <button type="button" class="focus-ring p-2 rounded-lg hover:bg-danger-500/20 text-slate-400 hover:text-danger-400 transition-colors" title="Delete" :aria-label="`Delete ${file.filename}`" @click="deleteFile(file.filename)">
+                <PhTrash size="20" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -317,9 +327,9 @@ const uploadFile = async (file) => {
     <!-- ===================== LIVE VOICE TAB (Placeholder) ===================== -->
     <div v-if="activeTab === 'live'" class="text-center py-20">
       <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-        <i class="ph ph-microphone text-4xl text-slate-500"></i>
+        <PhMicrophone size="40" class="text-slate-500" aria-hidden="true" />
       </div>
-      <h2 class="text-xl font-bold text-white mb-2">Live Speech Recognition</h2>
+      <h2 class="text-xl font-bold text-slate-100 mb-2">Live Speech Recognition</h2>
       <p class="text-slate-400 max-w-md mx-auto">
         This feature will allow you to stream audio from your microphone directly to the backend for real-time transcription.
       </p>

@@ -51,7 +51,7 @@ const openCorrectionDialog = () => {
 
     <div v-if="store.prediction" class="flex items-end justify-between">
        <div>
-          <p class="text-2xl font-bold text-white">
+          <p class="text-2xl font-bold text-slate-100">
             {{ store.prediction.label }}
           </p>
           <p class="text-xs text-slate-500 mt-1">
@@ -100,7 +100,7 @@ const openCorrectionDialog = () => {
         </p>
         <div class="space-y-2">
           <label class="text-xs font-bold text-slate-500 uppercase">Select True Gesture</label>
-          <select v-model="correctedLabel" class="w-full bg-slate-900 text-white rounded border border-slate-700 px-3 py-2 outline-none">
+          <select v-model="correctedLabel" class="w-full bg-slate-900 text-slate-100 rounded border border-slate-700 px-3 py-2 outline-none">
             <option value="" disabled>-- Select Gesture --</option>
             <option v-for="l in store.activeModel?.metadata?.labels || []" :key="l" :value="l">{{ l }}</option>
             <option value="Unknown">Other / Not in list</option>

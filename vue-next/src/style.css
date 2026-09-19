@@ -109,6 +109,82 @@
   --surface-raised: 21 27 48;
   --border-subtle: 163 177 214 / 0.1;
   --border-default: 163 177 214 / 0.16;
+
+  /*
+   * Tailwind's own slate scale, remapped to CSS variables (values below are
+   * Tailwind's real slate-50..950 defaults, so dark mode - the default - is
+   * pixel-identical to a plain Tailwind app). tailwind.config.js points the
+   * `slate` color family at these vars, so every existing `bg-slate-900`,
+   * `text-slate-400`, `border-slate-700` etc. across the app - hundreds of
+   * usages - responds to the [data-theme="light"] override below with zero
+   * per-file changes. This is the mechanism the light theme rides on.
+   */
+  --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Light theme
+ * ---------------------------------------------------------------------------
+ * Dark is the default/baseline (unauthenticated marketing page and the
+ * login/register "galaxy" moment stay dark-only, matching a fixed brand
+ * moment many products keep for that hero/auth experience). This block is
+ * the entire light theme: every slate-* shade is the numeric inverse of its
+ * dark value (50<->950, 100<->900, ...) - the standard technique (shadcn/ui,
+ * Radix, Primer all use it) that keeps "text-slate-100" meaning "the
+ * highest-contrast text color" in both modes rather than a fixed lightness.
+ * Brand/status accents get the same treatment for the shades used as text,
+ * since the dark-mode values (tuned to glow on near-black) fail contrast as
+ * text on a light surface.
+ */
+[data-theme='light'] {
+  --slate-50: 2 6 23;
+  --slate-100: 15 23 42;
+  --slate-200: 30 41 59;
+  --slate-300: 51 65 85;
+  --slate-400: 71 85 105;
+  --slate-500: 100 116 139;
+  --slate-600: 148 163 184;
+  --slate-700: 203 213 225;
+  --slate-800: 226 232 240;
+  --slate-900: 241 245 249;
+  --slate-950: 248 250 252;
+
+  --canvas: 255 255 255;
+  --surface: 246 247 250;
+  --surface-raised: 236 238 243;
+  --border-subtle: 15 23 42 / 0.06;
+  --border-default: 15 23 42 / 0.12;
+
+  /* Darker steps of each accent so text/icons clear contrast on a light surface. */
+  --brand-300: 8 145 178;
+  --brand-400: 14 116 144;
+  --brand-500: 8 105 130;
+
+  --brand-alt-300: 124 58 237;
+  --brand-alt-400: 109 40 217;
+
+  --brand-pink-300: 219 39 119;
+  --brand-pink-400: 190 24 93;
+
+  --success-300: 5 150 105;
+  --success-400: 4 120 87;
+
+  --warning-300: 180 83 9;
+  --warning-400: 146 64 14;
+
+  --danger-300: 225 29 72;
+  --danger-400: 190 18 60;
 }
 
 .app-bg {
@@ -221,7 +297,7 @@
 
 .status-badge-neutral {
   background: rgb(var(--surface-raised) / 0.6);
-  color: rgb(148 163 184);
+  color: rgb(var(--slate-400));
   border-color: rgb(var(--border-default));
 }
 
@@ -234,7 +310,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: rgb(148 163 184);
+  color: rgb(var(--slate-400));
   font-size: 0.6875rem;
   letter-spacing: 0.15em;
   font-weight: 600;

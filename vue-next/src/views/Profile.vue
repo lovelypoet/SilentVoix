@@ -228,8 +228,8 @@ const handleLogout = async () => {
       </div>
 
       <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <BaseInput v-model="form.operator_preferences.quiet_hours.start" label="Quiet Start" placeholder="22:00" />
-        <BaseInput v-model="form.operator_preferences.quiet_hours.end" label="Quiet End" placeholder="07:00" />
+        <BaseInput v-model="form.operator_preferences.quiet_hours.start" label="Quiet Start" type="time" />
+        <BaseInput v-model="form.operator_preferences.quiet_hours.end" label="Quiet End" type="time" />
         <BaseInput v-model="form.operator_preferences.quiet_hours.timezone" label="Timezone" placeholder="UTC" />
       </div>
     </BaseCard>
@@ -250,6 +250,9 @@ const handleLogout = async () => {
           v-model="form.operator_preferences.dashboard_defaults.refresh_seconds"
           label="Refresh Interval (sec)"
           type="number"
+          min="10"
+          max="120"
+          hint="Clamped to 10-120s"
         />
         <BaseInput v-model="form.operator_preferences.dashboard_defaults.segment_filter" label="Segment Filter" />
       </div>

@@ -197,7 +197,7 @@ const supervisors = [
     </BaseCard>
 
     <div class="space-y-3">
-      <h3 class="text-lg font-semibold text-slate-100 text-center">Main Members</h3>
+      <h2 class="text-lg font-semibold text-slate-100 text-center">Main Members</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in mainMembers"
@@ -219,7 +219,7 @@ const supervisors = [
     </div>
 
     <div class="space-y-3">
-      <h3 class="text-lg font-semibold text-slate-100 text-center">Support Team</h3>
+      <h2 class="text-lg font-semibold text-slate-100 text-center">Support Team</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in supportMembers"
@@ -241,7 +241,7 @@ const supervisors = [
     </div>
 
     <div class="space-y-3">
-      <h3 class="text-lg font-semibold text-slate-100 text-center">Supervisor</h3>
+      <h2 class="text-lg font-semibold text-slate-100 text-center">Supervisor</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <BaseCard
           v-for="member in supervisors"

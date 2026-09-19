@@ -84,7 +84,9 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
     >
       <template #actions>
         <BaseBtn variant="secondary" @click="gotoModelLibrary">Open Model Library</BaseBtn>
-        <BaseBtn variant="primary" @click="refresh">Refresh Now</BaseBtn>
+        <BaseBtn variant="primary" :disabled="isLoading" @click="refresh">
+          {{ isLoading ? 'Refreshing...' : 'Refresh Now' }}
+        </BaseBtn>
       </template>
     </BasePageHeader>
 
@@ -97,8 +99,8 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         </div>
         <span class="status-badge" :class="overviewBadgeClass">{{ statusLabel }}</span>
       </div>
-      <p v-if="refreshError" class="text-danger-300 text-sm mt-3">{{ refreshError }}</p>
-      <p v-if="isLoading" class="text-slate-400 text-sm mt-3">Loading monitoring data...</p>
+      <p v-if="refreshError" role="alert" class="text-danger-300 text-sm mt-3">{{ refreshError }}</p>
+      <p v-if="isLoading" role="status" class="text-slate-400 text-sm mt-3">Loading monitoring data...</p>
     </BaseCard>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

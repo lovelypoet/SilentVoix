@@ -234,15 +234,15 @@ onUnmounted(() => {
       <div class="flex items-center gap-4">
         <BaseBtn variant="secondary" class="px-3" @click="goFusionWorkspace">&larr;</BaseBtn>
         <div>
-          <h1 class="text-xl font-bold text-white leading-tight">Dataset Aligner</h1>
+          <h1 class="text-xl font-bold text-slate-100 leading-tight">Dataset Aligner</h1>
           <p class="text-[11px] text-slate-500 uppercase font-bold tracking-widest">Time-Series Surgeon</p>
         </div>
       </div>
 
       <div class="flex items-center gap-3">
          <div class="inline-flex rounded-md border border-slate-700 overflow-hidden bg-slate-900 h-9">
-            <button class="px-4 text-xs font-bold uppercase transition-colors" :class="mode === 'single' ? 'bg-brand-500 text-slate-950' : 'text-slate-400 hover:text-white'" @click="mode = 'single'">Single</button>
-            <button class="px-4 text-xs font-bold uppercase border-l border-slate-700 transition-colors" :class="mode === 'dual' ? 'bg-brand-500 text-slate-950' : 'text-slate-400 hover:text-white'" @click="mode = 'dual'">Dual</button>
+            <button class="px-4 text-xs font-bold uppercase transition-colors" :class="mode === 'single' ? 'bg-brand-500 text-slate-950' : 'text-slate-400 hover:text-slate-100'" @click="mode = 'single'">Single</button>
+            <button class="px-4 text-xs font-bold uppercase border-l border-slate-700 transition-colors" :class="mode === 'dual' ? 'bg-brand-500 text-slate-950' : 'text-slate-400 hover:text-slate-100'" @click="mode = 'dual'">Dual</button>
          </div>
          <BaseBtn variant="secondary" class="h-9 text-xs" @click="openCsvLibrary">Select Datasets</BaseBtn>
          <BaseBtn variant="primary" class="h-9 text-xs" :disabled="!isCompletePair || isExporting" @click="exportGoldenFusion">

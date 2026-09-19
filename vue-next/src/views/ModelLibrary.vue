@@ -4,6 +4,7 @@ import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
+import BaseModal from '../components/base/BaseModal.vue'
 import { useToast } from 'primevue/usetoast'
 import api from '../services/api'
 
@@ -553,26 +554,26 @@ onMounted(() => {
             v-model="searchQuery"
             type="text"
             placeholder="Name or filename..."
-            class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white"
+            class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100"
           >
         </label>
         <label class="block">
           <span class="text-xs text-slate-400">Family</span>
-          <select v-model="familyFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="familyFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="all">All</option>
             <option v-for="family in families" :key="family" :value="family">{{ family }}</option>
           </select>
         </label>
         <label class="block">
           <span class="text-xs text-slate-400">Format</span>
-          <select v-model="formatFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="formatFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="all">All</option>
             <option v-for="format in formats" :key="format" :value="format">{{ format }}</option>
           </select>
         </label>
         <label class="block">
           <span class="text-xs text-slate-400">Status</span>
-          <select v-model="statusFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="statusFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -583,7 +584,7 @@ onMounted(() => {
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
         <label class="block">
           <span class="text-xs text-slate-400">Sort by</span>
-          <select v-model="sortKey" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model="sortKey" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option value="manual">Manual Order</option>
             <option value="created_at">Created Date</option>
             <option value="name">Name</option>
@@ -597,14 +598,14 @@ onMounted(() => {
         </label>
         <label class="block">
           <span class="text-xs text-slate-400">Direction</span>
-          <select v-model="sortDir" :disabled="isManualSort" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white disabled:opacity-50">
+          <select v-model="sortDir" :disabled="isManualSort" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 disabled:opacity-50">
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
           </select>
         </label>
         <label class="block">
           <span class="text-xs text-slate-400">Rows per page</span>
-          <select v-model.number="pageSize" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+          <select v-model.number="pageSize" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
             <option :value="5">5</option>
             <option :value="10">10</option>
             <option :value="20">20</option>
@@ -742,129 +743,105 @@ onMounted(() => {
       </div>
     </BaseCard>
 
-    <div
-      v-if="deleteConfirmOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
-      @click.self="closeDeleteConfirm"
+    <BaseModal
+      :model-value="deleteConfirmOpen"
+      title="Delete Model"
+      @update:model-value="(v) => !v && closeDeleteConfirm()"
     >
-      <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-950 p-6 shadow-2xl relative">
-        <button
-          type="button"
-          class="absolute top-4 right-4 text-slate-400 hover:text-white"
-          @click="closeDeleteConfirm"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+      <p class="text-sm text-slate-300 mb-4">
+        You are about to permanently delete
+        <span class="font-semibold text-slate-100">{{ deleteConfirmModelName }}</span>.
+        This action cannot be undone.
+      </p>
 
-        <h2 class="text-xl font-semibold text-white mb-2">
+      <label for="delete-confirm-name" class="text-xs text-slate-400 mb-2 block">
+        To confirm, type the model name exactly as shown:
+      </label>
+      <p class="text-xs font-mono text-slate-200 bg-slate-900/80 border border-slate-700 rounded px-2 py-1 mb-3 break-all">
+        {{ deleteConfirmModelName || '—' }}
+      </p>
+
+      <input
+        id="delete-confirm-name"
+        v-model="deleteConfirmTypedName"
+        type="text"
+        class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+        placeholder="Type the model name to confirm..."
+        autocomplete="off"
+      >
+
+      <template #footer>
+        <BaseBtn variant="secondary" @click="closeDeleteConfirm">
+          Cancel
+        </BaseBtn>
+        <BaseBtn
+          variant="danger"
+          :disabled="!deleteConfirmTypedName"
+          @click="submitDeleteConfirm"
+        >
           Delete Model
-        </h2>
-        <p class="text-sm text-slate-300 mb-4">
-          You are about to permanently delete
-          <span class="font-semibold text-white">{{ deleteConfirmModelName }}</span>.
-          This action cannot be undone.
-        </p>
-
-        <p class="text-xs text-slate-400 mb-2">
-          To confirm, type the model name exactly as shown:
-        </p>
-        <p class="text-xs font-mono text-slate-200 bg-slate-900/80 border border-slate-700 rounded px-2 py-1 mb-3 break-all">
-          {{ deleteConfirmModelName || '—' }}
-        </p>
-
-        <input
-          v-model="deleteConfirmTypedName"
-          type="text"
-          class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-400 mb-4"
-          placeholder="Type the model name to confirm..."
-          autocomplete="off"
-        >
-
-        <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
-          <BaseBtn variant="secondary" @click="closeDeleteConfirm">
-            Cancel
-          </BaseBtn>
-          <BaseBtn
-            variant="danger"
-            :disabled="!deleteConfirmTypedName"
-            @click="submitDeleteConfirm"
-          >
-            Delete Model
-          </BaseBtn>
-        </div>
-      </div>
-    </div>
+        </BaseBtn>
+      </template>
+    </BaseModal>
 
     <!-- Upload Model Modal -->
-    <div v-if="showUploadModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto" @click.self="closeUploadModal">
-      <div class="w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-950 p-6 shadow-2xl relative">
-        <button @click="closeUploadModal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+    <BaseModal
+      :model-value="showUploadModal"
+      title="Upload Model Package"
+      max-width="max-w-2xl"
+      @update:model-value="(v) => !v && closeUploadModal()"
+    >
+      <p class="text-sm text-slate-400 mb-6 font-medium">Accepts .tflite, .keras, .h5, .pth, or .pt files with accompanying metadata contract.</p>
 
-        <h2 class="text-2xl font-bold text-white mb-2">Upload Model Package</h2>
-        <p class="text-sm text-slate-400 mb-6 font-medium">Accepts .tflite, .keras, .h5, .pth, or .pt files with accompanying metadata contract.</p>
+      <div class="space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-300">Model File (required)</span>
+            <input type="file" @change="onPickModelFile" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
+          </label>
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-300">Metadata JSON (required)</span>
+            <input type="file" @change="onPickMetadataFile" accept=".json,application/json" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
+          </label>
+        </div>
 
-        <div class="space-y-5">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="mt-2 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+          <label class="flex items-center gap-3 cursor-pointer group">
+            <input type="checkbox" v-model="isStateDict" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-brand-400 focus:ring-brand-500 focus:ring-offset-slate-950" />
+            <span class="text-sm font-medium text-slate-300 group-hover:text-slate-100 transition-colors">This PyTorch model is a state_dict</span>
+          </label>
+
+          <div v-if="isStateDict" class="mt-4 pl-8 border-l-2 border-slate-700">
             <label class="block">
-              <span class="text-sm font-semibold text-slate-300">Model File (required)</span>
-              <input type="file" @change="onPickModelFile" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
+              <span class="text-sm font-semibold text-slate-300">Model Class Definition (.py)</span>
+              <span class="block text-xs text-slate-500 mt-1 mb-2">Required to rebuild the neural network architecture before loading state weights.</span>
+              <input type="file" @change="onPickModelClassFile" accept=".py" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
             </label>
-            <label class="block">
-              <span class="text-sm font-semibold text-slate-300">Metadata JSON (required)</span>
-              <input type="file" @change="onPickMetadataFile" accept=".json,application/json" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
-            </label>
-          </div>
-
-          <div class="mt-2 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
-            <label class="flex items-center gap-3 cursor-pointer group">
-              <input type="checkbox" v-model="isStateDict" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-brand-400 focus:ring-brand-500 focus:ring-offset-slate-950" />
-              <span class="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">This PyTorch model is a state_dict</span>
-            </label>
-            
-            <div v-if="isStateDict" class="mt-4 pl-8 border-l-2 border-slate-700">
-              <label class="block">
-                <span class="text-sm font-semibold text-slate-300">Model Class Definition (.py)</span>
-                <span class="block text-xs text-slate-500 mt-1 mb-2">Required to rebuild the neural network architecture before loading state weights.</span>
-                <input type="file" @change="onPickModelClassFile" accept=".py" class="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-brand-400 hover:file:bg-slate-700" />
-              </label>
-            </div>
-          </div>
-
-          <div v-if="uploadMessage" class="p-3 rounded-lg text-sm" :class="validationErrors.length ? 'bg-warning-400/10 text-warning-300 border border-warning-400/20' : 'bg-success-400/10 text-success-300 border border-success-400/20'">
-            {{ uploadMessage }}
-          </div>
-          
-          <div v-if="uploadError" class="p-3 rounded-lg bg-danger-400/10 text-danger-300 border border-danger-400/20 text-sm">
-            {{ uploadError }}
-          </div>
-
-          <ul v-if="validationErrors.length" class="space-y-1 bg-danger-400/5 p-3 rounded border border-danger-400/20">
-            <li v-for="err in validationErrors" :key="err" class="text-xs text-danger-300 flex items-start gap-2">
-              <span class="mt-1 block w-1 h-1 rounded-full bg-danger-400 shrink-0"></span>
-              {{ err }}
-            </li>
-          </ul>
-
-          <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
-            <BaseBtn variant="secondary" @click="closeUploadModal">Cancel</BaseBtn>
-            <BaseBtn variant="primary" :disabled="isUploading || !modelFile || !metadataFile || validationErrors.length > 0" @click="uploadModel">
-              {{ isUploading ? 'Uploading...' : 'Upload Model' }}
-            </BaseBtn>
           </div>
         </div>
+
+        <div v-if="uploadMessage" role="status" class="p-3 rounded-lg text-sm" :class="validationErrors.length ? 'bg-warning-400/10 text-warning-300 border border-warning-400/20' : 'bg-success-400/10 text-success-300 border border-success-400/20'">
+          {{ uploadMessage }}
+        </div>
+
+        <div v-if="uploadError" role="alert" class="p-3 rounded-lg bg-danger-400/10 text-danger-300 border border-danger-400/20 text-sm">
+          {{ uploadError }}
+        </div>
+
+        <ul v-if="validationErrors.length" role="alert" class="space-y-1 bg-danger-400/5 p-3 rounded border border-danger-400/20">
+          <li v-for="err in validationErrors" :key="err" class="text-xs text-danger-300 flex items-start gap-2">
+            <span class="mt-1 block w-1 h-1 rounded-full bg-danger-400 shrink-0"></span>
+            {{ err }}
+          </li>
+        </ul>
       </div>
-    </div>
+
+      <template #footer>
+        <BaseBtn variant="secondary" @click="closeUploadModal">Cancel</BaseBtn>
+        <BaseBtn variant="primary" :disabled="isUploading || !modelFile || !metadataFile || validationErrors.length > 0" @click="uploadModel">
+          {{ isUploading ? 'Uploading...' : 'Upload Model' }}
+        </BaseBtn>
+      </template>
+    </BaseModal>
   </div>
 </template>

@@ -89,7 +89,10 @@ onMounted(() => {
 
     <!-- Filter/Search Bar -->
     <div class="flex gap-4">
-       <input v-model="searchQuery" type="text" placeholder="Search gestures by label..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white w-full sm:w-64 focus:border-brand-500 focus:outline-none" />
+       <label class="w-full sm:w-64">
+         <span class="sr-only">Search gestures by label</span>
+         <input v-model="searchQuery" type="search" placeholder="Search gestures by label..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 w-full focus:border-brand-500 focus:outline-none" />
+       </label>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -99,13 +102,15 @@ onMounted(() => {
                 {{ getStatus(gesture.sample_count).label }}
              </div>
              <div class="flex gap-1">
-                <div v-for="mod in gesture.modalities" :key="mod" class="w-2 h-2 rounded-full" 
-                     :class="mod === 'cv' ? 'bg-blue-400' : mod === 'sensor' ? 'bg-warning-400' : 'bg-purple-400'"
-                     :title="mod.toUpperCase()"></div>
+                <div v-for="mod in gesture.modalities" :key="mod" class="w-2 h-2 rounded-full"
+                     :class="mod === 'cv' ? 'bg-brand-400' : mod === 'sensor' ? 'bg-warning-400' : 'bg-brand-alt-400'"
+                     :title="mod.toUpperCase()"
+                     role="img"
+                     :aria-label="`Modality: ${mod}`"></div>
              </div>
           </div>
           
-          <h3 class="text-lg font-bold text-white mb-1">{{ gesture.label }}</h3>
+          <h3 class="text-lg font-bold text-slate-100 mb-1">{{ gesture.label }}</h3>
           
           <div class="text-xs text-slate-400 space-y-1 mt-3 flex-1">
              <p class="flex justify-between"><span>Dataset Volume:</span> <span class="text-slate-200">{{ gesture.sample_count }} rows</span></p>
@@ -148,7 +153,7 @@ onMounted(() => {
              </div>
           </div>
 
-          <div class="flex gap-2 mt-6 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="flex gap-2 mt-6 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
              <BaseBtn variant="secondary" class="flex-1 text-xs py-1.5" @click="router.push({ path: '/csv-library', query: { schema: 'all' } })">Manage CSVs</BaseBtn>
              <BaseBtn variant="secondary" class="flex-1 text-xs py-1.5" @click="router.push({ path: '/training', query: { newGestureName: gesture.label } })">Add Data</BaseBtn>
           </div>
@@ -164,7 +169,7 @@ onMounted(() => {
          </div>
        </BaseCard>
        
-       <div v-if="isLoading" class="col-span-full py-20 text-center">
+       <div v-if="isLoading" role="status" class="col-span-full py-20 text-center">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mb-4"></div>
           <p class="text-slate-400">Analyzing dataset insights...</p>
        </div>

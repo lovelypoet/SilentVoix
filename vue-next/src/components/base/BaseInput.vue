@@ -1,6 +1,14 @@
 <script setup>
 import { computed, useId } from 'vue'
 
+// The template's single root is the wrapping <div> (label + input + hint),
+// so without this, Vue's automatic attribute fallthrough lands anything a
+// caller passes that isn't a declared prop - required, autocomplete, name,
+// minlength, pattern - on that div instead of the actual <input>. That
+// silently broke native form validation and autofill everywhere this
+// component is used. v-bind="$attrs" below sends it to the right element.
+defineOptions({ inheritAttrs: false })
+
 const props = defineProps({
   modelValue: {
     type: [String, Number],
@@ -53,6 +61,7 @@ const describedById = computed(() => {
       class="text-sm font-medium text-slate-400 ml-1"
     >{{ label }}</label>
     <input
+      v-bind="$attrs"
       :id="inputId"
       :type="type"
       :value="modelValue"

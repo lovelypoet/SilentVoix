@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseInput from '../components/base/BaseInput.vue'
@@ -182,8 +182,10 @@ const handleLogin = async () => {
     <div class="graphics-settings">
       <button
         type="button"
-        class="graphics-settings-trigger"
-        aria-label="Open graphics settings"
+        class="focus-ring graphics-settings-trigger"
+        aria-label="Graphics settings"
+        aria-haspopup="true"
+        :aria-expanded="isGraphicsMenuOpen"
         @click="isGraphicsMenuOpen = !isGraphicsMenuOpen"
       >
         <svg viewBox="0 0 24 24" fill="none" class="graphics-gear-icon" aria-hidden="true">
@@ -195,35 +197,38 @@ const handleLogin = async () => {
           <path d="M12 15.25a3.25 3.25 0 100-6.5 3.25 3.25 0 000 6.5z" stroke="currentColor" stroke-width="1.5" />
         </svg>
       </button>
-      <div v-if="isGraphicsMenuOpen" class="graphics-settings-menu">
+      <div v-if="isGraphicsMenuOpen" class="graphics-settings-menu" role="group" aria-label="Graphics settings">
         <p class="graphics-settings-title">Graphics</p>
         <div class="graphics-settings-options">
           <button
             type="button"
-            class="graphics-option-btn"
+            class="focus-ring graphics-option-btn"
             :class="{ active: graphicsMode === 'auto' }"
+            :aria-pressed="graphicsMode === 'auto'"
             @click="graphicsMode = 'auto'"
           >
             Auto
           </button>
           <button
             type="button"
-            class="graphics-option-btn"
+            class="focus-ring graphics-option-btn"
             :class="{ active: graphicsMode === 'on' }"
+            :aria-pressed="graphicsMode === 'on'"
             @click="graphicsMode = 'on'"
           >
             On
           </button>
           <button
             type="button"
-            class="graphics-option-btn"
+            class="focus-ring graphics-option-btn"
             :class="{ active: graphicsMode === 'off' }"
+            :aria-pressed="graphicsMode === 'off'"
             @click="graphicsMode = 'off'"
           >
             Off
           </button>
         </div>
-        <p class="graphics-status">{{ autoStatus }}</p>
+        <p class="graphics-status" aria-live="polite">{{ autoStatus }}</p>
       </div>
     </div>
     <div class="login-card bg-[rgb(var(--surface))] border border-[rgb(var(--border-default))] p-8 rounded-xl w-full max-w-md shadow-2xl">
@@ -234,22 +239,24 @@ const handleLogin = async () => {
       </div>
 
       <form class="space-y-6" @submit.prevent="handleLogin">
-        <BaseInput 
-            v-model="email" 
-            label="Email" 
-            type="email" 
+        <BaseInput
+            v-model="email"
+            label="Email"
+            type="email"
             placeholder="admin@example.com"
+            autocomplete="username"
             required
         />
-        <BaseInput 
-            v-model="password" 
-            label="Password" 
-            type="password" 
+        <BaseInput
+            v-model="password"
+            label="Password"
+            type="password"
             placeholder="••••••••"
+            autocomplete="current-password"
             required
         />
 
-        <div v-if="error" class="text-danger-500 text-sm bg-danger-500/10 p-3 rounded-lg border border-danger-500/20">
+        <div v-if="error" role="alert" class="text-danger-500 text-sm bg-danger-500/10 p-3 rounded-lg border border-danger-500/20">
             {{ error }}
         </div>
 
@@ -265,9 +272,9 @@ const handleLogin = async () => {
 
       <div class="mt-6 text-center text-sm text-slate-400">
         New here?
-        <button class="text-brand-400 hover:text-brand-300 underline underline-offset-2 ml-1" @click="router.push('/register')">
+        <RouterLink to="/register" class="focus-ring text-brand-400 hover:text-brand-300 underline underline-offset-2 ml-1">
           Create account
-        </button>
+        </RouterLink>
       </div>
     </div>
   </div>

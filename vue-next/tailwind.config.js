@@ -26,6 +26,11 @@ export default {
         success: tokenScale('success'),
         warning: tokenScale('warning'),
         danger: tokenScale('danger'),
+        // Overrides Tailwind's built-in slate with the CSS-variable version in
+        // style.css, so every existing bg-slate-900/text-slate-400/etc. across
+        // the app inverts automatically under [data-theme="light"] - this is
+        // the mechanism the light theme rides on, see style.css for the why.
+        slate: tokenScale('slate'),
       },
       fontFamily: {
         display: ['"Space Grotesk"', '"DM Sans"', 'sans-serif'],

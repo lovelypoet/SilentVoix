@@ -1,9 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#05070e" />
+    <!--
+      Dark is the default, set statically above so the very first paint
+      needs no script. This tiny synchronous script only has work to do for
+      the light-mode case: it runs before anything renders, so switching the
+      attribute here (rather than waiting for Vue/Pinia to mount) avoids a
+      flash of dark before the stored light preference applies.
+    -->
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('silentvoix_theme') === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light')
+          }
+        } catch (e) {}
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />

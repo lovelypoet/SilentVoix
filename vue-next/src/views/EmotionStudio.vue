@@ -98,6 +98,23 @@ const failureHint = computed(() => {
   }
 })
 
+// getUserMedia rejects with a DOMException whose .name is one of a known
+// set - translate the common ones into something a user can actually act
+// on instead of a raw "NotAllowedError".
+const cameraErrorHint = computed(() => {
+  if (!cameraError.value) return ''
+  switch (cameraError.value.name) {
+    case 'NotAllowedError':
+      return 'Camera access was blocked. Allow camera access for this site in your browser settings, then try again.'
+    case 'NotFoundError':
+      return 'No camera was found on this device.'
+    case 'NotReadableError':
+      return 'The camera is already in use by another app or browser tab. Close it and try again.'
+    default:
+      return cameraError.value.message
+  }
+})
+
 const statusLine = computed(() => {
   if (loadError.value) return { text: 'Model failed to load', tone: 'text-danger-300' }
   if (isLoading.value) return { text: 'Loading FER+ weights…', tone: 'text-warning-300' }
@@ -142,12 +159,12 @@ const startCamera = async () => {
     await listCameras()
     await start(videoEl.value, overlayEl.value, mediaStream.value)
   } catch (error) {
-    cameraError.value = error.message || String(error)
+    cameraError.value = { name: error.name, message: error.message || String(error) }
     stopStream()
     toast.add({
       severity: 'error',
       summary: 'Could not start',
-      detail: cameraError.value,
+      detail: cameraError.value.message,
       life: 5000
     })
   } finally {
@@ -365,10 +382,16 @@ onBeforeUnmount(() => {
 
           <div
             v-if="!isRunning"
-            class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center"
           >
-            <PhBrain size="40" weight="duotone" class="text-slate-600" />
-            <p class="text-sm text-slate-500">Start the camera to begin recognition.</p>
+            <template v-if="cameraError">
+              <PhWarningCircle size="40" class="text-danger-400" />
+              <p role="alert" class="max-w-sm text-sm text-danger-300">{{ cameraErrorHint }}</p>
+            </template>
+            <template v-else>
+              <PhBrain size="40" weight="duotone" class="text-slate-600" />
+              <p class="text-sm text-slate-500">Start the camera to begin recognition.</p>
+            </template>
           </div>
 
           <!-- Status strip -->
@@ -492,7 +515,7 @@ onBeforeUnmount(() => {
           <span class="text-slate-400">Camera</span>
           <select
             v-model="selectedCamera"
-            class="focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-brand-500 focus:outline-none"
+            class="focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-brand-500 focus:outline-none"
           >
             <option v-if="!cameras.length" value="">Default camera</option>
             <option v-for="(device, index) in cameras" :key="device.deviceId" :value="device.deviceId">

@@ -444,7 +444,7 @@ onMounted(async () => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Early Fusion Cropper</h1>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">Early Fusion Cropper</h1>
         <p class="text-slate-400">Review a captured fusion CSV, trim noisy rows, and export a processed dataset plus crop metadata.</p>
       </div>
       <div class="hidden md:block"></div>
@@ -460,13 +460,13 @@ onMounted(async () => {
           <input
             type="file"
             accept=".csv,text/csv"
-            class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-2 file:text-white"
+            class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-2 file:text-slate-100"
             @change="handleFileChange"
           />
           <input
             type="file"
             accept="video/*,.webm,.mp4,.mov,.mkv"
-            class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-white"
+            class="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-slate-100"
             @change="handleVideoFileChange"
           />
           <p v-if="loadStatus" class="text-sm text-success-300">{{ loadStatus }}</p>
@@ -480,19 +480,19 @@ onMounted(async () => {
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Schema</p>
-            <p class="mt-2 text-lg font-semibold text-white">{{ inferredSchemaId }}</p>
+            <p class="mt-2 text-lg font-semibold text-slate-100">{{ inferredSchemaId }}</p>
           </div>
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Sensor Columns</p>
-            <p class="mt-2 text-lg font-semibold text-white">{{ sensorColumns.length }}</p>
+            <p class="mt-2 text-lg font-semibold text-slate-100">{{ sensorColumns.length }}</p>
           </div>
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Raw Rows</p>
-            <p class="mt-2 text-lg font-semibold text-white">{{ effectiveSourceStats.row_count ?? sourceStats.rowCount }}</p>
+            <p class="mt-2 text-lg font-semibold text-slate-100">{{ effectiveSourceStats.row_count ?? sourceStats.rowCount }}</p>
           </div>
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Delta Warnings</p>
-            <p class="mt-2 text-lg font-semibold text-white">{{ sourceStats.deltaWarnings }}</p>
+            <p class="mt-2 text-lg font-semibold text-slate-100">{{ sourceStats.deltaWarnings }}</p>
           </div>
         </div>
       </div>
@@ -558,7 +558,7 @@ onMounted(async () => {
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Validation</p>
-                <p class="mt-2 text-lg font-semibold text-white">{{ validationSummary.status }}</p>
+                <p class="mt-2 text-lg font-semibold text-slate-100">{{ validationSummary.status }}</p>
               </div>
               <div class="text-sm text-slate-200">
                 offset: {{ formatMs(validationSummary.offset_ms) }}
@@ -572,12 +572,12 @@ onMounted(async () => {
           <div v-if="opencvSummary" class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-slate-200">
             <p class="text-xs uppercase tracking-[0.2em] text-cyan-300">OpenCV Video Summary</p>
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
-              <p>frames: <span class="text-white">{{ opencvSummary.frame_count ?? '--' }}</span></p>
-              <p>fps: <span class="text-white">{{ opencvSummary.fps ?? '--' }}</span></p>
-              <p>duration: <span class="text-white">{{ formatMs(opencvSummary.duration_ms) }}</span></p>
-              <p>peak motion time: <span class="text-white">{{ formatMs(opencvSummary.peak_time_ms) }}</span></p>
-              <p>motion peak: <span class="text-white">{{ opencvSummary.motion_peak ?? '--' }}</span></p>
-              <p>spike detected: <span class="text-white">{{ opencvSummary.spike_detected ? 'yes' : 'no' }}</span></p>
+              <p>frames: <span class="text-slate-100">{{ opencvSummary.frame_count ?? '--' }}</span></p>
+              <p>fps: <span class="text-slate-100">{{ opencvSummary.fps ?? '--' }}</span></p>
+              <p>duration: <span class="text-slate-100">{{ formatMs(opencvSummary.duration_ms) }}</span></p>
+              <p>peak motion time: <span class="text-slate-100">{{ formatMs(opencvSummary.peak_time_ms) }}</span></p>
+              <p>motion peak: <span class="text-slate-100">{{ opencvSummary.motion_peak ?? '--' }}</span></p>
+              <p>spike detected: <span class="text-slate-100">{{ opencvSummary.spike_detected ? 'yes' : 'no' }}</span></p>
             </div>
             <p class="mt-3 text-xs text-slate-300">
               {{ Array.isArray(opencvSummary.reasons) ? opencvSummary.reasons.join(' | ') : '' }}
@@ -587,30 +587,30 @@ onMounted(async () => {
           <div class="grid gap-3 sm:grid-cols-2">
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Kept Rows</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ effectiveProcessedStats.row_count ?? filteredStats.rowCount }}</p>
+              <p class="mt-2 text-lg font-semibold text-slate-100">{{ effectiveProcessedStats.row_count ?? filteredStats.rowCount }}</p>
             </div>
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Dropped Rows</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ effectiveProcessedStats.dropped_rows ?? filteredStats.droppedRows }}</p>
+              <p class="mt-2 text-lg font-semibold text-slate-100">{{ effectiveProcessedStats.dropped_rows ?? filteredStats.droppedRows }}</p>
             </div>
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Avg |Delta|</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMs(effectiveProcessedStats.avg_abs_sensor_match_delta_ms ?? filteredStats.avgDeltaMs) }}</p>
+              <p class="mt-2 text-lg font-semibold text-slate-100">{{ formatMs(effectiveProcessedStats.avg_abs_sensor_match_delta_ms ?? filteredStats.avgDeltaMs) }}</p>
             </div>
             <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Max |Delta|</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMs(effectiveProcessedStats.max_abs_sensor_match_delta_ms ?? filteredStats.maxDeltaMs) }}</p>
+              <p class="mt-2 text-lg font-semibold text-slate-100">{{ formatMs(effectiveProcessedStats.max_abs_sensor_match_delta_ms ?? filteredStats.maxDeltaMs) }}</p>
             </div>
           </div>
 
           <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
             <p>Processed window: {{ formatMs(effectiveProcessedStats.start_ms ?? filteredStats.startMs) }} -> {{ formatMs(effectiveProcessedStats.end_ms ?? filteredStats.endMs) }}</p>
-            <p class="mt-2">Gesture column: <span class="text-white">{{ gestureColumn || '--' }}</span></p>
-            <p class="mt-2">Timestamp column: <span class="text-white">{{ timestampColumn || '--' }}</span></p>
-            <p class="mt-2">Delta column: <span class="text-white">{{ deltaColumn || '--' }}</span></p>
-            <p class="mt-2">OpenCV source: <span class="text-white">{{ selectedVideoFile ? selectedVideoFile.name : 'CSV-only analysis' }}</span></p>
-            <p v-if="validationSummary" class="mt-2">Sensor match ratio: <span class="text-white">{{ validationSummary.sensor_match_ratio }}</span></p>
-            <p v-if="validationSummary" class="mt-2">Missing frame ratio: <span class="text-white">{{ validationSummary.missing_frame_ratio }}</span></p>
+            <p class="mt-2">Gesture column: <span class="text-slate-100">{{ gestureColumn || '--' }}</span></p>
+            <p class="mt-2">Timestamp column: <span class="text-slate-100">{{ timestampColumn || '--' }}</span></p>
+            <p class="mt-2">Delta column: <span class="text-slate-100">{{ deltaColumn || '--' }}</span></p>
+            <p class="mt-2">OpenCV source: <span class="text-slate-100">{{ selectedVideoFile ? selectedVideoFile.name : 'CSV-only analysis' }}</span></p>
+            <p v-if="validationSummary" class="mt-2">Sensor match ratio: <span class="text-slate-100">{{ validationSummary.sensor_match_ratio }}</span></p>
+            <p v-if="validationSummary" class="mt-2">Missing frame ratio: <span class="text-slate-100">{{ validationSummary.missing_frame_ratio }}</span></p>
           </div>
 
           <div class="flex flex-wrap gap-3">

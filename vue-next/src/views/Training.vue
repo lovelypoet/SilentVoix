@@ -747,7 +747,7 @@ watch(
         <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">FPS (Target: 30)</div>
-            <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
+            <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-slate-100' : 'text-slate-500'">
               {{ actualFps || '--' }}
             </div>
           </div>
@@ -759,7 +759,7 @@ watch(
         <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
           <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Detected Gesture</div>
-            <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
+            <div class="text-2xl font-bold text-slate-100">{{ detectedGesture }}</div>
           </div>
           <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
             <div class="text-xs text-slate-400">Confidence</div>
@@ -797,7 +797,7 @@ watch(
           <div class="absolute top-7 left-7 right-7 flex justify-between items-end">
             <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">FPS (Target: 30)</div>
-              <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
+              <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-slate-100' : 'text-slate-500'">
                 {{ actualFps || '--' }}
               </div>
             </div>
@@ -809,7 +809,7 @@ watch(
           <div class="absolute bottom-7 left-7 right-7 flex justify-between items-end">
             <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Detected Gesture</div>
-              <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
+              <div class="text-2xl font-bold text-slate-100">{{ detectedGesture }}</div>
             </div>
             <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Confidence</div>
@@ -830,7 +830,7 @@ watch(
 
       <!-- Data Collection Panel -->
       <BaseCard class="w-full mt-8">
-        <h3 class="text-lg font-bold text-white mb-4">Data Collection Session</h3>
+        <h3 class="text-lg font-bold text-slate-100 mb-4">Data Collection Session</h3>
         
         <div class="mb-4">
           <label class="block text-sm text-slate-400 mb-2">Gesture Name</label>
@@ -838,7 +838,7 @@ watch(
             v-model="currentGestureName"
             type="text" 
             placeholder="e.g., hello, thanks, yes, no"
-            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-brand-500 focus:outline-none"
+            class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:border-brand-500 focus:outline-none"
             :disabled="isCollecting"
           />
         </div>
@@ -902,7 +902,7 @@ watch(
             Recording "{{ currentGestureName }}"...
           </div>
           <div class="text-slate-400">
-            Frames collected: <span class="text-white font-bold">{{ collectedLandmarks.length - recordingStartCount }}</span>
+            Frames collected: <span class="text-slate-100 font-bold">{{ collectedLandmarks.length - recordingStartCount }}</span>
             <span class="text-slate-500"> / {{ frameLimit }}</span>
           </div>
         </div>

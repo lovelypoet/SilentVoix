@@ -12,7 +12,7 @@ const store = usePlaygroundStore()
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-xl text-white font-semibold">Inference Modes</h2>
+        <h2 class="text-xl text-slate-100 font-semibold">Inference Modes</h2>
         <p class="text-xs text-slate-400">Toggle between Single Model, Early Fusion, or Late Fusion pipelines.</p>
       </div>
       <div class="flex items-center gap-4">
@@ -43,7 +43,7 @@ const store = usePlaygroundStore()
        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="space-y-1">
              <label class="text-xs font-bold text-slate-500 uppercase">Vision (CV) Model</label>
-             <select v-model="store.activeCvModel" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm">
+             <select v-model="store.activeCvModel" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm">
                <option :value="null">Select CV model...</option>
                <option v-for="model in store.savedModels.filter(m => m.metadata?.modality === 'cv')" :key="model.id" :value="model">
                  {{ model.display_name || model.id }}
@@ -52,7 +52,7 @@ const store = usePlaygroundStore()
           </div>
           <div class="space-y-1">
              <label class="text-xs font-bold text-slate-500 uppercase">Glove (Sensor) Model</label>
-             <select v-model="store.activeSensorModel" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm">
+             <select v-model="store.activeSensorModel" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm">
                <option :value="null">Select Sensor model...</option>
                <option v-for="model in store.savedModels.filter(m => m.metadata?.modality === 'sensor')" :key="model.id" :value="model">
                  {{ model.display_name || model.id }}

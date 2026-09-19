@@ -669,7 +669,7 @@ watch(terminalLines, () => {
         </BaseBtn>
       </div>
       <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">{{ pageTitle }}</h1>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">{{ pageTitle }}</h1>
         <p class="text-slate-400">
           {{ pageSubtitle }}
         </p>
@@ -703,13 +703,13 @@ watch(terminalLines, () => {
           <div class="absolute top-6 left-6 right-6 flex justify-between items-end">
             <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">FPS (Target: 30)</div>
-              <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-white' : 'text-slate-500'">
+              <div class="text-2xl font-bold" :class="actualFps > 0 ? 'text-slate-100' : 'text-slate-500'">
                 {{ actualFps || '--' }}
               </div>
             </div>
             <div class="bg-black/85 px-4 py-2 rounded-lg border border-white/10">
               <div class="text-xs text-slate-400">Detected Gesture</div>
-              <div class="text-2xl font-bold text-white">{{ detectedGesture }}</div>
+              <div class="text-2xl font-bold text-slate-100">{{ detectedGesture }}</div>
             </div>
           </div>
           <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
@@ -773,7 +773,7 @@ watch(terminalLines, () => {
       <div class="lg:col-span-2 lg:sticky lg:top-6 self-start">
         <BaseCard class="w-full">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-white">Session Workflow</h3>
+            <h3 class="text-lg font-bold text-slate-100">Session Workflow</h3>
             <BaseBtn variant="secondary" @click="showSettings = true">Settings</BaseBtn>
           </div>
 
@@ -808,7 +808,7 @@ watch(terminalLines, () => {
               </p>
               <div class="mt-3">
                 <label class="block text-xs text-slate-400 mb-1">Capture Mode</label>
-                <select v-model="captureMode" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-white w-full">
+                <select v-model="captureMode" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 w-full">
                   <option value="single">Single Hand</option>
                   <option value="dual">Dual Hand</option>
                 </select>
@@ -840,7 +840,7 @@ watch(terminalLines, () => {
               v-model="currentGestureName"
               type="text"
               placeholder="e.g., hello, thanks"
-              class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-brand-500 focus:outline-none"
+              class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-100 focus:border-brand-500 focus:outline-none"
               :disabled="isCollecting || isAwaitingSyncCue"
             />
           </div>
@@ -933,7 +933,7 @@ watch(terminalLines, () => {
               {{ artifactRecorderWarning }}
             </div>
             <div class="text-slate-400">
-              Frames collected: <span class="text-white font-bold">{{ framesInCurrentTake }}</span>
+              Frames collected: <span class="text-slate-100 font-bold">{{ framesInCurrentTake }}</span>
               <span class="text-slate-500"> / {{ frameLimit }}</span>
             </div>
           </div>

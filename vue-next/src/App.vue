@@ -13,12 +13,16 @@ import {
   PhUser,
   PhInfo,
   PhList,
-  PhX
+  PhX,
+  PhSun,
+  PhMoon
 } from '@phosphor-icons/vue'
 import { useAuthStore } from './stores/auth'
+import { useThemeStore } from './stores/theme'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 const isMobileNavOpen = ref(false)
 const mobileNavRef = ref(null)
 const mobileNavToggleRef = ref(null)
@@ -146,6 +150,7 @@ const navLinkClass =
 <template>
   <div class="min-h-screen text-slate-300 flex app-bg">
     <Toast />
+    <a href="#main-content" class="skip-link focus-ring">Skip to main content</a>
 
     <!-- Desktop sidebar -->
     <aside
@@ -175,6 +180,16 @@ const navLinkClass =
           </RouterLink>
         </div>
       </nav>
+
+      <button
+        type="button"
+        class="focus-ring nav-link mt-auto flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors shell-border-t"
+        @click="themeStore.toggleTheme()"
+      >
+        <PhSun v-if="themeStore.theme === 'dark'" size="17" weight="bold" aria-hidden="true" />
+        <PhMoon v-else size="17" weight="bold" aria-hidden="true" />
+        <span>{{ themeStore.theme === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
+      </button>
     </aside>
 
     <!-- Mobile drawer scrim -->
@@ -227,10 +242,22 @@ const navLinkClass =
           </RouterLink>
         </div>
       </nav>
+
+      <button
+        type="button"
+        class="focus-ring nav-link mt-auto flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors shell-border-t"
+        @click="themeStore.toggleTheme()"
+      >
+        <PhSun v-if="themeStore.theme === 'dark'" size="17" weight="bold" aria-hidden="true" />
+        <PhMoon v-else size="17" weight="bold" aria-hidden="true" />
+        <span>{{ themeStore.theme === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
+      </button>
     </aside>
 
     <!-- Main Content -->
     <main
+      id="main-content"
+      tabindex="-1"
       class="flex-1 overflow-auto"
       :class="{ 'p-4 sm:p-6 lg:p-8': !isFullscreenLayout }"
     >
@@ -249,7 +276,10 @@ const navLinkClass =
         >
           <PhList size="18" weight="bold" aria-hidden="true" />
         </button>
-        <h1 class="text-sm font-medium text-slate-200">{{ currentPageTitle }}</h1>
+        <!-- Location indicator, not a heading - each page already renders its own
+             h1 via BasePageHeader. A second h1 here would give mobile screen-reader
+             users two different "main heading" announcements per page. -->
+        <p class="text-sm font-medium text-slate-200">{{ currentPageTitle }}</p>
       </div>
       <RouterView />
     </main>
@@ -261,8 +291,34 @@ body {
   background: rgb(5 7 14);
 }
 
+/* Visually hidden until focused - lets keyboard users jump past the sidebar
+   nav (9+ links) straight to page content instead of tabbing through it on
+   every single page. */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  background: rgb(var(--brand-600));
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: top 150ms ease;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
 .shell-border-r {
   border-right: 1px solid rgb(var(--border-default));
+}
+
+.shell-border-t {
+  border-top: 1px solid rgb(var(--border-default));
+  padding-top: 0.75rem;
 }
 
 .shell-drawer {
