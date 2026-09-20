@@ -29,3 +29,6 @@ metrics/*
 
 docs/referrences/*.py
 docs/referrences/*.ipynb
+
+# Local Claude Code skill cache (personal install, not the shared skill set)
+.claude/
