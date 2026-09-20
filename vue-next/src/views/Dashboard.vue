@@ -305,20 +305,20 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 
 <style scoped>
 .card-title {
-  color: rgb(226 232 240);
+  color: rgb(var(--slate-200));
   font-size: 0.9rem;
   font-weight: 600;
 }
 
 .metric-label {
-  color: #64748b;
+  color: rgb(var(--slate-500));
   font-size: 0.75rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
 .metric-value {
-  color: #f1f5f9;
+  color: rgb(var(--slate-100));
   font-size: 1.4rem;
   font-weight: 600;
   margin-top: 0.25rem;
@@ -350,7 +350,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
   justify-content: space-between;
   gap: 1rem;
   padding: 0.55rem 0.25rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: 1px solid rgb(var(--border-subtle));
 }
 
 .event-row:last-child {

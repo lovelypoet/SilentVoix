@@ -3,6 +3,7 @@ import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
 import CaptureSyncGraph from '../components/CaptureSyncGraph.vue'
 import CaptureTerminal from '../components/CaptureTerminal.vue'
@@ -657,25 +658,13 @@ watch(terminalLines, () => {
   <div class="max-w-6xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div class="mb-8 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
-      <div class="flex justify-start">
-        <BaseBtn
-          variant="secondary"
-          title="Return to fusion workspace"
-          class="px-3"
-          @click="returnToFusionWorkspace"
-        >
-          &larr;
-        </BaseBtn>
-      </div>
-      <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">{{ pageTitle }}</h1>
-        <p class="text-slate-400">
-          {{ pageSubtitle }}
-        </p>
-      </div>
-      <div class="hidden md:block"></div>
-    </div>
+    <BasePageHeader
+      class="mb-8"
+      :title="pageTitle"
+      :description="pageSubtitle"
+      back-label="Return to fusion workspace"
+      @back="returnToFusionWorkspace"
+    />
 
     <div v-if="error" class="text-center mt-12">
       <BaseCard class="max-w-md mx-auto">

@@ -281,35 +281,35 @@ const handleLogout = async () => {
 }
 
 .scope-chip-inactive {
-  border-color: rgba(148, 163, 184, 0.3);
-  color: #cbd5e1;
-  background: rgba(15, 23, 42, 0.5);
+  border-color: rgb(var(--slate-400) / 0.3);
+  color: rgb(var(--slate-300));
+  background: rgb(var(--slate-900) / 0.5);
 }
 
 .toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #e2e8f0;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: rgb(var(--slate-200));
+  border: 1px solid rgb(var(--slate-400) / 0.2);
   border-radius: 0.5rem;
   padding: 0.6rem 0.8rem;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgb(var(--slate-900) / 0.55);
 }
 
 .label {
   display: block;
   margin-bottom: 0.4rem;
   margin-left: 0.2rem;
-  color: #94a3b8;
+  color: rgb(var(--slate-400));
   font-size: 0.85rem;
 }
 
 .select {
   width: 100%;
-  border: 1px solid rgb(51 65 85);
-  background: rgb(15 23 42);
-  color: rgb(226 232 240);
+  border: 1px solid rgb(var(--slate-700));
+  background: rgb(var(--slate-900));
+  color: rgb(var(--slate-200));
   border-radius: 0.5rem;
   padding: 0.58rem 0.75rem;
 }

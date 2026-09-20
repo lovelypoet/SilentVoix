@@ -49,7 +49,7 @@ defineProps({
 
 .btn-secondary {
   background: rgb(var(--surface-raised) / 0.6);
-  color: rgb(226 232 240);
+  color: rgb(var(--slate-200));
   border: 1px solid rgb(var(--border-default));
   --tw-ring-color: rgb(var(--brand-400) / 0.6);
 }
@@ -57,7 +57,7 @@ defineProps({
 .btn-secondary:hover,
 .btn-secondary:focus-visible {
   border-color: rgb(var(--brand-400) / 0.5);
-  color: white;
+  color: rgb(var(--slate-50));
 }
 
 .btn-danger {

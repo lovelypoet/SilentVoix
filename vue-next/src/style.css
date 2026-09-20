@@ -166,8 +166,15 @@
   --border-subtle: 15 23 42 / 0.06;
   --border-default: 15 23 42 / 0.12;
 
-  /* Darker steps of each accent so text/icons clear contrast on a light surface. */
+  /*
+   * Darker steps of each accent so text/icons clear contrast on a light
+   * surface. 100/200 are pastel-on-dark shades with no light-surface-safe
+   * equivalent lighter than 300, so they collapse onto the 300/400 text-safe
+   * tier here rather than staying unreadably pale.
+   */
+  --brand-200: 8 145 178;
   --brand-300: 8 145 178;
+  --brand-100: 14 116 144;
   --brand-400: 14 116 144;
   --brand-500: 8 105 130;
 
@@ -177,12 +184,15 @@
   --brand-pink-300: 219 39 119;
   --brand-pink-400: 190 24 93;
 
+  --success-200: 5 150 105;
   --success-300: 5 150 105;
   --success-400: 4 120 87;
 
+  --warning-200: 180 83 9;
   --warning-300: 180 83 9;
   --warning-400: 146 64 14;
 
+  --danger-200: 225 29 72;
   --danger-300: 225 29 72;
   --danger-400: 190 18 60;
 }

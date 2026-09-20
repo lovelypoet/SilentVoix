@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router' // Import useRoute
 import { useAuthStore } from '../stores/auth'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import TrainingSettings from '../components/TrainingSettings.vue'
 import { useMediaPermissions } from '../composables/useMediaPermissions.js'
 import { useTrainingSettings } from '../composables/useTrainingSettings.js'
@@ -677,32 +678,14 @@ watch(
   <div class="max-w-4xl mx-auto">
     <TrainingSettings v-if="showSettings" @close="showSettings = false" />
 
-    <div
-      :class="[
-        isTraining && hasPermissions ? 'grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3' : 'text-center',
-        isTraining && hasPermissions && trainingMode === 'advanced' ? 'mb-3' : 'mb-8'
-      ]"
-    >
-      <div v-if="isTraining && hasPermissions" class="flex justify-start">
-        <BaseBtn
-          variant="secondary"
-          title="Return to training cards"
-          class="px-3"
-          @click="returnToTrainingCards"
-        >
-          &larr;
-        </BaseBtn>
-      </div>
-      <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-100 mb-2">
-          {{ trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center' }}
-        </h1>
-        <p class="text-slate-400">
-          Master your sign language gestures with real-time feedback
-        </p>
-      </div>
-      <div v-if="isTraining && hasPermissions" class="hidden md:block"></div>
-    </div>
+    <BasePageHeader
+      :class="isTraining && hasPermissions && trainingMode === 'advanced' ? 'mb-3' : 'mb-8'"
+      :title="trainingMode === 'advanced' ? 'Advanced Training Center' : 'Training Center'"
+      description="Master your sign language gestures with real-time feedback"
+      :centered="!(isTraining && hasPermissions)"
+      :back-label="isTraining && hasPermissions ? 'Return to training cards' : ''"
+      @back="returnToTrainingCards"
+    />
 
     <!-- Permissions Denied -->
     <div v-if="error" class="text-center mt-12">

@@ -288,7 +288,7 @@ const navLinkClass =
 
 <style>
 body {
-  background: rgb(5 7 14);
+  background: rgb(var(--canvas));
 }
 
 /* Visually hidden until focused - lets keyboard users jump past the sidebar
@@ -336,7 +336,7 @@ body {
 
 .nav-active {
   background: rgb(var(--surface-raised) / 0.7);
-  color: rgb(248 250 252);
+  color: rgb(var(--slate-50));
   box-shadow: inset 2px 0 0 rgb(var(--brand-400));
 }
 

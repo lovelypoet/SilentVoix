@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch, onUnmounted } from 'vue'
 import { token } from '@/utils/tokens'
 import { useRouter } from 'vue-router'
+import { PhArrowLeft } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import api from '../services/api'
@@ -95,10 +96,12 @@ const drawWaveforms = () => {
 
   ctx.clearRect(0, 0, width, height)
 
-  // Draw Backgrounds
+  // Draw Backgrounds - this waveform stage is a fixed-dark scope readout
+  // (like the bg-black container around it), deliberately independent of
+  // the light/dark theme toggle so waveform contrast stays predictable.
   ctx.fillStyle = '#020617'
   ctx.fillRect(0, 0, width, height)
-  
+
   // Draw Trim Areas (Grayed out)
   ctx.fillStyle = 'rgba(255, 255, 255, 0.03)'
   ctx.fillRect(0, 0, (trimIn.value / 100) * width, height)
@@ -232,7 +235,15 @@ onUnmounted(() => {
     <!-- Header -->
     <header class="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
       <div class="flex items-center gap-4">
-        <BaseBtn variant="secondary" class="px-3" @click="goFusionWorkspace">&larr;</BaseBtn>
+        <BaseBtn
+          variant="secondary"
+          class="px-3"
+          title="Return to fusion workspace"
+          aria-label="Return to fusion workspace"
+          @click="goFusionWorkspace"
+        >
+          <PhArrowLeft size="16" weight="bold" aria-hidden="true" />
+        </BaseBtn>
         <div>
           <h1 class="text-xl font-bold text-slate-100 leading-tight">Dataset Aligner</h1>
           <p class="text-[11px] text-slate-500 uppercase font-bold tracking-widest">Time-Series Surgeon</p>

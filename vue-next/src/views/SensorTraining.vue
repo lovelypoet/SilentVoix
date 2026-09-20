@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import { useSensorTraining } from '../composables/useSensorTraining'
 import { usePortSession } from '../composables/usePortSession'
 
@@ -122,25 +123,13 @@ const channelPercent = (value, index) => {
 
 <template>
   <div class="max-w-7xl mx-auto">
-    <section class="mb-6 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
-      <div class="flex justify-start">
-        <BaseBtn
-          variant="secondary"
-          title="Return to dashboard"
-          class="px-3"
-          @click="router.push('/dashboard')"
-        >
-          &larr;
-        </BaseBtn>
-      </div>
-      <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-brand-300">Sensor Training</h1>
-        <p class="text-slate-400 mt-1">
-          Guided flow: <code>Service</code> -> <code>Stream</code> -> <code>Recording</code> -> <code>Export</code>
-        </p>
-      </div>
-      <div class="hidden md:block"></div>
-    </section>
+    <BasePageHeader
+      class="mb-6"
+      title="Sensor Training"
+      description="Guided flow: Service → Stream → Recording → Export"
+      back-label="Return to dashboard"
+      @back="router.push('/dashboard')"
+    />
 
     <section class="mb-6">
       <BaseCard>

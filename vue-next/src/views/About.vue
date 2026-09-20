@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import BaseCard from '../components/base/BaseCard.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 
 const teamPhotoUrl = '/pics/team-upscaled.webp'
 const activeMemberId = ref(null)
@@ -99,9 +100,13 @@ const supervisors = [
 
 <template>
   <div class="space-y-6">
-    <div class="text-center mx-auto max-w-3xl">
-      <h1 class="text-2xl font-semibold tracking-tight text-slate-100">About The Team</h1>
-      <p class="text-sm text-slate-400 mt-1">The people behind SilentVoix and the model-monitoring platform.</p>
+    <div class="mx-auto max-w-3xl">
+      <BasePageHeader
+        title="About The Team"
+        description="The people behind SilentVoix and the model-monitoring platform."
+        eyebrow="Team"
+        centered
+      />
     </div>
 
     <BaseCard class="about-hero p-0 overflow-hidden">
@@ -266,8 +271,8 @@ const supervisors = [
 
 <style scoped>
 .about-hero {
-  border: 1px solid rgba(103, 232, 249, 0.2);
-  background: linear-gradient(130deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.7));
+  border: 1px solid rgb(var(--brand-300) / 0.2);
+  background: linear-gradient(130deg, rgb(var(--slate-900) / 0.95), rgb(var(--slate-900) / 0.7));
 }
 
 .about-photo-shell {
@@ -276,8 +281,8 @@ const supervisors = [
   margin: 1rem auto 1.25rem;
   border-radius: 1rem;
   overflow: hidden;
-  border: 1px solid rgba(103, 232, 249, 0.35);
-  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgb(var(--brand-300) / 0.35);
+  background: rgb(var(--slate-900) / 0.8);
 }
 
 .about-photo-image {
@@ -287,8 +292,8 @@ const supervisors = [
 }
 
 .member-card {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.45));
+  border: 1px solid rgb(var(--slate-400) / 0.2);
+  background: linear-gradient(180deg, rgb(var(--slate-900) / 0.72), rgb(var(--slate-900) / 0.45));
 }
 
 .member-card-active {

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,18 +36,12 @@ const goTraining = () => {
 
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
-    <section class="mb-2 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
-      <div class="flex justify-start">
-        <BaseBtn variant="secondary" title="Return to training page" class="px-3" @click="goTraining">
-          &larr;
-        </BaseBtn>
-      </div>
-      <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-100 mb-2">Fusion Workspace</h1>
-        <p class="text-slate-400">Dedicated home for Early Fusion data capture and Late Fusion training.</p>
-      </div>
-      <div class="hidden md:block"></div>
-    </section>
+    <BasePageHeader
+      title="Fusion Workspace"
+      description="Dedicated home for Early Fusion data capture and Late Fusion training."
+      back-label="Return to training page"
+      @back="goTraining"
+    />
 
     <BaseCard>
       <div class="flex flex-wrap gap-2">

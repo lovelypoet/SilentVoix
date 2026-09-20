@@ -176,7 +176,7 @@ onBeforeUnmount(() => {
   width: 3.5rem;
   height: 1.75rem;
   border-radius: 9999px;
-  background-color: #4a5568;
+  background-color: rgb(var(--slate-600));
   position: relative;
   transition: background-color 0.2s ease-in-out;
 }

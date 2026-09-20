@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 import api from '../services/api'
 import { getLatestFusionCaptureArtifact } from '../services/fusionCaptureArtifacts'
 
@@ -437,18 +438,12 @@ onMounted(async () => {
 
 <template>
   <div class="max-w-7xl mx-auto space-y-6">
-    <section class="mb-2 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
-      <div class="flex justify-start">
-        <BaseBtn variant="secondary" title="Return to fusion workspace" class="px-3" @click="goBack">
-          &larr;
-        </BaseBtn>
-      </div>
-      <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">Early Fusion Cropper</h1>
-        <p class="text-slate-400">Review a captured fusion CSV, trim noisy rows, and export a processed dataset plus crop metadata.</p>
-      </div>
-      <div class="hidden md:block"></div>
-    </section>
+    <BasePageHeader
+      title="Early Fusion Cropper"
+      description="Review a captured fusion CSV, trim noisy rows, and export a processed dataset plus crop metadata."
+      back-label="Return to fusion workspace"
+      @back="goBack"
+    />
 
     <BaseCard>
       <div class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">

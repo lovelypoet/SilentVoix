@@ -3,6 +3,7 @@ import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BasePageHeader from '../components/base/BasePageHeader.vue'
 
 // Refactored Imports
 import { usePlaygroundEngine } from '@/engine/playgroundEngine'
@@ -55,17 +56,12 @@ onUnmounted(() => {
 
 <template>
   <div class="max-w-7xl mx-auto space-y-6">
-    <section class="mb-2 grid grid-cols-[auto_1fr] md:grid-cols-3 items-center gap-3">
-      <div class="flex justify-start">
-        <BaseBtn variant="secondary" title="Return" class="px-3" @click="router.push('/training')">
-          &larr;
-        </BaseBtn>
-      </div>
-      <div class="text-left md:text-center">
-        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-100 mb-2">Realtime AI Playground</h1>
-        <p class="text-slate-400">Upload exported model package metadata and test live CV or sensor inference.</p>
-      </div>
-    </section>
+    <BasePageHeader
+      title="Realtime AI Playground"
+      description="Upload exported model package metadata and test live CV or sensor inference."
+      back-label="Return to training"
+      @back="router.push('/training')"
+    />
 
     <!-- Model Management -->
     <BaseCard>
