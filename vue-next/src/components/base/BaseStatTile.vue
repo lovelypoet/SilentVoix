@@ -57,13 +57,13 @@ const deltaTone = computed(() => {
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" :style="{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }">
           <component :is="icon" size="16" weight="bold" />
         </span>
-        <p class="metric-label">{{ label }}</p>
+        <p class="stat-label">{{ label }}</p>
       </div>
       <BaseSparkline v-if="points.length >= 2" :points="points" :accent="accent" />
     </div>
 
     <div class="flex items-end justify-between gap-2">
-      <p class="metric-value">{{ value }}</p>
+      <p class="stat-value">{{ value }}</p>
       <div
         v-if="delta"
         class="mb-0.5 flex items-center gap-1 text-xs font-medium"

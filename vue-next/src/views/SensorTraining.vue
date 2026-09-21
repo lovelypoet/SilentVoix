@@ -274,7 +274,7 @@ const channelPercent = (value, index) => {
                   <span>{{ Number(value).toFixed(4) }}</span>
                 </div>
                 <div class="h-2 rounded bg-slate-800 overflow-hidden">
-                  <div class="h-full bg-sky-400" :style="{ width: `${channelPercent(value, idx + 5)}%` }"></div>
+                  <div class="h-full bg-brand-400" :style="{ width: `${channelPercent(value, idx + 5)}%` }"></div>
                 </div>
               </div>
             </div>

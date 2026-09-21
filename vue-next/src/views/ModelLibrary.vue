@@ -1,10 +1,12 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { PhCircleNotch, PhStack } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
 import BaseModal from '../components/base/BaseModal.vue'
+import BaseEmptyState from '../components/base/BaseEmptyState.vue'
 import { useToast } from 'primevue/usetoast'
 import api from '../services/api'
 
@@ -546,34 +548,34 @@ onMounted(() => {
     </BasePageHeader>
 
     <BaseCard>
-      <p v-if="error" class="text-danger-300 text-sm">{{ error }}</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+      <p v-if="error" role="alert" class="text-danger-300 text-sm mb-4">{{ error }}</p>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-4">
         <label class="block">
-          <span class="text-xs text-slate-400">Search</span>
+          <span class="field-label !mb-0">Search</span>
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Name or filename..."
-            class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100"
+            class="mt-1 field-control"
           >
         </label>
         <label class="block">
-          <span class="text-xs text-slate-400">Family</span>
-          <select v-model="familyFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+          <span class="field-label !mb-0">Family</span>
+          <select v-model="familyFilter" class="mt-1 field-control">
             <option value="all">All</option>
             <option v-for="family in families" :key="family" :value="family">{{ family }}</option>
           </select>
         </label>
         <label class="block">
-          <span class="text-xs text-slate-400">Format</span>
-          <select v-model="formatFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+          <span class="field-label !mb-0">Format</span>
+          <select v-model="formatFilter" class="mt-1 field-control">
             <option value="all">All</option>
             <option v-for="format in formats" :key="format" :value="format">{{ format }}</option>
           </select>
         </label>
         <label class="block">
-          <span class="text-xs text-slate-400">Status</span>
-          <select v-model="statusFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+          <span class="field-label !mb-0">Status</span>
+          <select v-model="statusFilter" class="mt-1 field-control">
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -581,10 +583,10 @@ onMounted(() => {
         </label>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-4">
         <label class="block">
-          <span class="text-xs text-slate-400">Sort by</span>
-          <select v-model="sortKey" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+          <span class="field-label !mb-0">Sort by</span>
+          <select v-model="sortKey" class="mt-1 field-control">
             <option value="manual">Manual Order</option>
             <option value="created_at">Created Date</option>
             <option value="name">Name</option>
@@ -597,15 +599,15 @@ onMounted(() => {
           </select>
         </label>
         <label class="block">
-          <span class="text-xs text-slate-400">Direction</span>
-          <select v-model="sortDir" :disabled="isManualSort" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 disabled:opacity-50">
+          <span class="field-label !mb-0">Direction</span>
+          <select v-model="sortDir" :disabled="isManualSort" class="mt-1 field-control disabled:opacity-50">
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
           </select>
         </label>
         <label class="block">
-          <span class="text-xs text-slate-400">Rows per page</span>
-          <select v-model.number="pageSize" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+          <span class="field-label !mb-0">Rows per page</span>
+          <select v-model.number="pageSize" class="mt-1 field-control">
             <option :value="5">5</option>
             <option :value="10">10</option>
             <option :value="20">20</option>
@@ -619,31 +621,41 @@ onMounted(() => {
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="data-table">
           <thead>
-            <tr class="text-left text-slate-400 border-b border-slate-800">
-              <th class="py-2 pr-3">Model</th>
-              <th class="py-2 pr-3">Family</th>
-              <th class="py-2 pr-3">Format</th>
-              <th class="py-2 pr-3">Input Dim</th>
-              <th class="py-2 pr-3">P / R / F1</th>
-              <th class="py-2 pr-3">Created</th>
-              <th class="py-2 pr-3">Status</th>
-              <th class="py-2 px-3 text-center">Runtime</th>
-              <th class="py-2 px-3 text-center">Actions</th>
+            <tr>
+              <th>Model</th>
+              <th>Family</th>
+              <th>Format</th>
+              <th>Input Dim</th>
+              <th>P / R / F1</th>
+              <th>Created</th>
+              <th>Status</th>
+              <th class="text-center">Runtime</th>
+              <th class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="9" class="py-4 text-slate-400">Loading models...</td>
+              <td colspan="9">
+                <div class="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">
+                  <PhCircleNotch size="16" weight="bold" class="animate-spin" aria-hidden="true" />
+                  Loading models…
+                </div>
+              </td>
             </tr>
             <tr v-else-if="sortedModels.length === 0">
-              <td colspan="9" class="py-4 text-slate-400">No models found. Upload one in Realtime AI Playground.</td>
+              <td colspan="9">
+                <BaseEmptyState
+                  :icon="PhStack"
+                  title="No models found"
+                  description="Upload a model package in Realtime AI Playground to see it listed here."
+                />
+              </td>
             </tr>
             <tr
               v-for="model in pagedModels"
               :key="model.id"
-              class="border-b border-slate-900/70"
               :class="isManualSort ? 'cursor-grab active:cursor-grabbing' : ''"
               :draggable="isManualSort && !isReordering"
               @dragstart="onRowDragStart(model.id)"
@@ -651,26 +663,26 @@ onMounted(() => {
               @drop.prevent="onRowDrop(model.id)"
               @dragend="onRowDragEnd"
             >
-              <td class="py-2 pr-3 text-slate-200">
+              <td class="text-slate-200">
                 <p class="font-medium">{{ isManualSort ? ':: ' : '' }}{{ model.display_name || model.id }}</p>
                 <p class="text-xs text-slate-500">{{ model.model_file_name }}</p>
               </td>
-              <td class="py-2 pr-3 text-slate-300">{{ model.metadata?.model_family || '--' }}</td>
-              <td class="py-2 pr-3 text-slate-300">{{ model.metadata?.export_format || '--' }}</td>
-              <td class="py-2 pr-3 text-slate-300">{{ model.input_dim || '--' }}</td>
-              <td class="py-2 pr-3 text-slate-300">
+              <td>{{ model.metadata?.model_family || '--' }}</td>
+              <td>{{ model.metadata?.export_format || '--' }}</td>
+              <td>{{ model.input_dim || '--' }}</td>
+              <td>
                 {{ model.metadata?.precision ?? '--' }} / {{ model.metadata?.recall ?? '--' }} / {{ model.metadata?.f1 ?? '--' }}
               </td>
-              <td class="py-2 pr-3 text-slate-300">{{ formatDate(model.created_at) }}</td>
-              <td class="py-2 pr-3">
+              <td>{{ formatDate(model.created_at) }}</td>
+              <td>
                 <span
                   class="px-2 py-1 rounded text-xs font-semibold"
-                  :class="isActive(model.id) ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-700/40 text-slate-300'"
+                  :class="isActive(model.id) ? 'bg-brand-500/20 text-brand-300' : 'bg-slate-700/40 text-slate-300'"
                 >
                   {{ isActive(model.id) ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td class="py-2 px-3 align-middle text-center">
+              <td class="align-middle text-center">
                 <button
                   type="button"
                   class="mx-auto w-3.5 h-3.5 rounded-full shrink-0 transition-colors shadow-sm outline-none ring-2 ring-transparent focus-visible:ring-slate-400"
@@ -685,7 +697,7 @@ onMounted(() => {
                   @click="showRuntimeStatusToast(model)"
                 ></button>
               </td>
-              <td class="py-2 px-3 text-center">
+              <td class="text-center">
                 <BaseEllipsisMenu :disabled="isActionLoading(model.id)">
                   <template #menu="{ close }">
                     <button

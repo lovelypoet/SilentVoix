@@ -465,7 +465,7 @@ onMounted(async () => {
             @change="handleVideoFileChange"
           />
           <p v-if="loadStatus" class="text-sm text-success-300">{{ loadStatus }}</p>
-          <p v-if="selectedVideoFile" class="text-sm text-cyan-300">Video loaded: {{ selectedVideoFile.name }}</p>
+          <p v-if="selectedVideoFile" class="text-sm text-brand-300">Video loaded: {{ selectedVideoFile.name }}</p>
           <p v-if="parseError" class="text-sm text-danger-300">{{ parseError }}</p>
           <p v-if="analysisError" class="text-sm text-danger-300">{{ analysisError }}</p>
           <p v-if="saveError" class="text-sm text-danger-300">{{ saveError }}</p>
@@ -564,8 +564,8 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div v-if="opencvSummary" class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-slate-200">
-            <p class="text-xs uppercase tracking-[0.2em] text-cyan-300">OpenCV Video Summary</p>
+          <div v-if="opencvSummary" class="rounded-xl border border-brand-500/20 bg-brand-500/5 p-4 text-sm text-slate-200">
+            <p class="text-xs uppercase tracking-[0.2em] text-brand-300">OpenCV Video Summary</p>
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
               <p>frames: <span class="text-slate-100">{{ opencvSummary.frame_count ?? '--' }}</span></p>
               <p>fps: <span class="text-slate-100">{{ opencvSummary.fps ?? '--' }}</span></p>

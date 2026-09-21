@@ -8,12 +8,17 @@ import {
   PhFileAudio,
   PhSpeakerHigh,
   PhTrash,
-  PhMicrophone
+  PhMicrophone,
+  PhX
 } from '@phosphor-icons/vue'
+import { useToast } from 'primevue/usetoast'
 import api from '../services/api'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
+import BaseModal from '../components/base/BaseModal.vue'
+
+const toast = useToast()
 
 // State
 const activeTab = ref('tts') // Default to TTS
@@ -127,9 +132,9 @@ const fetchAudioFiles = async () => {
 const playOnGlove = async (filename) => {
   try {
     await api.audio.playESP32(filename)
-    alert(`Playing ${filename} on Glove...`)
+    toast.add({ severity: 'success', summary: 'Playing on glove', detail: filename, life: 3000 })
   } catch {
-    alert('Failed to play on glove')
+    toast.add({ severity: 'error', summary: 'Playback failed', detail: 'Could not play on the glove device.' })
   }
 }
 
@@ -137,17 +142,33 @@ const playOnLaptop = async (filename) => {
     try {
         await api.audio.playLaptop(filename)
     } catch {
-        alert('Failed to play on laptop')
+        toast.add({ severity: 'error', summary: 'Playback failed', detail: 'Could not play on this device.' })
     }
 }
 
-const deleteFile = async (filename) => {
-  if (!confirm(`Delete ${filename}?`)) return
+// Delete confirmation - holds the filename pending confirmation so the
+// destructive action always goes through the shared confirm modal instead
+// of a blocking native confirm() dialog.
+const deleteTarget = ref(null)
+const deleteConfirmOpen = computed(() => !!deleteTarget.value)
+
+const requestDelete = (filename) => {
+  deleteTarget.value = filename
+}
+
+const cancelDelete = () => {
+  deleteTarget.value = null
+}
+
+const confirmDelete = async () => {
+  const filename = deleteTarget.value
+  deleteTarget.value = null
   try {
     await api.audio.delete(filename)
     await fetchAudioFiles()
+    toast.add({ severity: 'success', summary: 'File deleted', detail: filename, life: 3000 })
   } catch {
-    alert('Failed to delete file')
+    toast.add({ severity: 'error', summary: 'Delete failed', detail: `Could not delete ${filename}.` })
   }
 }
 
@@ -172,8 +193,9 @@ const uploadFile = async (file) => {
     isLoading.value = true
     await api.audio.upload(file, 'web-user')
     await fetchAudioFiles()
+    toast.add({ severity: 'success', summary: 'File uploaded', detail: file.name, life: 3000 })
   } catch {
-    alert('Upload failed')
+    toast.add({ severity: 'error', summary: 'Upload failed', detail: `Could not upload ${file.name}.` })
   } finally {
     isLoading.value = false
   }
@@ -200,34 +222,40 @@ const uploadFile = async (file) => {
     </BasePageHeader>
 
     <!-- Error Alert -->
-    <div v-if="error" class="bg-danger-500/10 border border-danger-500/20 text-danger-400 p-4 rounded-lg flex justify-between items-center relative">
-      <span>{{ error }}</span>
-      <button class="text-sm hover:text-slate-100 absolute right-4" @click="error = null">&times;</button>
+    <div v-if="error" class="bg-danger-500/10 border border-danger-500/20 text-danger-400 p-4 rounded-lg flex justify-between items-center gap-3">
+      <span class="text-sm">{{ error }}</span>
+      <button type="button" class="focus-ring icon-btn grid h-7 w-7 shrink-0 place-items-center rounded-md hover:text-slate-100" aria-label="Dismiss error" @click="error = null">
+        <PhX size="14" weight="bold" aria-hidden="true" />
+      </button>
     </div>
 
     <!-- ===================== TTS TAB ===================== -->
     <div v-if="activeTab === 'tts'" class="space-y-6">
-      <BaseCard title="Text to Speech Engine">
+      <BaseCard>
         <div class="space-y-6">
+          <h2 class="text-lg font-semibold tracking-tight text-slate-100">Text to Speech Engine</h2>
+
           <!-- Engine Selector -->
-          <div class="flex gap-4">
-            <div class="inline-flex bg-brand-500/10 p-1 rounded-lg border border-brand-500/30">
-               <button 
-                 class="px-4 py-2 rounded-md text-sm font-medium transition-all"
-                 :class="ttsEngine === 'gtts' ? 'bg-brand-500 text-slate-950 shadow-lg shadow-brand-500/30' : 'text-brand-200 hover:text-brand-100'"
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="segmented">
+               <button
+                 type="button"
+                 class="segmented-option"
+                 :class="{ 'segmented-option-active': ttsEngine === 'gtts' }"
                  @click="ttsEngine = 'gtts'"
                >
                  GTTS
                </button>
-               <button 
-                 class="px-4 py-2 rounded-md text-sm font-medium transition-all"
-                 :class="ttsEngine === 'os' ? 'bg-brand-500 text-slate-950 shadow-lg shadow-brand-500/30' : 'text-brand-200 hover:text-brand-100'"
+               <button
+                 type="button"
+                 class="segmented-option"
+                 :class="{ 'segmented-option-active': ttsEngine === 'os' }"
                  @click="ttsEngine = 'os'"
                >
                  Device Default
                </button>
             </div>
-            <div class="flex items-center gap-1 text-xs text-slate-500">
+            <div class="flex items-center gap-1.5 text-xs text-slate-500">
                 <PhInfo size="14" aria-hidden="true" />
                 {{ ttsEngine === 'gtts' ? 'Runs on the server' : 'Runs on your device' }}
             </div>
@@ -315,7 +343,7 @@ const uploadFile = async (file) => {
               <button type="button" class="focus-ring p-2 rounded-lg hover:bg-brand-500/20 text-slate-400 hover:text-brand-300 transition-colors" title="Play on Laptop" :aria-label="`Play ${file.filename} on laptop`" @click="playOnLaptop(file.filename)">
                 <PhLaptop size="20" aria-hidden="true" />
               </button>
-              <button type="button" class="focus-ring p-2 rounded-lg hover:bg-danger-500/20 text-slate-400 hover:text-danger-400 transition-colors" title="Delete" :aria-label="`Delete ${file.filename}`" @click="deleteFile(file.filename)">
+              <button type="button" class="focus-ring p-2 rounded-lg hover:bg-danger-500/20 text-slate-400 hover:text-danger-400 transition-colors" title="Delete" :aria-label="`Delete ${file.filename}`" @click="requestDelete(file.filename)">
                 <PhTrash size="20" aria-hidden="true" />
               </button>
             </div>
@@ -335,6 +363,21 @@ const uploadFile = async (file) => {
       </p>
       <BaseBtn variant="secondary" class="mt-6" disabled>Coming Soon</BaseBtn>
     </div>
+
+    <BaseModal
+      :model-value="deleteConfirmOpen"
+      title="Delete audio file"
+      @update:model-value="(v) => !v && cancelDelete()"
+    >
+      <p class="text-sm text-slate-300">
+        Delete <span class="font-semibold text-slate-100">{{ deleteTarget }}</span>? This can't be undone.
+      </p>
+
+      <template #footer>
+        <BaseBtn variant="secondary" @click="cancelDelete">Cancel</BaseBtn>
+        <BaseBtn variant="danger" @click="confirmDelete">Delete</BaseBtn>
+      </template>
+    </BaseModal>
 
   </div>
 </template>

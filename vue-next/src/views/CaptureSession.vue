@@ -796,8 +796,8 @@ watch(terminalLines, () => {
                 Mode: {{ captureMode === 'dual' ? 'Dual hand' : 'Single hand' }}
               </p>
               <div class="mt-3">
-                <label class="block text-xs text-slate-400 mb-1">Capture Mode</label>
-                <select v-model="captureMode" class="bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 w-full">
+                <label class="field-label">Capture Mode</label>
+                <select v-model="captureMode" class="field-control">
                   <option value="single">Single Hand</option>
                   <option value="dual">Dual Hand</option>
                 </select>
@@ -909,13 +909,13 @@ watch(terminalLines, () => {
             <div v-if="isCollecting" class="text-success-400 font-semibold">
               Recording "{{ currentGestureName }}"...
             </div>
-            <div v-if="exportStatusMessage" class="text-xs text-sky-300 mt-1">
+            <div v-if="exportStatusMessage" class="text-xs text-brand-300 mt-1">
               {{ exportStatusMessage }}
             </div>
-            <div v-if="artifactRecorderStatus === 'recording'" class="text-xs text-cyan-300 mt-1">
+            <div v-if="artifactRecorderStatus === 'recording'" class="text-xs text-brand-300 mt-1">
               Raw capture video recording in progress.
             </div>
-            <div v-if="artifactRecorderStatus === 'ready'" class="text-xs text-cyan-300 mt-1">
+            <div v-if="artifactRecorderStatus === 'ready'" class="text-xs text-brand-300 mt-1">
               Latest capture video is ready for cropper ingestion.
             </div>
             <div v-if="artifactRecorderWarning" class="text-xs text-warning-300 mt-1">

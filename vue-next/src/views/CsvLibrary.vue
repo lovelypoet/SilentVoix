@@ -2,11 +2,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { PhFileCsv, PhCircleNotch } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
 import BaseModal from '../components/base/BaseModal.vue'
+import BaseEmptyState from '../components/base/BaseEmptyState.vue'
 import api from '../services/api'
 const toast = useToast()
 const route = useRoute()
@@ -516,7 +518,7 @@ const onRowDragEnd = () => {
 }
 
 const menuItemClass = 'w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50'
-const menuAccentClass = 'w-full text-left px-3 py-2 text-sm text-cyan-300 hover:bg-slate-800 disabled:opacity-50'
+const menuAccentClass = 'w-full text-left px-3 py-2 text-sm text-brand-300 hover:bg-slate-800 disabled:opacity-50'
 const menuWarningClass = 'w-full text-left px-3 py-2 text-sm text-warning-300 hover:bg-slate-800 disabled:opacity-50'
 const menuDangerClass = 'w-full text-left px-3 py-2 text-sm text-danger-300 hover:bg-danger-500/10 disabled:opacity-50'
 
@@ -549,65 +551,65 @@ watch([compatibleOnly, pipeline, mode], () => {
     </BasePageHeader>
 
     <BaseCard>
-      <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
-        <label class="text-sm text-slate-300 md:col-span-1">
-          Pipeline
-          <select v-model="pipeline" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-7">
+        <div>
+          <label class="field-label" for="csv-filter-pipeline">Pipeline</label>
+          <select id="csv-filter-pipeline" v-model="pipeline" class="field-control">
             <option value="early">Early</option>
             <option value="late">Late</option>
           </select>
-        </label>
+        </div>
 
-        <label class="text-sm text-slate-300 md:col-span-1">
-          Mode
-          <select v-model="mode" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+        <div>
+          <label class="field-label" for="csv-filter-mode">Mode</label>
+          <select id="csv-filter-mode" v-model="mode" class="field-control">
             <option value="single">Single</option>
             <option value="dual">Dual</option>
           </select>
-        </label>
+        </div>
 
-        <label class="text-sm text-slate-300 md:col-span-1">
-          Schema
-          <select v-model="schemaFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
+        <div>
+          <label class="field-label" for="csv-filter-schema">Schema</label>
+          <select id="csv-filter-schema" v-model="schemaFilter" class="field-control">
             <option v-for="item in schemaOptions" :key="item" :value="item">{{ item }}</option>
           </select>
-        </label>
+        </div>
 
-        <label class="text-sm text-slate-300 md:col-span-1">
-          Validation
-          <select v-model="validationFilter" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
-            <option value="all">all</option>
-            <option value="pass">pass</option>
-            <option value="warning">warning</option>
-            <option value="reject">reject</option>
-            <option value="unreviewed">unreviewed</option>
+        <div>
+          <label class="field-label" for="csv-filter-validation">Validation</label>
+          <select id="csv-filter-validation" v-model="validationFilter" class="field-control">
+            <option value="all">All</option>
+            <option value="pass">Pass</option>
+            <option value="warning">Warning</option>
+            <option value="reject">Reject</option>
+            <option value="unreviewed">Unreviewed</option>
           </select>
-        </label>
+        </div>
 
-        <label class="text-sm text-slate-300 md:col-span-1">
-          Sort
-          <select v-model="sortBy" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100">
-            <option value="manual">manual order</option>
-            <option value="modified_desc">modified: newest</option>
-            <option value="modified_asc">modified: oldest</option>
-            <option value="validation">validation: worst first</option>
-            <option value="offset_desc">offset: largest first</option>
+        <div>
+          <label class="field-label" for="csv-filter-sort">Sort</label>
+          <select id="csv-filter-sort" v-model="sortBy" class="field-control">
+            <option value="manual">Manual order</option>
+            <option value="modified_desc">Modified: newest</option>
+            <option value="modified_asc">Modified: oldest</option>
+            <option value="validation">Validation: worst first</option>
+            <option value="offset_desc">Offset: largest first</option>
           </select>
-        </label>
+        </div>
 
-        <div class="md:col-span-1 flex items-end">
+        <div class="sm:col-span-2 md:col-span-2 flex items-end">
           <BaseBtn variant="primary" class="w-full" :disabled="isLoading || filteredFiles.length === 0" @click="checkAllCompatibility">
             Check Compatibility
           </BaseBtn>
         </div>
       </div>
-      <div class="mt-3">
-        <label class="text-sm text-slate-300 inline-flex items-center">
-          <input v-model="compatibleOnly" type="checkbox" class="mr-2" />
+      <div class="mt-4">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+          <input v-model="compatibleOnly" type="checkbox" class="h-4 w-4 rounded border-[rgb(var(--border-default))] bg-[rgb(var(--surface))] accent-brand-500" />
           Compatible only for selected pipeline/mode (training picker view)
         </label>
       </div>
-      <div v-if="pipeline === 'late'" class="mt-3 rounded border border-slate-700 bg-slate-900/50 p-3 text-xs">
+      <div v-if="pipeline === 'late'" class="mt-4 rounded-lg border border-[rgb(var(--border-default))] bg-[rgb(var(--surface))] p-3 text-xs">
         <p class="text-slate-300">
           Late fusion needs both slots selected:
           <span :class="latePairStatus?.cv ? 'text-success-300' : 'text-warning-300'">CV</span> +
@@ -618,36 +620,46 @@ watch([compatibleOnly, pipeline, mode], () => {
         </p>
       </div>
 
-      <p v-if="error" class="text-danger-300 text-sm mt-3">{{ error }}</p>
+      <p v-if="error" role="alert" class="text-danger-300 text-sm mt-4">{{ error }}</p>
     </BaseCard>
 
     <BaseCard>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="data-table">
           <thead>
-            <tr class="text-left text-slate-400 border-b border-slate-800">
-              <th class="py-2 pr-3">File</th>
-              <th class="py-2 pr-3">Schema</th>
-              <th class="py-2 pr-3">Rows</th>
-              <th class="py-2 pr-3">Size</th>
-              <th class="py-2 pr-3">Updated</th>
-              <th class="py-2 pr-3">Validation</th>
-              <th class="py-2 pr-3">Selected</th>
-              <th class="py-2 pr-3">Compatibility</th>
-              <th class="py-2 px-3 text-center">Actions</th>
+            <tr>
+              <th>File</th>
+              <th>Schema</th>
+              <th>Rows</th>
+              <th>Size</th>
+              <th>Updated</th>
+              <th>Validation</th>
+              <th>Selected</th>
+              <th>Compatibility</th>
+              <th class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="9" class="py-4 text-slate-400">Loading files...</td>
+              <td colspan="9">
+                <div class="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">
+                  <PhCircleNotch size="16" weight="bold" class="animate-spin" aria-hidden="true" />
+                  Loading files…
+                </div>
+              </td>
             </tr>
             <tr v-else-if="filteredFiles.length === 0">
-              <td colspan="9" class="py-4 text-slate-400">No CSV files found.</td>
+              <td colspan="9">
+                <BaseEmptyState
+                  :icon="PhFileCsv"
+                  title="No CSV files found"
+                  description="Files uploaded to the CSV library will show up here, filtered by the options above."
+                />
+              </td>
             </tr>
             <tr
               v-for="file in filteredFiles"
               :key="file.name"
-              class="border-b border-slate-900/70"
               :class="isManualSort ? 'cursor-grab active:cursor-grabbing' : ''"
               :draggable="isManualSort && !isReordering"
               @dragstart="onRowDragStart(file.name)"
@@ -655,12 +667,12 @@ watch([compatibleOnly, pipeline, mode], () => {
               @drop.prevent="onRowDrop(file.name)"
               @dragend="onRowDragEnd"
             >
-              <td class="py-2 pr-3 text-slate-200 font-medium">{{ isManualSort ? ':: ' : '' }}{{ file.name }}</td>
-              <td class="py-2 pr-3 text-slate-300">{{ file.schema_id }}</td>
-              <td class="py-2 pr-3 text-slate-300">{{ file.row_count }}</td>
-              <td class="py-2 pr-3 text-slate-300">{{ formatBytes(file.size_bytes) }}</td>
-              <td class="py-2 pr-3 text-slate-300">{{ formatDate(file.modified_at) }}</td>
-              <td class="py-2 pr-3">
+              <td class="text-slate-200 font-medium">{{ isManualSort ? ':: ' : '' }}{{ file.name }}</td>
+              <td>{{ file.schema_id }}</td>
+              <td>{{ file.row_count }}</td>
+              <td>{{ formatBytes(file.size_bytes) }}</td>
+              <td>{{ formatDate(file.modified_at) }}</td>
+              <td>
                 <span
                   class="px-2 py-1 rounded text-xs font-semibold"
                   :class="workerValidationClass(file.worker_validation?.status)"
@@ -679,16 +691,16 @@ watch([compatibleOnly, pipeline, mode], () => {
                   {{ file.review_history_count }} review {{ file.review_history_count === 1 ? 'entry' : 'entries' }}
                 </p>
               </td>
-              <td class="py-2 pr-3">
+              <td>
                 <span
                   v-if="isFileSelectedForActiveSlot(file)"
-                  class="px-2 py-1 rounded text-xs font-semibold bg-cyan-500/20 text-cyan-300"
+                  class="px-2 py-1 rounded text-xs font-semibold bg-brand-500/20 text-brand-300"
                 >
                   Active {{ pipeline === 'late' ? schemaModality(file.schema_id).toUpperCase() : '' }}
                 </span>
                 <span v-else class="text-xs text-slate-500">-</span>
               </td>
-              <td class="py-2 pr-3">
+              <td>
                 <div v-if="compatibilityByName[file.name]?.checked">
                   <span
                     class="px-2 py-1 rounded text-xs font-semibold"
@@ -700,7 +712,7 @@ watch([compatibleOnly, pipeline, mode], () => {
                 </div>
                 <span v-else class="text-xs text-slate-500">Not checked</span>
               </td>
-              <td class="py-2 px-3 text-center">
+              <td class="text-center">
                 <BaseEllipsisMenu>
                   <template #menu="{ close }">
                     <button
@@ -778,7 +790,7 @@ watch([compatibleOnly, pipeline, mode], () => {
       max-width="max-w-5xl"
       @update:model-value="(v) => !v && closePreviewModal()"
     >
-      <p v-if="previewLoading" role="status" class="text-slate-400">Loading preview...</p>
+      <p v-if="previewLoading" role="status" class="flex items-center gap-2 text-slate-400"><PhCircleNotch size="16" weight="bold" class="animate-spin" aria-hidden="true" />Loading preview…</p>
       <p v-else-if="previewError" role="alert" class="text-danger-300">{{ previewError }}</p>
       <p v-else-if="!previewData" class="text-slate-500">No preview data.</p>
       <div v-else>
@@ -808,7 +820,7 @@ watch([compatibleOnly, pipeline, mode], () => {
       max-width="max-w-3xl"
       @update:model-value="(v) => !v && closeStatsModal()"
     >
-        <p v-if="statsLoading" role="status" class="text-slate-400">Loading stats...</p>
+        <p v-if="statsLoading" role="status" class="flex items-center gap-2 text-slate-400"><PhCircleNotch size="16" weight="bold" class="animate-spin" aria-hidden="true" />Loading stats…</p>
         <p v-else-if="statsError" role="alert" class="text-danger-300">{{ statsError }}</p>
         <p v-else-if="!statsData" class="text-slate-500">No stats data.</p>
         <div v-else class="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-1">

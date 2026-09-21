@@ -94,7 +94,7 @@ const processFrame = () => {
 const lightingStatus = computed(() => {
   const brightness = avgBrightness.value;
   if (brightness < 60) {
-    return { status: 'Too Dark', colorClass: 'text-yellow-500' };
+    return { status: 'Too Dark', colorClass: 'text-warning-500' };
   } else if (brightness > 140) {
     return { status: 'Too Bright', colorClass: 'text-danger-500' };
   } else {

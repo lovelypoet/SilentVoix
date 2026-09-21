@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router' // Import useRoute
+import { PhPlay, PhHexagon, PhShuffle, PhStar, PhBroadcast } from '@phosphor-icons/vue'
 import { useAuthStore } from '../stores/auth'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
@@ -155,7 +156,8 @@ const trainingCards = computed(() => {
   const cards = [
     {
       id: 'free-practice',
-      icon: '▶',
+      accent: 'brand-400',
+      icon: PhPlay,
       title: 'Free Practice',
       description: 'Practice any gesture freely with real-time analysis and feedback.',
       buttonLabel: isStartingFreeTraining.value ? 'Requesting...' : 'Start Session',
@@ -166,7 +168,8 @@ const trainingCards = computed(() => {
     },
     {
       id: 'realtime-ai-playground',
-      icon: '◉',
+      accent: 'success-400',
+      icon: PhBroadcast,
       title: 'Realtime AI Playground',
       description: 'Plug in exported models and test live CV inference with overlays.',
       buttonLabel: 'Open Playground',
@@ -177,7 +180,8 @@ const trainingCards = computed(() => {
     },
     {
       id: 'advanced-practice',
-      icon: '★',
+      accent: 'warning-400',
+      icon: PhStar,
       title: 'Advanced Practice',
       description: 'Followed by AI guidance and real-time 3D modelling.',
       buttonLabel: isStartingAdvancedTraining.value ? 'Requesting...' : 'Start Advanced Session',
@@ -191,7 +195,8 @@ const trainingCards = computed(() => {
   if (canAccessFusionWorkspace.value) {
     cards.splice(1, 0, {
       id: 'sensor-training',
-      icon: '⬢',
+      accent: 'brand-alt-400',
+      icon: PhHexagon,
       title: 'Sensor Training',
       description: 'Open glove-only capture and training workflows for sensor datasets.',
       buttonLabel: 'Open Sensor Training',
@@ -203,7 +208,8 @@ const trainingCards = computed(() => {
 
     cards.splice(2, 0, {
       id: 'fusion-workspace',
-      icon: '◆',
+      accent: 'brand-pink-400',
+      icon: PhShuffle,
       title: 'Fusion Workspace',
       description: 'Open dedicated Early/Late Fusion modules from one page.',
       buttonLabel: 'Open Fusion',
@@ -916,10 +922,17 @@ watch(
         @click="handleTrainingCardClick(card)"
       >
         <div
-          class="h-40 bg-slate-800/50 rounded-lg mb-6 flex items-center justify-center text-slate-600 transition-colors"
-          :class="card.locked ? '' : 'group-hover:text-brand-400'"
+          class="h-40 rounded-lg mb-6 flex items-center justify-center transition-colors"
+          :style="card.locked ? {} : { background: `color-mix(in srgb, rgb(var(--${card.accent})) 12%, transparent)` }"
+          :class="card.locked ? 'bg-slate-800/50 text-slate-600' : ''"
         >
-          <span class="text-5xl">{{ card.icon }}</span>
+          <component
+            :is="card.icon"
+            :size="44"
+            weight="duotone"
+            :style="card.locked ? {} : { color: `rgb(var(--${card.accent}))` }"
+            aria-hidden="true"
+          />
         </div>
         <h3 class="text-lg font-semibold text-slate-100 mb-2">
           {{ card.title }}

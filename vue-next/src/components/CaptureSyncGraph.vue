@@ -39,7 +39,7 @@ defineProps({
           <path
             :d="cvPath"
             fill="none"
-            stroke="#f472b6"
+            style="stroke: rgb(var(--brand-pink-400))"
             stroke-width="1.6"
             opacity="0.9"
           />
@@ -60,15 +60,15 @@ defineProps({
             x2="100"
             :y1="cvThreshold"
             :y2="cvThreshold"
-            stroke="#f472b6"
+            style="stroke: rgb(var(--brand-pink-400))"
             stroke-width="1"
             stroke-dasharray="2 3"
             opacity="0.7"
           />
           <circle v-if="sparkPath" :cx="sparkPeak.x" :cy="sparkPeak.y" r="2.5" style="fill: rgb(var(--success-500))" />
-          <circle v-if="cvPath" :cx="cvPeak.x" :cy="cvPeak.y" r="2.2" fill="#f472b6" />
+          <circle v-if="cvPath" :cx="cvPeak.x" :cy="cvPeak.y" r="2.2" style="fill: rgb(var(--brand-pink-400))" />
           <circle v-if="sparkSpike" :cx="sparkSpike.x" :cy="sparkSpike.y" r="2.8" style="fill: rgb(var(--warning-500))" />
-          <circle v-if="cvSpike" :cx="cvSpike.x" :cy="cvSpike.y" r="2.6" fill="#f472b6" />
+          <circle v-if="cvSpike" :cx="cvSpike.x" :cy="cvSpike.y" r="2.6" style="fill: rgb(var(--brand-pink-400))" />
         </svg>
       </div>
       <div

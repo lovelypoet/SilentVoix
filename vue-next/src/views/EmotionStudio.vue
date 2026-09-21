@@ -515,7 +515,7 @@ onBeforeUnmount(() => {
           <span class="text-slate-400">Camera</span>
           <select
             v-model="selectedCamera"
-            class="focus-ring w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-brand-500 focus:outline-none"
+            class="focus-ring field-control"
           >
             <option v-if="!cameras.length" value="">Default camera</option>
             <option v-for="(device, index) in cameras" :key="device.deviceId" :value="device.deviceId">

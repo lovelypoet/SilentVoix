@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { PhX } from '@phosphor-icons/vue'
 
 const props = defineProps({
   modelValue: {
@@ -79,37 +80,62 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
-    @click.self="close"
-  >
+  <Transition name="modal-scrim">
     <div
-      ref="panelRef"
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="titleId"
-      class="w-full rounded-xl border border-[rgb(var(--border-default))] bg-[rgb(var(--surface))] p-6 shadow-2xl relative"
-      :class="maxWidth"
+      v-if="modelValue"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-6"
+      @click.self="close"
     >
-      <button
-        type="button"
-        class="focus-ring absolute top-4 right-4 text-slate-400 hover:text-slate-100"
-        aria-label="Close dialog"
-        @click="close"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <Transition name="modal-panel" appear>
+        <div
+          ref="panelRef"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+          class="w-full rounded-2xl border border-[rgb(var(--border-default))] bg-[rgb(var(--surface-raised))] p-6 shadow-2xl relative"
+          :class="maxWidth"
+        >
+          <button
+            type="button"
+            class="focus-ring icon-btn absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:text-slate-100"
+            aria-label="Close dialog"
+            @click="close"
+          >
+            <PhX size="16" weight="bold" aria-hidden="true" />
+          </button>
 
-      <h2 :id="titleId" class="text-xl font-semibold text-slate-100 mb-2 pr-8">{{ title }}</h2>
+          <h2 :id="titleId" class="text-lg font-semibold tracking-tight text-slate-100 mb-3 pr-8">{{ title }}</h2>
 
-      <slot />
+          <slot />
 
-      <div v-if="$slots.footer" class="flex justify-end gap-3 pt-4 mt-4 border-t border-[rgb(var(--border-default))]">
-        <slot name="footer" />
-      </div>
+          <div v-if="$slots.footer" class="flex flex-wrap justify-end gap-2.5 pt-5 mt-5 border-t border-[rgb(var(--border-default))]">
+            <slot name="footer" />
+          </div>
+        </div>
+      </Transition>
     </div>
-  </div>
+  </Transition>
 </template>
+
+<style scoped>
+.modal-scrim-enter-active,
+.modal-scrim-leave-active {
+  transition: opacity 180ms ease;
+}
+.modal-scrim-enter-from,
+.modal-scrim-leave-to {
+  opacity: 0;
+}
+
+.modal-panel-enter-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.modal-panel-leave-active {
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.modal-panel-enter-from,
+.modal-panel-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+</style>

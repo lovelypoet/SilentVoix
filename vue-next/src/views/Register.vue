@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
+import { PhCircleNotch } from '@phosphor-icons/vue'
 import api from '../services/api'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseInput from '../components/base/BaseInput.vue'
@@ -96,8 +97,8 @@ const handleRegister = async () => {
           class="w-full justify-center"
           :disabled="isLoading"
         >
-          <span v-if="isLoading">Creating account...</span>
-          <span v-else>Create Account</span>
+          <PhCircleNotch v-if="isLoading" size="16" weight="bold" class="animate-spin" aria-hidden="true" />
+          {{ isLoading ? 'Creating account…' : 'Create Account' }}
         </BaseBtn>
       </form>
 
@@ -115,6 +116,7 @@ const handleRegister = async () => {
 .register-page {
   position: relative;
   isolation: isolate;
+  background: radial-gradient(circle at 20% 20%, #1a1638 0%, #020617 55%, #000000 100%);
 }
 
 .register-card {

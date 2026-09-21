@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Popover from 'primevue/popover'
+import { PhDotsThreeVertical } from '@phosphor-icons/vue'
 
 const props = defineProps({
   disabled: {
@@ -67,14 +68,14 @@ const handleHide = () => {
 <template>
   <button
     type="button"
-    class="focus-ring icon-btn h-8 w-8 rounded-md text-slate-300 hover:text-slate-100 disabled:opacity-50"
+    class="focus-ring icon-btn grid h-8 w-8 place-items-center rounded-md text-slate-300 hover:text-slate-100 disabled:opacity-50"
     :disabled="disabled"
     :aria-label="label"
     aria-haspopup="menu"
     :aria-expanded="isOpen"
     @click.stop="toggle"
   >
-    &hellip;
+    <PhDotsThreeVertical size="18" weight="bold" aria-hidden="true" />
   </button>
   <Popover
     ref="panelRef"

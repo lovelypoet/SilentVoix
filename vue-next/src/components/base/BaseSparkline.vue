@@ -61,7 +61,7 @@ const geometry = computed(() => {
     <path
       :d="geometry.linePath"
       fill="none"
-      stroke="rgb(100 116 139)"
+      stroke="rgb(var(--slate-500))"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"

@@ -210,6 +210,43 @@
 }
 
 /*
+ * Shared "label above value" stat primitives - the KPI/metric grids on
+ * Dashboard, GestureInsights, ModelLibrary, etc. all render the same shape
+ * (small uppercase label, larger numeric value). One definition here so
+ * BaseStatTile and any view's own metric grid render identically instead of
+ * drifting (or, as with BaseStatTile before this, silently being unstyled
+ * because the rule lived in a *different* component's `<style scoped>`).
+ */
+.card-title {
+  color: rgb(var(--slate-200));
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.stat-label {
+  color: rgb(var(--slate-500));
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  color: rgb(var(--slate-100));
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Monospaced figures for hashes/versions/IDs - and tabular so live-updating
+   numbers don't shift layout as digits change. */
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
  * Small circular brand mark reused everywhere the wordmark appears (app
  * shell sidebar, login/register, landing page) so the logged-out and
  * logged-in experience read as one product.
@@ -349,6 +386,127 @@
 .eyebrow-pink .eyebrow-dot {
   background: rgb(var(--brand-pink-400));
   box-shadow: 0 0 8px rgb(var(--brand-pink-400));
+}
+
+/*
+ * Segmented control - the 2-3 option toggle pattern used for mode switches
+ * (Single/Dual, GTTS/Device Default, ...). One shared shape so every
+ * instance of this control looks the same instead of each view inventing
+ * its own container/active-state treatment.
+ */
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  border-radius: 0.625rem;
+  border: 1px solid rgb(var(--border-default));
+  background: rgb(var(--surface));
+}
+
+.segmented-option {
+  padding: 0.5rem 1rem;
+  border-radius: 0.4375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--slate-400));
+  transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segmented-option:hover:not(.segmented-option-active) {
+  color: rgb(var(--slate-100));
+}
+
+.segmented-option-active {
+  background: rgb(var(--brand-500));
+  color: rgb(var(--slate-950));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.16);
+}
+
+.segmented-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/*
+ * Shared form-field primitives for raw <select>/<input> elements that can't
+ * use the BaseInput component (filter bars, inline table controls) - same
+ * visual language (surface bg, hairline border, brand focus ring) so every
+ * control in the app looks like it belongs to one system.
+ */
+.field-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  margin-left: 0.125rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--slate-400));
+}
+
+.field-control {
+  width: 100%;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--border-default));
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(var(--slate-200));
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.field-control::placeholder {
+  color: rgb(var(--slate-600));
+}
+
+.field-control:focus-visible {
+  outline: none;
+  border-color: rgb(var(--brand-500));
+  box-shadow: 0 0 0 1px rgb(var(--brand-500));
+}
+
+/*
+ * Shared data-table shape. Consistent header/row treatment (uppercase
+ * label header, hairline row dividers, subtle hover) for every dense admin
+ * table in the app instead of each view re-deriving border/padding values.
+ */
+.data-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.data-table thead th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgb(var(--slate-500));
+  border-bottom: 1px solid rgb(var(--border-default));
+  white-space: nowrap;
+}
+
+.data-table tbody td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgb(var(--border-subtle));
+  color: rgb(var(--slate-300));
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr {
+  transition: background-color 150ms ease;
+}
+
+.data-table tbody tr:hover {
+  background: rgb(var(--surface-raised) / 0.4);
 }
 
 /* Small bordered icon button (nav toggles, close buttons). Border/hover use the shared hairline + accent tokens. */

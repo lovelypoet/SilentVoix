@@ -18,8 +18,12 @@ const store = usePlaygroundStore()
       <div class="flex items-center gap-4">
         <div class="flex items-center gap-2">
            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Early:</span>
-           <button 
-             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+           <button
+             type="button"
+             role="switch"
+             :aria-checked="store.isEarlyFusionMode"
+             aria-label="Early fusion mode"
+             class="focus-ring relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
              :class="store.isEarlyFusionMode ? 'bg-brand-500' : 'bg-slate-700'"
              @click="store.isEarlyFusionMode = !store.isEarlyFusionMode; store.isFusionMode = false"
            >
@@ -28,8 +32,12 @@ const store = usePlaygroundStore()
         </div>
         <div class="flex items-center gap-2">
            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Late:</span>
-           <button 
-             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+           <button
+             type="button"
+             role="switch"
+             :aria-checked="store.isFusionMode"
+             aria-label="Late fusion mode"
+             class="focus-ring relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
              :class="store.isFusionMode ? 'bg-brand-500' : 'bg-slate-700'"
              @click="store.isFusionMode = !store.isFusionMode; store.isEarlyFusionMode = false"
            >
@@ -41,18 +49,18 @@ const store = usePlaygroundStore()
 
     <div v-if="store.isFusionMode" class="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="space-y-1">
-             <label class="text-xs font-bold text-slate-500 uppercase">Vision (CV) Model</label>
-             <select v-model="store.activeCvModel" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm">
+          <div>
+             <label class="field-label">Vision (CV) Model</label>
+             <select v-model="store.activeCvModel" class="field-control">
                <option :value="null">Select CV model...</option>
                <option v-for="model in store.savedModels.filter(m => m.metadata?.modality === 'cv')" :key="model.id" :value="model">
                  {{ model.display_name || model.id }}
                </option>
              </select>
           </div>
-          <div class="space-y-1">
-             <label class="text-xs font-bold text-slate-500 uppercase">Glove (Sensor) Model</label>
-             <select v-model="store.activeSensorModel" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm">
+          <div>
+             <label class="field-label">Glove (Sensor) Model</label>
+             <select v-model="store.activeSensorModel" class="field-control">
                <option :value="null">Select Sensor model...</option>
                <option v-for="model in store.savedModels.filter(m => m.metadata?.modality === 'sensor')" :key="model.id" :value="model">
                  {{ model.display_name || model.id }}

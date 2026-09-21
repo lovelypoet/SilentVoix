@@ -1,13 +1,15 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { PhCircleNotch, PhHandWaving } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
+import BaseInput from '../components/base/BaseInput.vue'
+import BaseModal from '../components/base/BaseModal.vue'
+import BaseEmptyState from '../components/base/BaseEmptyState.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
 import api from '../services/api'
 import { useToast } from 'primevue/usetoast'
-import Dialog from 'primevue/dialog'
-import InputText from 'primevue/inputtext'
 
 const router = useRouter()
 const toast = useToast()
@@ -91,7 +93,7 @@ onMounted(() => {
     <div class="flex gap-4">
        <label class="w-full sm:w-64">
          <span class="sr-only">Search gestures by label</span>
-         <input v-model="searchQuery" type="search" placeholder="Search gestures by label..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 w-full focus:border-brand-500 focus:outline-none" />
+         <input v-model="searchQuery" type="search" placeholder="Search gestures by label..." class="field-control" />
        </label>
     </div>
 
@@ -159,46 +161,41 @@ onMounted(() => {
           </div>
        </BaseCard>
 
-       <BaseCard v-if="filteredGestures.length === 0 && !isLoading" class="col-span-full p-12 text-center border-dashed border-2 border-slate-800 bg-transparent">
-         <div class="flex flex-col items-center gap-3">
-           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-           </svg>
-           <p class="text-slate-500 font-medium">No gestures found in your CSV Library.</p>
-           <BaseBtn variant="secondary" class="mt-2" @click="recordNewGesture">Start Recording</BaseBtn>
-         </div>
+       <BaseCard v-if="filteredGestures.length === 0 && !isLoading" class="col-span-full border-2 border-dashed border-[rgb(var(--border-default))] bg-transparent">
+         <BaseEmptyState
+           :icon="PhHandWaving"
+           title="No gestures found in your CSV Library"
+           description="Record a new gesture to start building a dataset."
+         >
+           <BaseBtn variant="secondary" @click="recordNewGesture">Start Recording</BaseBtn>
+         </BaseEmptyState>
        </BaseCard>
-       
-       <div v-if="isLoading" role="status" class="col-span-full py-20 text-center">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mb-4"></div>
-          <p class="text-slate-400">Analyzing dataset insights...</p>
+
+       <div v-if="isLoading" role="status" class="col-span-full flex flex-col items-center gap-3 py-20 text-center text-slate-400">
+          <PhCircleNotch size="24" weight="bold" class="animate-spin text-brand-400" aria-hidden="true" />
+          Analyzing dataset insights…
        </div>
     </div>
 
-    <Dialog v-model:visible="displayDialog" modal header="Record New Gesture" :style="{ width: 'min(30rem, 92vw)' }" @hide="cancelRecordNewGesture">
-     <div class="p-fluid w-full">
-  <div class="field w-full">
-    <label
-      for="gestureName"
-      class="font-bold mb-3 block text-lg"
+    <BaseModal
+      :model-value="displayDialog"
+      title="Record New Gesture"
+      max-width="max-w-md"
+      @update:model-value="(v) => !v && cancelRecordNewGesture()"
     >
-      Gesture Name
-    </label>
-
-    <InputText
-      id="gestureName"
-      v-model="newGestureNameInput"
-      autofocus
-      class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500 transition-all duration-200"
-      @keyup.enter="confirmRecordNewGesture"
-    />
-  </div>
-</div>
+      <BaseInput
+        id="gestureName"
+        v-model="newGestureNameInput"
+        label="Gesture Name"
+        placeholder="e.g. thumbs_up"
+        autofocus
+        @keyup.enter="confirmRecordNewGesture"
+      />
 
       <template #footer>
         <BaseBtn variant="secondary" @click="cancelRecordNewGesture">Cancel</BaseBtn>
         <BaseBtn variant="primary" @click="confirmRecordNewGesture">Record</BaseBtn>
       </template>
-    </Dialog>
+    </BaseModal>
   </div>
 </template>

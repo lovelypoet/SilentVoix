@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
+import { PhCircleNotch } from '@phosphor-icons/vue'
 import { useAuthStore } from '../stores/auth'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseInput from '../components/base/BaseInput.vue'
@@ -265,8 +266,8 @@ const handleLogin = async () => {
             class="w-full justify-center"
             :disabled="isLoading"
         >
-            <span v-if="isLoading">Signing in...</span>
-            <span v-else>Sign In</span>
+            <PhCircleNotch v-if="isLoading" size="16" weight="bold" class="animate-spin" aria-hidden="true" />
+            {{ isLoading ? 'Signing in…' : 'Sign In' }}
         </BaseBtn>
       </form>
 

@@ -108,16 +108,16 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         <p class="card-title">Active Alerts</p>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <div>
-            <p class="metric-label">Open</p>
-            <p class="metric-value">{{ monitoring.alerts?.open_total ?? 0 }}</p>
+            <p class="stat-label">Open</p>
+            <p class="stat-value">{{ monitoring.alerts?.open_total ?? 0 }}</p>
           </div>
           <div>
-            <p class="metric-label">Critical</p>
-            <p class="metric-value text-danger-300">{{ monitoring.alerts?.critical ?? 0 }}</p>
+            <p class="stat-label">Critical</p>
+            <p class="stat-value text-danger-300">{{ monitoring.alerts?.critical ?? 0 }}</p>
           </div>
           <div>
-            <p class="metric-label">Warning</p>
-            <p class="metric-value text-warning-300">{{ monitoring.alerts?.warning ?? 0 }}</p>
+            <p class="stat-label">Warning</p>
+            <p class="stat-value text-warning-300">{{ monitoring.alerts?.warning ?? 0 }}</p>
           </div>
         </div>
         <div class="mt-3 space-y-2">
@@ -132,24 +132,24 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         <p class="card-title">Model Version & Rollout</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
           <div>
-            <p class="metric-label">Active Version</p>
-            <p class="metric-value mono">{{ monitoring.model?.active_version || 'unavailable' }}</p>
+            <p class="stat-label">Active Version</p>
+            <p class="stat-value mono">{{ monitoring.model?.active_version || 'unavailable' }}</p>
           </div>
           <div>
-            <p class="metric-label">Previous Version</p>
-            <p class="metric-value mono">{{ monitoring.model?.previous_version || 'n/a' }}</p>
+            <p class="stat-label">Previous Version</p>
+            <p class="stat-value mono">{{ monitoring.model?.previous_version || 'n/a' }}</p>
           </div>
           <div>
-            <p class="metric-label">Rollout</p>
-            <p class="metric-value">{{ formatPercent(monitoring.model?.rollout_percent || 0, 0) }}</p>
+            <p class="stat-label">Rollout</p>
+            <p class="stat-value">{{ formatPercent(monitoring.model?.rollout_percent || 0, 0) }}</p>
           </div>
           <div>
-            <p class="metric-label">Last Deploy</p>
-            <p class="metric-value">{{ eventTimestamp(monitoring.model?.last_deploy_at) }}</p>
+            <p class="stat-label">Last Deploy</p>
+            <p class="stat-value">{{ eventTimestamp(monitoring.model?.last_deploy_at) }}</p>
           </div>
         </div>
         <div class="mt-4 space-y-2">
-          <p class="metric-label">Runtime Services</p>
+          <p class="stat-label">Runtime Services</p>
           <div
             v-for="service in runtimeServices"
             :key="service.name"
@@ -209,16 +209,16 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         <p class="card-title">Traffic Volume</p>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <div>
-            <p class="metric-label">Last 5m</p>
-            <p class="metric-value">{{ monitoring.traffic?.requests_last_5m ?? 0 }}</p>
+            <p class="stat-label">Last 5m</p>
+            <p class="stat-value">{{ monitoring.traffic?.requests_last_5m ?? 0 }}</p>
           </div>
           <div>
-            <p class="metric-label">Last 24h</p>
-            <p class="metric-value">{{ monitoring.traffic?.requests_last_24h ?? 0 }}</p>
+            <p class="stat-label">Last 24h</p>
+            <p class="stat-value">{{ monitoring.traffic?.requests_last_24h ?? 0 }}</p>
           </div>
           <div>
-            <p class="metric-label">Delta</p>
-            <p class="metric-value">{{ formatPercent(monitoring.traffic?.trend_delta_pct, 2) }}</p>
+            <p class="stat-label">Delta</p>
+            <p class="stat-value">{{ formatPercent(monitoring.traffic?.trend_delta_pct, 2) }}</p>
           </div>
         </div>
       </BaseCard>
@@ -227,16 +227,16 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
         <p class="card-title">Data Quality</p>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <div>
-            <p class="metric-label">Missing Ratio</p>
-            <p class="metric-value">{{ formatPercent((monitoring.data_quality?.missing_ratio || 0) * 100, 2) }}</p>
+            <p class="stat-label">Missing Ratio</p>
+            <p class="stat-value">{{ formatPercent((monitoring.data_quality?.missing_ratio || 0) * 100, 2) }}</p>
           </div>
           <div>
-            <p class="metric-label">Schema Mismatch</p>
-            <p class="metric-value">{{ monitoring.data_quality?.schema_mismatch_count ?? 0 }}</p>
+            <p class="stat-label">Schema Mismatch</p>
+            <p class="stat-value">{{ monitoring.data_quality?.schema_mismatch_count ?? 0 }}</p>
           </div>
           <div>
-            <p class="metric-label">Drop Rate</p>
-            <p class="metric-value">{{ formatPercent((monitoring.data_quality?.drop_rate || 0) * 100, 2) }}</p>
+            <p class="stat-label">Drop Rate</p>
+            <p class="stat-value">{{ formatPercent((monitoring.data_quality?.drop_rate || 0) * 100, 2) }}</p>
           </div>
         </div>
       </BaseCard>
@@ -304,31 +304,6 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
 </template>
 
 <style scoped>
-.card-title {
-  color: rgb(var(--slate-200));
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.metric-label {
-  color: rgb(var(--slate-500));
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.metric-value {
-  color: rgb(var(--slate-100));
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-top: 0.25rem;
-}
-
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 1rem;
-}
-
 .trend-bars {
   min-height: 120px;
   display: grid;

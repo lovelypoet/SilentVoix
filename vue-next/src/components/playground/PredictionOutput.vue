@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { usePlaygroundStore } from '@/stores/playgroundStore'
 import BaseBtn from '@/components/base/BaseBtn.vue'
-import Dialog from 'primevue/dialog'
+import BaseModal from '@/components/base/BaseModal.vue'
 import api from '@/services/api'
 import { useToast } from 'primevue/usetoast'
 
@@ -74,15 +74,17 @@ const openCorrectionDialog = () => {
        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Was this correct?</span>
        <div class="flex gap-2">
           <template v-if="!feedbackSent">
-            <button 
+            <button
+              type="button"
+              class="focus-ring flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold text-success-400 transition-colors hover:bg-success-500/20 bg-success-500/10"
               @click="submitFeedback(true)"
-              class="flex items-center gap-1.5 px-2 py-1 rounded bg-success-500/10 text-success-400 hover:bg-success-500/20 text-xs font-semibold transition-colors"
             >
               Correct
             </button>
-            <button 
+            <button
+              type="button"
+              class="focus-ring flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold text-danger-400 transition-colors hover:bg-danger-500/20 bg-danger-500/10"
               @click="openCorrectionDialog"
-              class="flex items-center gap-1.5 px-2 py-1 rounded bg-danger-500/10 text-danger-400 hover:bg-danger-500/20 text-xs font-semibold transition-colors"
             >
               Wrong
             </button>
@@ -93,26 +95,32 @@ const openCorrectionDialog = () => {
        </div>
     </div>
 
-    <Dialog v-model:visible="showCorrectionDialog" modal header="Correct Prediction" :style="{ width: '25rem' }">
-      <div class="space-y-4 py-2">
+    <BaseModal
+      :model-value="showCorrectionDialog"
+      title="Correct Prediction"
+      max-width="max-w-sm"
+      @update:model-value="(v) => !v && (showCorrectionDialog = false)"
+    >
+      <div class="space-y-3">
         <p class="text-sm text-slate-400">
           What was the actual gesture?
         </p>
-        <div class="space-y-2">
-          <label class="text-xs font-bold text-slate-500 uppercase">Select True Gesture</label>
-          <select v-model="correctedLabel" class="w-full bg-slate-900 text-slate-100 rounded border border-slate-700 px-3 py-2 outline-none">
+        <div>
+          <label class="field-label" for="correction-label">Select true gesture</label>
+          <select id="correction-label" v-model="correctedLabel" class="field-control">
             <option value="" disabled>-- Select Gesture --</option>
             <option v-for="l in store.activeModel?.metadata?.labels || []" :key="l" :value="l">{{ l }}</option>
             <option value="Unknown">Other / Not in list</option>
           </select>
         </div>
-        <div class="flex justify-end gap-2 pt-2">
-          <BaseBtn variant="secondary" @click="showCorrectionDialog = false">Cancel</BaseBtn>
-          <BaseBtn variant="primary" :disabled="!correctedLabel || isSubmittingFeedback" @click="submitFeedback(false, correctedLabel)">
-            {{ isSubmittingFeedback ? 'Submitting...' : 'Submit' }}
-          </BaseBtn>
-        </div>
       </div>
-    </Dialog>
+
+      <template #footer>
+        <BaseBtn variant="secondary" @click="showCorrectionDialog = false">Cancel</BaseBtn>
+        <BaseBtn variant="primary" :disabled="!correctedLabel || isSubmittingFeedback" @click="submitFeedback(false, correctedLabel)">
+          {{ isSubmittingFeedback ? 'Submitting...' : 'Submit' }}
+        </BaseBtn>
+      </template>
+    </BaseModal>
   </div>
 </template>

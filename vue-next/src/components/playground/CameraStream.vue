@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
+import { PhVideoCamera } from '@phosphor-icons/vue'
 import { useHandTracking } from '@/composables/useHandTracking.js'
 import { usePlaygroundStore } from '@/stores/playgroundStore'
 import { drawHandBoundingBoxes } from '@/renderers/bboxRenderer'
@@ -91,7 +92,14 @@ onUnmounted(stop)
 
 <template>
   <div class="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-700 bg-black">
-    <video 
+    <div
+      v-if="!store.isLive"
+      class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center"
+    >
+      <PhVideoCamera size="36" weight="duotone" class="text-slate-600" aria-hidden="true" />
+      <p class="text-sm text-slate-500">{{ store.liveStatus || 'Start Live to begin the camera feed.' }}</p>
+    </div>
+    <video
       v-show="store.modelModality !== 'sensor' || store.isFusionMode" 
       ref="videoEl" 
       autoplay 

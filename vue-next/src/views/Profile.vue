@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { PhCircleNotch } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
@@ -151,7 +152,7 @@ const handleLogout = async () => {
     <BasePageHeader title="Operator Profile" description="Configure how you monitor models, alerts, and dashboard defaults." />
 
     <BaseCard>
-      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Identity</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-[rgb(var(--border-default))]">Identity</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <BaseInput v-model="form.display_name" label="Display Name" />
         <BaseInput v-model="form.email" label="Email" type="email" />
@@ -163,7 +164,7 @@ const handleLogout = async () => {
     </BaseCard>
 
     <BaseCard>
-      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Access Scope Defaults</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-[rgb(var(--border-default))]">Access Scope Defaults</h2>
       <div>
         <p class="text-sm text-slate-400 mb-2">Environments</p>
         <div class="flex flex-wrap gap-2">
@@ -194,35 +195,35 @@ const handleLogout = async () => {
     </BaseCard>
 
     <BaseCard>
-      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Alert Preferences</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-[rgb(var(--border-default))]">Alert Preferences</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <label class="toggle-row">
           <span>In-app</span>
-          <input v-model="form.operator_preferences.alert_channels.in_app" type="checkbox" />
+          <input v-model="form.operator_preferences.alert_channels.in_app" type="checkbox" class="h-4 w-4 rounded accent-brand-500" />
         </label>
         <label class="toggle-row">
           <span>Email</span>
-          <input v-model="form.operator_preferences.alert_channels.email" type="checkbox" />
+          <input v-model="form.operator_preferences.alert_channels.email" type="checkbox" class="h-4 w-4 rounded accent-brand-500" />
         </label>
         <label class="toggle-row">
           <span>Slack</span>
-          <input v-model="form.operator_preferences.alert_channels.slack" type="checkbox" />
+          <input v-model="form.operator_preferences.alert_channels.slack" type="checkbox" class="h-4 w-4 rounded accent-brand-500" />
         </label>
       </div>
 
       <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="flex flex-col gap-2">
-          <label class="label">Minimum Severity</label>
-          <select v-model="form.operator_preferences.alert_min_severity" class="select">
+          <label class="field-label">Minimum Severity</label>
+          <select v-model="form.operator_preferences.alert_min_severity" class="field-control">
             <option value="warning">Warning</option>
             <option value="critical">Critical</option>
           </select>
         </div>
         <div class="flex flex-col gap-2">
-          <label class="label">Quiet Hours</label>
+          <label class="field-label">Quiet Hours</label>
           <label class="toggle-row">
             <span>Enable Quiet Hours</span>
-            <input v-model="form.operator_preferences.quiet_hours.enabled" type="checkbox" />
+            <input v-model="form.operator_preferences.quiet_hours.enabled" type="checkbox" class="h-4 w-4 rounded accent-brand-500" />
           </label>
         </div>
       </div>
@@ -235,11 +236,11 @@ const handleLogout = async () => {
     </BaseCard>
 
     <BaseCard>
-      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-slate-900">Dashboard Defaults</h2>
+      <h2 class="text-base font-semibold text-slate-100 mb-4 pb-3 border-b border-[rgb(var(--border-default))]">Dashboard Defaults</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="label">Time Window</label>
-          <select v-model="form.operator_preferences.dashboard_defaults.window" class="select">
+          <label class="field-label">Time Window</label>
+          <select v-model="form.operator_preferences.dashboard_defaults.window" class="field-control">
             <option value="1h">1h</option>
             <option value="6h">6h</option>
             <option value="24h">24h</option>
@@ -260,7 +261,10 @@ const handleLogout = async () => {
 
     <div class="flex items-center justify-between gap-3">
       <BaseBtn variant="danger" @click="handleLogout">Sign Out</BaseBtn>
-      <BaseBtn :disabled="isSaving" @click="saveChanges">{{ isSaving ? 'Saving...' : 'Save Operator Settings' }}</BaseBtn>
+      <BaseBtn variant="primary" :disabled="isSaving" @click="saveChanges">
+        <PhCircleNotch v-if="isSaving" size="16" weight="bold" class="animate-spin" aria-hidden="true" />
+        {{ isSaving ? 'Saving…' : 'Save Operator Settings' }}
+      </BaseBtn>
     </div>
   </div>
 </template>
@@ -297,20 +301,4 @@ const handleLogout = async () => {
   background: rgb(var(--slate-900) / 0.55);
 }
 
-.label {
-  display: block;
-  margin-bottom: 0.4rem;
-  margin-left: 0.2rem;
-  color: rgb(var(--slate-400));
-  font-size: 0.85rem;
-}
-
-.select {
-  width: 100%;
-  border: 1px solid rgb(var(--slate-700));
-  background: rgb(var(--slate-900));
-  color: rgb(var(--slate-200));
-  border-radius: 0.5rem;
-  padding: 0.58rem 0.75rem;
-}
 </style>
