@@ -14,6 +14,7 @@ import CameraStream from '@/components/playground/CameraStream.vue'
 import PredictionOutput from '@/components/playground/PredictionOutput.vue'
 import FusionControls from '@/components/playground/FusionControls.vue'
 import SerialMonitor from '@/components/playground/SerialMonitor.vue'
+import MediaPipeGestureTest from '@/components/playground/MediaPipeGestureTest.vue'
 import { useInferencePipeline } from '@/composables/ai/useInferencePipeline'
 
 const router = useRouter()
@@ -208,5 +209,7 @@ onUnmounted(() => {
         </BaseCard>
       </div>
     </div>
+
+    <MediaPipeGestureTest />
   </div>
 </template>
