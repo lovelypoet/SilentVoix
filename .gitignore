@@ -36,3 +36,6 @@ docs/referrences/*.ipynb
 # Unrelated local Blender assets
 blender_model/
 blender/
+
+# Local UI review screenshots (scratch, not source)
+current-ui/
