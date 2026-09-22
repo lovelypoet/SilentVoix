@@ -70,37 +70,46 @@ export function useGestureRecognizerCamera() {
     const now = performance.now()
     let currentResult = null
 
-    if (now - lastDetectTime >= DETECT_INTERVAL) {
-      rawCtx.drawImage(videoEl, 0, 0)
-      const result = recognizer.recognizeForVideo(rawCanvas, now)
-      lastDetectTime = now
+    // A transient detection/draw error (a single malformed frame, a canvas
+    // hiccup, frameCallback throwing) must never silently kill the
+    // recursive requestAnimationFrame chain - without this, one bad frame
+    // permanently freezes gesture recognition (and therefore speech) with
+    // no visible error and no way to recover short of restarting the test.
+    try {
+      if (now - lastDetectTime >= DETECT_INTERVAL) {
+        rawCtx.drawImage(videoEl, 0, 0)
+        const result = recognizer.recognizeForVideo(rawCanvas, now)
+        lastDetectTime = now
 
-      if (result?.landmarks?.length) {
-        currentResult = result
-        lastValidResult = result
-        lastValidTime = now
+        if (result?.landmarks?.length) {
+          currentResult = result
+          lastValidResult = result
+          lastValidTime = now
+        }
+
+        frameCallback?.(currentResult)
       }
 
-      frameCallback?.(currentResult)
-    }
+      // Draw the overlay every animation frame (not just detection ticks) so
+      // it doesn't visibly stutter at DETECT_FPS. Both the <video> and this
+      // <canvas> are CSS-mirrored together by the component, so landmarks
+      // are drawn in raw (unmirrored) space and still line up on screen.
+      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
+      const displayResult = currentResult
+        || (now - lastValidTime <= HOLD_LAST_FRAME_MS ? lastValidResult : null)
 
-    // Draw the overlay every animation frame (not just detection ticks) so
-    // it doesn't visibly stutter at DETECT_FPS. Both the <video> and this
-    // <canvas> are CSS-mirrored together by the component, so landmarks are
-    // drawn in raw (unmirrored) space and still line up on screen.
-    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
-    const displayResult = currentResult
-      || (now - lastValidTime <= HOLD_LAST_FRAME_MS ? lastValidResult : null)
-
-    if (displayResult?.landmarks?.length) {
-      const drawer = new DrawingUtils(ctx)
-      for (const landmarks of displayResult.landmarks) {
-        drawer.drawConnectors(landmarks, GestureRecognizer.HAND_CONNECTIONS, {
-          color: '#facc15',
-          lineWidth: 3
-        })
-        drawer.drawLandmarks(landmarks, { color: '#ffffff', radius: 3, lineWidth: 1 })
+      if (displayResult?.landmarks?.length) {
+        const drawer = new DrawingUtils(ctx)
+        for (const landmarks of displayResult.landmarks) {
+          drawer.drawConnectors(landmarks, GestureRecognizer.HAND_CONNECTIONS, {
+            color: '#facc15',
+            lineWidth: 3
+          })
+          drawer.drawLandmarks(landmarks, { color: '#ffffff', radius: 3, lineWidth: 1 })
+        }
       }
+    } catch (e) {
+      console.warn('[GestureTTS] frame processing error (loop continues):', e)
     }
 
     rafId = requestAnimationFrame(loop)

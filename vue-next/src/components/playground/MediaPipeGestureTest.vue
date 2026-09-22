@@ -47,13 +47,17 @@ camera.onFrame((result) => {
   confidence.value = score
 
   const toSpeak = speechGate.evaluate(name, score, performance.now())
-  if (toSpeak) {
-    const text = gestureToText(toSpeak)
-    if (text) {
-      spokenText.value = text
-      tts.speak(text)
-    }
+  if (!toSpeak) return
+
+  console.log('[GestureTTS] gate passed:', toSpeak, `(${Math.round(score * 100)}%)`)
+  const text = gestureToText(toSpeak)
+  if (!text) {
+    console.warn('[GestureTTS] no mapped text for gesture:', toSpeak)
+    return
   }
+  spokenText.value = text
+  console.log('[GestureTTS] mapped text:', text, '-> calling tts.speak()')
+  tts.speak(text)
 })
 
 const confidencePct = computed(() => Math.round(confidence.value * 100))
