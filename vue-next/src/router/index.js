@@ -135,6 +135,11 @@ const router = createRouter({
             name: 'csv-library',
             component: () => import('../views/CsvLibrary.vue'),
             meta: { requiresAuth: true, allowedRoles: ['admin'] }
+        },
+        {
+            path: '/:pathMatch(.*)*',
+            name: 'not-found',
+            component: () => import('../views/NotFound.vue')
         }
     ]
 })

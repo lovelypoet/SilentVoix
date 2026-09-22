@@ -956,6 +956,8 @@ watch(
   -ms-overflow-style: none;
   cursor: grab;
   user-select: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 48px), transparent);
 }
 
 .training-cards-scroll::-webkit-scrollbar {

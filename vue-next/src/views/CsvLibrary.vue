@@ -551,7 +551,7 @@ watch([compatibleOnly, pipeline, mode], () => {
     </BasePageHeader>
 
     <BaseCard>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-7">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-8">
         <div>
           <label class="field-label" for="csv-filter-pipeline">Pipeline</label>
           <select id="csv-filter-pipeline" v-model="pipeline" class="field-control">
@@ -586,7 +586,7 @@ watch([compatibleOnly, pipeline, mode], () => {
           </select>
         </div>
 
-        <div>
+        <div class="sm:col-span-2 md:col-span-2">
           <label class="field-label" for="csv-filter-sort">Sort</label>
           <select id="csv-filter-sort" v-model="sortBy" class="field-control">
             <option value="manual">Manual order</option>
