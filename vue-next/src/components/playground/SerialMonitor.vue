@@ -1,5 +1,6 @@
 <script setup>
 import { usePlaygroundStore } from '@/stores/playgroundStore'
+import StatusIndicator from '@/components/base/StatusIndicator.vue'
 
 const props = defineProps({
   sensorStream: { type: Object, required: true },
@@ -12,20 +13,16 @@ const store = usePlaygroundStore()
 
 <template>
   <!-- Input Stats Overlay -->
-  <div v-if="store.isFusionMode || store.isEarlyFusionMode || store.modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-56 overflow-auto bg-slate-950 p-3 border-l border-slate-700">
-    <p class="text-[10px] text-warning-500 font-bold uppercase mb-2">Input Stats</p>
-    <div class="mb-2 rounded border border-slate-800 bg-slate-900/60 px-2 py-1">
+  <div v-if="store.isFusionMode || store.isEarlyFusionMode || store.modelModality === 'sensor'" class="absolute right-0 top-0 bottom-0 w-56 overflow-auto bg-slate-950/95 p-3 border-l border-slate-700 grid-texture">
+    <p class="text-[10px] text-slate-500 font-bold uppercase mb-2 tracking-wider">Input Stats</p>
+    <div class="mb-2 rounded border border-slate-800 bg-slate-900/70 px-2 py-1.5 space-y-1">
       <div class="flex items-center justify-between text-[10px]">
         <span class="text-slate-500">Sensor</span>
-        <span :class="props.sensorStream.sensorSnapshot.value.realSensor ? 'text-brand-400' : 'text-warning-300'">
-          {{ props.sensorStream.sensorSnapshot.value.realSensor ? 'Live' : 'No Signal' }}
-        </span>
+        <StatusIndicator :state="props.sensorStream.sensorSnapshot.value.realSensor ? 'active' : 'standby'" size="sm" :label="props.sensorStream.sensorSnapshot.value.realSensor ? 'Live' : 'No Signal'" />
       </div>
       <div class="flex items-center justify-between text-[10px]">
         <span class="text-slate-500">WS</span>
-        <span :class="props.sensorStream.isConnected.value ? 'text-brand-400' : 'text-slate-400'">
-          {{ props.sensorStream.isConnected.value ? 'Connected' : 'Disconnected' }}
-        </span>
+        <StatusIndicator :state="props.sensorStream.isConnected.value ? 'connected' : 'disconnected'" size="sm" />
       </div>
       <div class="flex items-center justify-between text-[10px]">
         <span class="text-slate-500">Updated</span>

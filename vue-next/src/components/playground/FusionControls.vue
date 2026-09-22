@@ -10,12 +10,12 @@ const store = usePlaygroundStore()
 
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3">
       <div>
-        <h2 class="text-xl text-slate-100 font-semibold">Inference Modes</h2>
-        <p class="text-xs text-slate-400">Toggle between Single Model, Early Fusion, or Late Fusion pipelines.</p>
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Inference Modes</h2>
+        <p class="text-xs text-slate-500 mt-1">Toggle between Single Model, Early Fusion, or Late Fusion pipelines.</p>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2">
            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Early:</span>
            <button

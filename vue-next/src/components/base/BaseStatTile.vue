@@ -51,7 +51,7 @@ const deltaTone = computed(() => {
 </script>
 
 <template>
-  <BaseCard class="flex flex-col gap-3">
+  <BaseCard class="flex flex-col gap-3 stat-tile">
     <div class="flex items-start justify-between">
       <div class="flex items-center gap-2.5">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" :style="{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }">

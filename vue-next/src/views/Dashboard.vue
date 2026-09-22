@@ -6,6 +6,7 @@ import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
 import BaseStatTile from '../components/base/BaseStatTile.vue'
+import StatusIndicator from '../components/base/StatusIndicator.vue'
 import { useMonitoringDashboard } from '../composables/useMonitoringDashboard'
 
 const router = useRouter()
@@ -156,9 +157,7 @@ const gotoPlayground = () => router.push('/realtime-ai-playground')
             class="flex items-center justify-between text-sm"
           >
             <span class="text-slate-200">{{ service.name }}</span>
-            <span :class="service.ok ? 'text-success-300' : 'text-danger-300'">
-              {{ service.ok ? 'Healthy' : 'Unavailable' }}
-            </span>
+            <StatusIndicator :state="service.ok ? 'connected' : 'unavailable'" :label="service.ok ? 'Healthy' : 'Unavailable'" size="sm" />
           </div>
           <p v-if="runtimeServices.length === 0" class="text-sm text-slate-500">Runtime checks disabled.</p>
         </div>

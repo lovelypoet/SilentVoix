@@ -1,12 +1,13 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { PhCircleNotch, PhStack } from '@phosphor-icons/vue'
+import { PhCircleNotch, PhStack, PhCheckCircle } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseEllipsisMenu from '../components/base/BaseEllipsisMenu.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
 import BaseModal from '../components/base/BaseModal.vue'
 import BaseEmptyState from '../components/base/BaseEmptyState.vue'
+import StatusIndicator from '../components/base/StatusIndicator.vue'
 import { useToast } from 'primevue/usetoast'
 import api from '../services/api'
 
@@ -43,6 +44,13 @@ const validationErrors = ref([])
 const uploadMessage = ref('')
 const uploadError = ref('')
 const isUploading = ref(false)
+
+const activeModelName = computed(() => {
+  const model = models.value.find((m) => m.id === activeModelId.value)
+  return model ? displayModelName(model) : 'None activated'
+})
+
+const passCount = computed(() => models.value.filter((m) => runtimeStatusFor(m.id) === 'pass').length)
 
 const families = computed(() => {
   const values = new Set(models.value.map((m) => m?.metadata?.model_family).filter(Boolean))
@@ -536,7 +544,7 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <BasePageHeader title="Model Library" description="Manage uploaded inference models for Realtime AI Playground.">
+    <BasePageHeader title="Model Library" description="AI model assets available to the Realtime Playground — upload, validate, and activate." eyebrow="Asset Registry" eyebrow-tone="violet">
       <template #actions>
         <BaseBtn variant="primary" @click="showUploadModal = true">
           Upload Model
@@ -546,6 +554,31 @@ onMounted(() => {
         </BaseBtn>
       </template>
     </BasePageHeader>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <BaseCard class="flex items-center gap-3">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400">
+          <PhStack size="18" weight="bold" aria-hidden="true" />
+        </span>
+        <div>
+          <p class="stat-label">Total Assets</p>
+          <p class="stat-value">{{ models.length }}</p>
+        </div>
+      </BaseCard>
+      <BaseCard class="flex items-center gap-3">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success-500/15 text-success-400">
+          <PhCheckCircle size="18" weight="bold" aria-hidden="true" />
+        </span>
+        <div>
+          <p class="stat-label">Runtime-Verified</p>
+          <p class="stat-value">{{ passCount }} / {{ models.length }}</p>
+        </div>
+      </BaseCard>
+      <BaseCard>
+        <p class="stat-label">Active Model</p>
+        <p class="mt-1 truncate text-sm font-medium text-slate-100">{{ activeModelName }}</p>
+      </BaseCard>
+    </div>
 
     <BaseCard>
       <p v-if="error" role="alert" class="text-danger-300 text-sm mb-4">{{ error }}</p>
@@ -675,27 +708,21 @@ onMounted(() => {
               </td>
               <td>{{ formatDate(model.created_at) }}</td>
               <td>
-                <span
-                  class="px-2 py-1 rounded text-xs font-semibold"
-                  :class="isActive(model.id) ? 'bg-brand-500/20 text-brand-300' : 'bg-slate-700/40 text-slate-300'"
-                >
-                  {{ isActive(model.id) ? 'Active' : 'Inactive' }}
-                </span>
+                <StatusIndicator :state="isActive(model.id) ? 'active' : 'standby'" :label="isActive(model.id) ? 'Active' : 'Inactive'" size="sm" />
               </td>
               <td class="align-middle text-center">
                 <button
                   type="button"
-                  class="mx-auto w-3.5 h-3.5 rounded-full shrink-0 transition-colors shadow-sm outline-none ring-2 ring-transparent focus-visible:ring-slate-400"
-                  :class="
-                    runtimeStatusFor(model.id) === 'pass'
-                      ? 'bg-success-500 hover:bg-success-400 shadow-success-500/20'
-                      : runtimeStatusFor(model.id) === 'fail'
-                        ? 'bg-danger-500 hover:bg-danger-400 shadow-danger-500/20'
-                        : 'bg-warning-400 hover:bg-warning-300 shadow-warning-400/20'
-                  "
+                  class="focus-ring rounded"
                   title="Click to view runtime status details"
                   @click="showRuntimeStatusToast(model)"
-                ></button>
+                >
+                  <StatusIndicator
+                    :state="runtimeStatusFor(model.id) === 'pass' ? 'connected' : runtimeStatusFor(model.id) === 'fail' ? 'error' : 'unavailable'"
+                    :label="runtimeStatusFor(model.id) === 'pass' ? 'Pass' : runtimeStatusFor(model.id) === 'fail' ? 'Fail' : 'Untested'"
+                    size="sm"
+                  />
+                </button>
               </td>
               <td class="text-center">
                 <BaseEllipsisMenu :disabled="isActionLoading(model.id)">

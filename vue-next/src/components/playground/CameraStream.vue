@@ -91,13 +91,18 @@ onUnmounted(stop)
 </script>
 
 <template>
-  <div class="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-700 bg-black">
+  <div class="viewport-frame relative aspect-video w-full overflow-hidden rounded-xl border border-slate-700 bg-black">
+    <span class="viewport-frame-corner-tr" aria-hidden="true"></span>
+    <span class="viewport-frame-corner-bl" aria-hidden="true"></span>
     <div
       v-if="!store.isLive"
-      class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center"
+      class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center grid-texture"
     >
-      <PhVideoCamera size="36" weight="duotone" class="text-slate-600" aria-hidden="true" />
-      <p class="text-sm text-slate-500">{{ store.liveStatus || 'Start Live to begin the camera feed.' }}</p>
+      <span class="scan-ring">
+        <PhVideoCamera size="30" weight="duotone" class="text-slate-600" aria-hidden="true" />
+      </span>
+      <p class="text-sm text-slate-500 mt-2">{{ store.liveStatus || 'Start Live to begin the camera feed.' }}</p>
+      <p class="text-[11px] uppercase tracking-widest text-slate-700">Awaiting signal</p>
     </div>
     <video
       v-show="store.modelModality !== 'sensor' || store.isFusionMode" 

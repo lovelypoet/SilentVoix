@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { PhStack } from '@phosphor-icons/vue'
 import { usePlaygroundStore } from '@/stores/playgroundStore'
 import BaseBtn from '@/components/base/BaseBtn.vue'
 import api from '@/services/api'
@@ -38,10 +39,29 @@ const activateModel = async () => {
 }
 
 onMounted(loadModels)
+
+const activeMeta = computed(() => store.activeModel?.metadata || {})
 </script>
 
 <template>
   <div class="space-y-4">
+    <div v-if="store.activeModel" class="flex items-start gap-3 rounded-lg border border-brand-400/20 bg-brand-500/5 p-3">
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400">
+        <PhStack size="18" weight="bold" aria-hidden="true" />
+      </span>
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-slate-100 truncate">{{ store.activeModel.display_name || store.activeModel.id }}</p>
+        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+          <span class="uppercase tracking-wide">{{ activeMeta.export_format || '--' }}</span>
+          <span class="text-slate-700">•</span>
+          <span class="uppercase tracking-wide">{{ store.modelModality }}</span>
+          <span v-if="activeMeta.f1 != null" class="text-slate-700">•</span>
+          <span v-if="activeMeta.f1 != null">F1 {{ activeMeta.f1 }}</span>
+        </div>
+      </div>
+    </div>
+    <p v-else class="text-xs text-slate-500">No model activated yet — select one below.</p>
+
     <div v-if="!store.isFusionMode && !store.isEarlyFusionMode">
       <label class="field-label" for="model-selector-classifier">Switch Classifier</label>
       <div class="flex flex-col gap-2 md:flex-row">

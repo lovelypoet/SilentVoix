@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { usePlaygroundStore } from '@/stores/playgroundStore'
 import BaseBtn from '@/components/base/BaseBtn.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
+import StatusIndicator from '@/components/base/StatusIndicator.vue'
 import api from '@/services/api'
 import { useToast } from 'primevue/usetoast'
 
@@ -40,25 +41,39 @@ const openCorrectionDialog = () => {
   correctedLabel.value = ''
   showCorrectionDialog.value = true
 }
+
+const outputState = computed(() => {
+  if (!store.isLive) return 'standby'
+  return store.prediction ? 'active' : 'processing'
+})
+
+const confidencePct = computed(() => Math.round((store.prediction?.confidence || 0) * 100))
 </script>
 
 <template>
-  <div class="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm">
-    <div class="flex items-center justify-between mb-2">
-       <p class="text-slate-400">Final Prediction</p>
-       <span v-if="store.isFusionMode" class="text-[10px] bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded font-bold uppercase">Weighted Fusion</span>
+  <div class="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-sm grid-texture">
+    <div class="flex items-center justify-between mb-3">
+       <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Signal Output</p>
+       <div class="flex items-center gap-2">
+         <span v-if="store.isFusionMode" class="text-[10px] bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded font-bold uppercase">Weighted Fusion</span>
+         <StatusIndicator :state="outputState" size="sm" :label="outputState === 'active' ? 'Recognized' : undefined" />
+       </div>
     </div>
 
-    <div v-if="store.prediction" class="flex items-end justify-between">
-       <div>
-          <p class="text-2xl font-bold text-slate-100">
+    <div v-if="store.prediction" class="flex items-end justify-between gap-4">
+       <div class="min-w-0">
+          <p class="text-3xl font-semibold tracking-tight text-slate-50 truncate">
             {{ store.prediction.label }}
           </p>
-          <p class="text-xs text-slate-500 mt-1">
-            Confidence: {{ (store.prediction.confidence * 100).toFixed(2) }}% | {{ store.prediction.note }}
-          </p>
+          <div class="mt-2 flex items-center gap-2">
+            <div class="h-1.5 w-28 overflow-hidden rounded-full bg-slate-800">
+              <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-alt-500 transition-[width] duration-300 ease-out" :style="{ width: `${confidencePct}%` }"></div>
+            </div>
+            <p class="text-xs text-slate-400 mono">{{ confidencePct }}%</p>
+          </div>
+          <p v-if="store.prediction.note" class="text-xs text-slate-500 mt-1.5">{{ store.prediction.note }}</p>
        </div>
-       <div v-if="store.prediction.top3" class="text-right">
+       <div v-if="store.prediction.top3" class="text-right shrink-0">
           <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Top Alternatives</p>
           <div class="flex flex-col gap-1">
              <div v-for="alt in store.prediction.top3.slice(1)" :key="alt.label" class="text-[11px] text-slate-400">
@@ -67,7 +82,9 @@ const openCorrectionDialog = () => {
           </div>
        </div>
     </div>
-    <p v-else class="text-slate-500 mt-1">Ready to predict...</p>
+    <p v-else class="text-slate-500 mt-1">
+      {{ store.isLive ? 'Listening for a gesture…' : 'Start Live to begin inference.' }}
+    </p>
 
     <!-- Feedback UI -->
     <div v-if="store.prediction && store.prediction.label !== 'Waiting...' && store.prediction.label !== 'error'" class="mt-4 pt-3 border-t border-slate-800/50 flex items-center justify-between">
