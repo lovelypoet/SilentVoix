@@ -20,7 +20,7 @@ SilentVoix / V-Hand — a multimodal sign-language recognition platform. An ESP3
 | Built by | `docker-compose.yml` (`api/Dockerfile`, context = repo root) | `docker-compose.dev.yml` (context = `./backend`) |
 | Used by | production compose, Celery workers, Alembic | `run_dev.sh`, dev compose, the CI `backend-runtime-smoke` job |
 
-`transformation.md` §4 declares `api/` + `vue-next/` the canonical stack; `backend/` is legacy unless a module is intentionally reused. **In practice both are live**: `run_dev.sh` and the CI smoke job exercise `backend/`. When changing shared behaviour (routes, settings, services), check whether the same file exists in the other tree and mirror the change or state explicitly that you didn't.
+`docs/transformation.md` §4 declares `api/` + `vue-next/` the canonical stack; `backend/` is legacy unless a module is intentionally reused. **In practice both are live**: `run_dev.sh` and the CI smoke job exercise `backend/`. When changing shared behaviour (routes, settings, services), check whether the same file exists in the other tree and mirror the change or state explicitly that you didn't.
 
 `api/` has code `backend/` lacks: `api/routes/job_routes.py`, and the whole Postgres/Celery layer (`db/`, `workers/`).
 
@@ -117,7 +117,7 @@ Heavy work never blocks the realtime path: a route writes a `JobRecord` row, enq
 
 ### Live sensor contract
 
-`api/routes/liveWS.py` (`/ws/stream`) accepts several legacy producer shapes and normalizes all of them to `silentvoix.sensor_frame.v1` before anything downstream sees them. The invariant, spelled out in `transformation.md` §8: exactly **11 values ordered `accel[3] + gyro[3] + flex[5]`**, with `timestamp_ms` (producer) and `received_at_ms` (API). Malformed frames are rejected with an error message rather than silently padded. `api/ingestion/streaming/live_data.py` holds the latest frame for polling consumers; the same module also serves broadcast to subscribed browser clients.
+`api/routes/liveWS.py` (`/ws/stream`) accepts several legacy producer shapes and normalizes all of them to `silentvoix.sensor_frame.v1` before anything downstream sees them. The invariant, spelled out in `docs/transformation.md` §8: exactly **11 values ordered `accel[3] + gyro[3] + flex[5]`**, with `timestamp_ms` (producer) and `received_at_ms` (API). Malformed frames are rejected with an error message rather than silently padded. `api/ingestion/streaming/live_data.py` holds the latest frame for polling consumers; the same module also serves broadcast to subscribed browser clients.
 
 Early fusion is a different contract: **30 frames × 74 features (63 CV landmarks + 11 sensor)**, labels `rest,hello,thank_you,yes,no,bye`, sensor order `imu_flex`. `model_fit.py` is the training script that defines it.
 
@@ -139,7 +139,7 @@ Route prefixes: `/auth`, `/gestures`, `/predict`, `/predict/integrated`, `/early
 
 ## Docs worth reading before large changes
 
-- `transformation.md` — V-Hand engineering spec, canonical-stack decision, data contracts
+- `docs/transformation.md` — V-Hand engineering spec, canonical-stack decision, data contracts
 - `docs/README.md` — documentation index and scope rule (docs must describe the current runtime/testing-ground form, not preserved legacy designs)
 - `docs/hybrid_database_architecture.md`, `docs/migration_guide.md`
-- `agents/agents.md` — competition/QA sprint directives (note: it describes a React frontend; the actual frontend is Vue 3)
+- `docs/agents.md` — competition/QA sprint directives (note: it describes a React frontend; the actual frontend is Vue 3)

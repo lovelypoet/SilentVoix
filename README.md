@@ -290,7 +290,7 @@ docker compose -f docker-compose.dev.yml --profile runtime-split up -d
 ## Documentation
 
 - [docs/README.md](docs/README.md) — documentation index
-- [transformation.md](transformation.md) — V-Hand engineering spec & data contracts
+- [docs/transformation.md](docs/transformation.md) — V-Hand engineering spec & data contracts
 - [docs/hybrid_database_architecture.md](docs/hybrid_database_architecture.md) — hybrid MongoDB store design
 - [docs/playground_old_model_eval.md](docs/playground_old_model_eval.md) — model evaluation methodology
 - [docs/migration_guide.md](docs/migration_guide.md) — migration notes

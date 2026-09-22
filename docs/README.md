@@ -23,6 +23,13 @@ This directory now contains only docs that match the current SilentVoix scope: a
 - `model_monitor_dashboard_restructure.md`: monitoring dashboard direction
 - `profile_monitoring_restructure.md`: operator profile settings direction
 
+## Engineering Spec & Project Docs
+
+- `transformation.md`: V-Hand engineering spec, canonical-stack decision, data contracts
+- `agents.md`: competition/QA sprint directives (note: describes a React frontend; the actual frontend is Vue 3)
+- `vercel_deployment.md`: deploying the `vue-next/` frontend to Vercel as a demo
+- `plan.md`: legacy landing-page master plan (Next.js concept, predates the current Vue 3 `vue-next/` app — kept for historical reference only)
+
 ## Scope Rule
 
 Removed documents were legacy training specs, research notes, internal briefings, or one-off snippets from the previous training-first app. If a capability is still real, it should be documented here in its current runtime/testing-ground form rather than preserved as a deprecated design note.
