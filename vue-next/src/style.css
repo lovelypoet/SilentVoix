@@ -197,16 +197,355 @@
   --danger-400: 190 18 60;
 }
 
+/*
+ * ---------------------------------------------------------------------------
+ * Motion tokens
+ * ---------------------------------------------------------------------------
+ * One shared rhythm for every transition in the app. `--ease-out` for things
+ * arriving (decelerate), `--ease-spring` for small playful overshoots on
+ * press/hover feedback, `--ease-in` for things leaving. Exits run at roughly
+ * 60-70% of the matching enter duration so the UI feels responsive.
+ */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 160ms;
+  --dur: 280ms;
+  --dur-slow: 520ms;
+
+  /* Aurora backdrop intensity - toned down for the light theme below. */
+  --aurora-opacity: 0.9;
+  --panel-sheen: 255 255 255 / 0.04;
+  --panel-shadow: 0 20px 40px -28px rgb(0 0 0 / 0.55);
+}
+
+[data-theme='light'] {
+  --aurora-opacity: 0.5;
+  --panel-sheen: 255 255 255 / 0.7;
+  --panel-shadow: 0 12px 28px -20px rgb(15 23 42 / 0.18);
+}
+
 .app-bg {
   background: rgb(var(--canvas));
   font-family: 'Space Grotesk', 'DM Sans', sans-serif;
 }
 
-/* Default card/panel surface. One consistent look for every grouped region. */
+::selection {
+  background: rgb(var(--brand-400) / 0.3);
+  color: rgb(var(--slate-50));
+}
+
+/* Thin, brand-tinted scrollbars instead of the chunky OS default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--slate-700)) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--slate-700));
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--brand-500) / 0.6);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Aurora backdrop
+ * ---------------------------------------------------------------------------
+ * Fixed layer behind the app shell: three blurred brand-colored blobs that
+ * drift slowly, plus a faint grid fading out toward the bottom. Only
+ * transform/opacity animate, so it stays on the compositor. Frozen (not
+ * hidden) under reduced motion by the global rule at the end of this file.
+ */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--aurora-opacity);
+}
+
+.aurora-blob {
+  position: absolute;
+  width: 46vmax;
+  height: 46vmax;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.6;
+  will-change: transform;
+}
+
+.aurora-blob-a {
+  top: -18vmax;
+  left: -8vmax;
+  background: radial-gradient(circle, rgb(var(--brand-500)) 0%, transparent 65%);
+  animation: aurora-drift-a 26s ease-in-out infinite alternate;
+}
+
+.aurora-blob-b {
+  top: 10vmax;
+  right: -16vmax;
+  background: radial-gradient(circle, rgb(var(--brand-alt-500)) 0%, transparent 65%);
+  animation: aurora-drift-b 32s ease-in-out infinite alternate;
+}
+
+.aurora-blob-c {
+  bottom: -24vmax;
+  left: 28vmax;
+  background: radial-gradient(circle, rgb(var(--brand-pink-500)) 0%, transparent 65%);
+  opacity: 0.4;
+  animation: aurora-drift-c 38s ease-in-out infinite alternate;
+}
+
+.aurora-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(var(--slate-400) / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--slate-400) / 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 100%);
+}
+
+@keyframes aurora-drift-a {
+  to { transform: translate3d(14vmax, 8vmax, 0) scale(1.15); }
+}
+
+@keyframes aurora-drift-b {
+  to { transform: translate3d(-12vmax, 10vmax, 0) scale(0.9); }
+}
+
+@keyframes aurora-drift-c {
+  to { transform: translate3d(-10vmax, -12vmax, 0) scale(1.2); }
+}
+
+/*
+ * Default card/panel surface. One consistent look for every grouped region.
+ *
+ * Layers: a translucent surface gradient, a 1px gradient border drawn by a
+ * masked ::before (brightens toward the top-left like light catching an
+ * edge), and a cursor-following spotlight in ::after driven by --mx/--my
+ * (set by the pointer tracker in main.js).
+ *
+ * Deliberately NO transform / filter / backdrop-filter here: those create a
+ * containing block for position:fixed descendants, and some views render
+ * fixed overlays (e.g. TrainingSettings) inside a panel.
+ */
 .panel {
-  background: linear-gradient(145deg, rgb(var(--surface-raised) / 0.7), rgb(var(--surface) / 0.6));
-  border: 1px solid rgb(var(--border-default));
-  border-radius: 0.625rem;
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgb(var(--panel-sheen)), transparent 40%),
+    linear-gradient(145deg, rgb(var(--surface-raised) / 0.72), rgb(var(--surface) / 0.62));
+  border: 1px solid rgb(var(--border-subtle));
+  border-radius: 0.875rem;
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.03) inset,
+    var(--panel-shadow);
+  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    rgb(var(--brand-400) / 0.35),
+    rgb(var(--border-default)) 30%,
+    rgb(var(--border-subtle)) 60%,
+    rgb(var(--brand-alt-400) / 0.25)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, -200px),
+    rgb(var(--brand-400) / 0.09),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out);
+  pointer-events: none;
+}
+
+.panel:hover::after {
+  opacity: 1;
+}
+
+.panel:hover {
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.04) inset,
+    0 24px 48px -26px rgb(var(--brand-500) / 0.28);
+}
+
+/* Gradient headline text with a slow, subtle sheen sweep. */
+.text-gradient {
+  background: linear-gradient(
+    100deg,
+    rgb(var(--slate-50)) 0%,
+    rgb(var(--slate-50)) 35%,
+    rgb(var(--brand-300)) 50%,
+    rgb(var(--brand-alt-300)) 60%,
+    rgb(var(--slate-50)) 75%
+  );
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-sheen 7s var(--ease-out) 0.4s infinite;
+}
+
+@keyframes text-sheen {
+  0% { background-position: 100% 0; }
+  45%, 100% { background-position: 0% 0; }
+}
+
+/* Loading placeholder shimmer for skeleton blocks. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: rgb(var(--surface-raised) / 0.6);
+  border-radius: 0.5rem;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(var(--slate-400) / 0.12), transparent);
+  animation: shimmer-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer-sweep {
+  to { transform: translateX(100%); }
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Route transitions + staggered entrance
+ * ---------------------------------------------------------------------------
+ * App.vue wraps <RouterView> in <Transition name="page">. The leaving page
+ * fades up and out quickly; the arriving page fades in, then its top-level
+ * sections cascade in one after another (`.page-stage > * > *`). All
+ * keyframes end at `transform: none` with fill-mode `backwards`, so nothing
+ * is left transformed once the animation finishes (see .panel note above).
+ */
+.page-enter-active {
+  transition: opacity var(--dur) var(--ease-out);
+}
+
+.page-leave-active {
+  transition: opacity 180ms var(--ease-in), transform 180ms var(--ease-in);
+}
+
+.page-enter-from {
+  opacity: 0;
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.page-stage > * > * {
+  animation: rise-in 560ms var(--ease-out) backwards;
+}
+
+.page-stage > * > *:nth-child(1) { animation-delay: 30ms; }
+.page-stage > * > *:nth-child(2) { animation-delay: 90ms; }
+.page-stage > * > *:nth-child(3) { animation-delay: 150ms; }
+.page-stage > * > *:nth-child(4) { animation-delay: 210ms; }
+.page-stage > * > *:nth-child(5) { animation-delay: 270ms; }
+.page-stage > * > *:nth-child(6) { animation-delay: 330ms; }
+.page-stage > * > *:nth-child(7) { animation-delay: 390ms; }
+.page-stage > * > *:nth-child(n + 8) { animation-delay: 450ms; }
+
+/* Grids of cards inside a section cascade too, a beat after their section. */
+.page-stage > * > .grid > *,
+.page-stage > * > * > .grid > * {
+  animation: pop-in 520ms var(--ease-out) backwards;
+}
+
+.page-stage .grid > *:nth-child(1) { animation-delay: 120ms; }
+.page-stage .grid > *:nth-child(2) { animation-delay: 170ms; }
+.page-stage .grid > *:nth-child(3) { animation-delay: 220ms; }
+.page-stage .grid > *:nth-child(4) { animation-delay: 270ms; }
+.page-stage .grid > *:nth-child(n + 5) { animation-delay: 320ms; }
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Top-of-viewport progress bar shown while a lazy route chunk loads. */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  height: 2px;
+  transform-origin: left;
+  background: linear-gradient(90deg, rgb(var(--brand-400)), rgb(var(--brand-alt-400)), rgb(var(--brand-pink-400)));
+  box-shadow: 0 0 12px rgb(var(--brand-400) / 0.7);
+  animation: route-progress 1.6s var(--ease-out) forwards;
+}
+
+@keyframes route-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(0.85); }
+}
+
+.route-progress-leave-active {
+  transition: opacity 300ms ease 120ms, transform 200ms var(--ease-out);
+}
+
+.route-progress-leave-to {
+  opacity: 0;
 }
 
 /*
@@ -218,9 +557,24 @@
  * because the rule lived in a *different* component's `<style scoped>`).
  */
 .card-title {
-  color: rgb(var(--slate-200));
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(var(--slate-100));
+  font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* Small gradient tick in front of every card title - ties cards to the brand. */
+.card-title::before {
+  content: '';
+  width: 0.25rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgb(var(--brand-400)), rgb(var(--brand-alt-400)));
+  box-shadow: 0 0 10px rgb(var(--brand-400) / 0.5);
 }
 
 .stat-label {
@@ -231,9 +585,10 @@
 }
 
 .stat-value {
-  color: rgb(var(--slate-100));
-  font-size: 1.4rem;
+  color: rgb(var(--slate-50));
+  font-size: 1.55rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin-top: 0.25rem;
   font-variant-numeric: tabular-nums;
 }
@@ -250,13 +605,16 @@
    signals "this number is being watched" without adding it to every panel;
    static grouping cards (BaseCard elsewhere) intentionally stay inert. */
 .stat-tile {
-  transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+  transition:
+    border-color var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-spring),
+    box-shadow var(--dur) var(--ease-out);
 }
 
 .stat-tile:hover {
   border-color: rgb(var(--brand-400) / 0.35);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.24);
+  transform: translateY(-3px);
+  box-shadow: 0 22px 44px -22px rgb(var(--brand-500) / 0.45);
 }
 
 /*
@@ -281,6 +639,12 @@
   border-radius: 9999px;
   transform: rotate(-35deg);
   box-shadow: 0 0 16px rgb(var(--brand-400) / 0.28);
+  transition: transform 900ms var(--ease-spring), box-shadow var(--dur) var(--ease-out);
+}
+
+.brand-mark:hover .brand-orbit {
+  transform: rotate(325deg);
+  box-shadow: 0 0 24px rgb(var(--brand-400) / 0.55);
 }
 
 .brand-orbit::before,
@@ -337,6 +701,16 @@
   flex-shrink: 0;
 }
 
+.status-badge-healthy::before {
+  box-shadow: 0 0 0 0 rgb(var(--success-400) / 0.6);
+  animation: badge-beat 2.4s var(--ease-out) infinite;
+}
+
+@keyframes badge-beat {
+  0% { box-shadow: 0 0 0 0 rgb(var(--success-400) / 0.55); }
+  70%, 100% { box-shadow: 0 0 0 6px rgb(var(--success-400) / 0); }
+}
+
 .status-badge-healthy {
   background: rgb(var(--success-500) / 0.12);
   color: rgb(var(--success-400));
@@ -378,12 +752,17 @@
 }
 
 .eyebrow-dot {
+  animation: eyebrow-glow 2.8s ease-in-out infinite;
   width: 0.375rem;
   height: 0.375rem;
   border-radius: 9999px;
   flex-shrink: 0;
   background: rgb(var(--brand-pink-400));
   box-shadow: 0 0 8px rgb(var(--brand-pink-400));
+}
+
+@keyframes eyebrow-glow {
+  50% { opacity: 0.45; transform: scale(0.75); }
 }
 
 .eyebrow-cyan .eyebrow-dot {
@@ -423,7 +802,11 @@
   font-size: 0.8125rem;
   font-weight: 500;
   color: rgb(var(--slate-400));
-  transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+  transition:
+    color var(--dur-fast) ease,
+    background-color var(--dur-fast) ease,
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-spring);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -433,9 +816,13 @@
 }
 
 .segmented-option-active {
-  background: rgb(var(--brand-500));
-  color: rgb(var(--slate-950));
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.16);
+  background: linear-gradient(100deg, rgb(var(--brand-500)), rgb(var(--brand-alt-500)));
+  color: white;
+  box-shadow: 0 6px 18px -8px rgb(var(--brand-500) / 0.8);
+}
+
+.segmented-option:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .segmented-option:disabled {
@@ -467,7 +854,11 @@
   font-size: 0.875rem;
   line-height: 1.25rem;
   color: rgb(var(--slate-200));
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur) var(--ease-out), background-color var(--dur-fast) ease;
+}
+
+.field-control:hover:not(:focus-visible):not(:disabled) {
+  border-color: rgb(var(--slate-600));
 }
 
 .field-control::placeholder {
@@ -477,7 +868,7 @@
 .field-control:focus-visible {
   outline: none;
   border-color: rgb(var(--brand-500));
-  box-shadow: 0 0 0 1px rgb(var(--brand-500));
+  box-shadow: 0 0 0 1px rgb(var(--brand-500)), 0 0 0 5px rgb(var(--brand-500) / 0.15);
 }
 
 /*
@@ -515,21 +906,31 @@
 }
 
 .data-table tbody tr {
-  transition: background-color 150ms ease;
+  transition: background-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 
 .data-table tbody tr:hover {
-  background: rgb(var(--surface-raised) / 0.4);
+  background: linear-gradient(90deg, rgb(var(--brand-500) / 0.08), rgb(var(--surface-raised) / 0.35) 40%);
+  box-shadow: inset 2px 0 0 rgb(var(--brand-400));
 }
 
 /* Small bordered icon button (nav toggles, close buttons). Border/hover use the shared hairline + accent tokens. */
 .icon-btn {
   border: 1px solid rgb(var(--border-default));
-  transition: border-color 150ms, color 150ms;
+  transition:
+    border-color var(--dur-fast),
+    color var(--dur-fast),
+    background-color var(--dur-fast),
+    transform var(--dur-fast) var(--ease-spring);
 }
 
 .icon-btn:hover {
   border-color: rgb(var(--brand-400) / 0.5);
+  background-color: rgb(var(--brand-500) / 0.08);
+}
+
+.icon-btn:active {
+  transform: scale(0.92);
 }
 
 /*
@@ -615,6 +1016,77 @@
   background: linear-gradient(90deg, transparent, rgb(var(--border-default)) 15%, rgb(var(--border-default)) 85%, transparent);
   flex: 1;
   min-width: 1.5rem;
+}
+
+/* While the pipeline is live, a light pulse travels along each connector. */
+.pipeline-rail.is-flowing {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, transparent, rgb(var(--brand-400) / 0.35) 15%, rgb(var(--brand-alt-400) / 0.35) 85%, transparent);
+}
+
+.pipeline-rail.is-flowing::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(var(--brand-300)), transparent);
+  box-shadow: 0 0 8px rgb(var(--brand-400));
+  animation: pipeline-flow 1.6s linear infinite;
+}
+
+@keyframes pipeline-flow {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+/*
+ * Toggle switch - shared by every on/off setting. Use on a <button
+ * role="switch" :aria-checked>; the knob springs across and the track fills
+ * with the brand gradient when on.
+ */
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: rgb(var(--slate-700));
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.25);
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  left: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+  transition: transform 380ms var(--ease-spring), width var(--dur-fast) ease;
+}
+
+.switch:active::after {
+  width: 1.25rem;
+}
+
+.switch[aria-checked='true'] {
+  background: linear-gradient(100deg, rgb(var(--brand-500)), rgb(var(--brand-alt-500)));
+  box-shadow: 0 0 14px -2px rgb(var(--brand-400) / 0.6);
+}
+
+.switch[aria-checked='true']::after {
+  transform: translateX(1.25rem);
+}
+
+.switch[aria-checked='true']:active::after {
+  transform: translateX(1rem);
 }
 
 /*
@@ -703,6 +1175,9 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Staggered entrances use fill-mode `backwards`; without zeroing the
+       delay, elements would sit invisible for their delay window. */
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;

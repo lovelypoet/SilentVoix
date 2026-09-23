@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import {
   PhGauge,
@@ -21,6 +21,7 @@ import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const isMobileNavOpen = ref(false)
@@ -29,6 +30,39 @@ const mobileNavToggleRef = ref(null)
 
 const canAccessExtendedPages = computed(() => ['editor', 'admin'].includes(authStore.user?.role))
 const canAccessAdminPages = computed(() => authStore.user?.role === 'admin')
+
+// Initials for the account chip at the foot of the sidebar.
+const userInitials = computed(() => {
+  const source = authStore.user?.display_name || authStore.user?.email || ''
+  const parts = source.split(/[\s@._-]+/).filter(Boolean)
+  return (parts[0]?.[0] || 'S').toUpperCase() + (parts[1]?.[0] || '').toUpperCase()
+})
+const userLabel = computed(() => authStore.user?.display_name || authStore.user?.email || 'Signed in')
+
+/*
+ * Thin progress bar while a lazily-loaded route chunk is fetched. Delayed so
+ * instant (cached) navigations never flash it.
+ */
+const isNavigating = ref(false)
+let navTimer = null
+const removeBefore = router.beforeEach(() => {
+  clearTimeout(navTimer)
+  navTimer = setTimeout(() => { isNavigating.value = true }, 90)
+})
+const stopProgress = () => {
+  clearTimeout(navTimer)
+  isNavigating.value = false
+}
+const removeAfter = router.afterEach(stopProgress)
+const removeError = router.onError(stopProgress)
+
+/*
+ * Tool pages (layout: 'fullscreen', plus an active Training session) hide
+ * the sidebar but still sit on the aurora backdrop with padding and the
+ * staggered entrance. The auth/marketing screens bring their own
+ * backgrounds, and `bleed` views manage their own full-viewport frame.
+ */
+const isStagedLayout = computed(() => !['empty', 'marketing'].includes(route.meta.layout) && !route.meta.bleed)
 
 const isFullscreenLayout = computed(() => {
   if (['empty', 'fullscreen', 'marketing'].includes(route.meta.layout)) return true
@@ -139,23 +173,36 @@ watch(isMobileNavOpen, async (open) => {
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
+  removeBefore()
+  removeAfter()
+  removeError()
+  clearTimeout(navTimer)
   document.removeEventListener('keydown', onKeydown)
   document.body.style.overflow = ''
 })
 
 const navLinkClass =
-  'nav-link focus-ring flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors'
+  'nav-link focus-ring flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100'
 </script>
 
 <template>
   <div class="min-h-screen text-slate-300 flex app-bg">
+    <div v-if="isStagedLayout" class="aurora" aria-hidden="true">
+      <div class="aurora-blob aurora-blob-a"></div>
+      <div class="aurora-blob aurora-blob-b"></div>
+      <div class="aurora-blob aurora-blob-c"></div>
+      <div class="aurora-grid"></div>
+    </div>
+    <Transition name="route-progress">
+      <div v-if="isNavigating" class="route-progress" aria-hidden="true"></div>
+    </Transition>
     <Toast />
     <a href="#main-content" class="skip-link focus-ring">Skip to main content</a>
 
     <!-- Desktop sidebar -->
     <aside
       v-if="!isFullscreenLayout"
-      class="hidden lg:flex w-60 p-4 flex-col gap-6 sticky top-0 h-screen shrink-0 shell-border-r"
+      class="shell-sidebar hidden lg:flex w-64 p-4 flex-col gap-6 sticky top-0 h-screen shrink-0 z-10"
       aria-label="Main navigation"
     >
       <RouterLink to="/dashboard" class="focus-ring brand-mark px-2 py-1 cursor-pointer">
@@ -165,7 +212,7 @@ const navLinkClass =
 
       <nav class="flex flex-col gap-6 overflow-y-auto">
         <div v-for="section in navSections" :key="section.label" class="flex flex-col gap-1">
-          <div class="px-3 mb-1 text-[11px] font-medium uppercase tracking-wider text-slate-600">
+          <div class="px-3 mb-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500">
             {{ section.label }}
           </div>
           <RouterLink
@@ -175,36 +222,51 @@ const navLinkClass =
             :class="navLinkClass"
             active-class="nav-active"
           >
-            <component :is="item.icon" size="17" weight="bold" aria-hidden="true" />
+            <span class="nav-icon grid place-items-center">
+              <component :is="item.icon" size="17" weight="bold" aria-hidden="true" />
+            </span>
             <span>{{ item.label }}</span>
           </RouterLink>
         </div>
       </nav>
 
-      <button
-        type="button"
-        class="focus-ring nav-link mt-auto flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors shell-border-t"
-        @click="themeStore.toggleTheme()"
-      >
-        <PhSun v-if="themeStore.theme === 'dark'" size="17" weight="bold" aria-hidden="true" />
-        <PhMoon v-else size="17" weight="bold" aria-hidden="true" />
-        <span>{{ themeStore.theme === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
-      </button>
+      <div class="shell-footer mt-auto flex flex-col gap-2">
+        <button
+          type="button"
+          class="focus-ring nav-link theme-toggle flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100"
+          @click="themeStore.toggleTheme()"
+        >
+          <span class="theme-toggle-icon grid place-items-center" :class="{ 'is-light': themeStore.theme === 'light' }">
+            <PhSun v-if="themeStore.theme === 'dark'" size="17" weight="bold" aria-hidden="true" />
+            <PhMoon v-else size="17" weight="bold" aria-hidden="true" />
+          </span>
+          <span>{{ themeStore.theme === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
+        </button>
+        <RouterLink to="/profile" class="focus-ring account-chip flex items-center gap-3 rounded-xl p-2 cursor-pointer">
+          <span class="account-avatar grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold text-white" aria-hidden="true">{{ userInitials }}</span>
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-medium text-slate-200">{{ userLabel }}</span>
+            <span class="block text-[11px] uppercase tracking-wider text-slate-500">{{ authStore.user?.role || 'member' }}</span>
+          </span>
+        </RouterLink>
+      </div>
     </aside>
 
     <!-- Mobile drawer scrim -->
-    <div
-      v-if="!isFullscreenLayout && isMobileNavOpen"
-      class="fixed inset-0 z-40 bg-black/60 lg:hidden"
-      @click="isMobileNavOpen = false"
-    ></div>
+    <Transition name="scrim">
+      <div
+        v-if="!isFullscreenLayout && isMobileNavOpen"
+        class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+        @click="isMobileNavOpen = false"
+      ></div>
+    </Transition>
 
     <!-- Mobile drawer -->
     <aside
       v-if="!isFullscreenLayout"
       id="mobile-navigation"
       ref="mobileNavRef"
-      class="shell-drawer fixed inset-y-0 left-0 z-50 w-72 p-5 flex flex-col gap-6 transform transition-transform duration-200 lg:hidden overflow-y-auto"
+      class="shell-drawer fixed inset-y-0 left-0 z-50 w-72 p-5 flex flex-col gap-6 transform transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden overflow-y-auto"
       :class="isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
       :aria-hidden="!isMobileNavOpen"
       :inert="!isMobileNavOpen || undefined"
@@ -227,7 +289,7 @@ const navLinkClass =
 
       <nav class="flex flex-col gap-6">
         <div v-for="section in navSections" :key="section.label" class="flex flex-col gap-1">
-          <div class="px-3 mb-1 text-[11px] font-medium uppercase tracking-wider text-slate-600">
+          <div class="px-3 mb-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-slate-500">
             {{ section.label }}
           </div>
           <RouterLink
@@ -237,29 +299,42 @@ const navLinkClass =
             :class="navLinkClass"
             active-class="nav-active"
           >
-            <component :is="item.icon" size="17" weight="bold" aria-hidden="true" />
+            <span class="nav-icon grid place-items-center">
+              <component :is="item.icon" size="17" weight="bold" aria-hidden="true" />
+            </span>
             <span>{{ item.label }}</span>
           </RouterLink>
         </div>
       </nav>
 
-      <button
-        type="button"
-        class="focus-ring nav-link mt-auto flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors shell-border-t"
-        @click="themeStore.toggleTheme()"
-      >
-        <PhSun v-if="themeStore.theme === 'dark'" size="17" weight="bold" aria-hidden="true" />
-        <PhMoon v-else size="17" weight="bold" aria-hidden="true" />
-        <span>{{ themeStore.theme === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
-      </button>
+      <div class="shell-footer mt-auto flex flex-col gap-2">
+        <button
+          type="button"
+          class="focus-ring nav-link theme-toggle flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100"
+          @click="themeStore.toggleTheme()"
+        >
+          <span class="theme-toggle-icon grid place-items-center" :class="{ 'is-light': themeStore.theme === 'light' }">
+            <PhSun v-if="themeStore.theme === 'dark'" size="17" weight="bold" aria-hidden="true" />
+            <PhMoon v-else size="17" weight="bold" aria-hidden="true" />
+          </span>
+          <span>{{ themeStore.theme === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
+        </button>
+        <RouterLink to="/profile" class="focus-ring account-chip flex items-center gap-3 rounded-xl p-2 cursor-pointer">
+          <span class="account-avatar grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold text-white" aria-hidden="true">{{ userInitials }}</span>
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-medium text-slate-200">{{ userLabel }}</span>
+            <span class="block text-[11px] uppercase tracking-wider text-slate-500">{{ authStore.user?.role || 'member' }}</span>
+          </span>
+        </RouterLink>
+      </div>
     </aside>
 
     <!-- Main Content -->
     <main
       id="main-content"
       tabindex="-1"
-      class="flex-1 overflow-auto"
-      :class="{ 'p-4 sm:p-6 lg:p-8': !isFullscreenLayout }"
+      class="relative z-[1] flex-1 min-w-0 overflow-auto"
+      :class="{ 'p-4 sm:p-6 lg:p-10': isStagedLayout }"
     >
       <div
         v-if="!isFullscreenLayout"
@@ -281,7 +356,16 @@ const navLinkClass =
              users two different "main heading" announcements per page. -->
         <p class="text-sm font-medium text-slate-200">{{ currentPageTitle }}</p>
       </div>
-      <RouterView />
+      <RouterView v-slot="{ Component, route: viewRoute }">
+        <Transition name="page" mode="out-in">
+          <div
+            :key="viewRoute.path"
+            :class="{ 'page-stage': isStagedLayout, 'mx-auto max-w-[1400px]': !isFullscreenLayout }"
+          >
+            <component :is="Component" />
+          </div>
+        </Transition>
+      </RouterView>
     </main>
   </div>
 </template>
@@ -312,35 +396,141 @@ body {
   top: 1rem;
 }
 
-.shell-border-r {
-  border-right: 1px solid rgb(var(--border-default));
+.shell-sidebar {
+  position: sticky;
+  background:
+    linear-gradient(180deg, rgb(var(--brand-500) / 0.06), transparent 30%),
+    rgb(var(--canvas) / 0.72);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-right: 1px solid rgb(var(--border-subtle));
 }
 
-.shell-border-t {
-  border-top: 1px solid rgb(var(--border-default));
+/* Hairline that glows where the sidebar meets the content. */
+.shell-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, rgb(var(--brand-400) / 0.45) 30%, rgb(var(--brand-alt-400) / 0.35) 70%, transparent);
+  pointer-events: none;
+}
+
+.shell-footer {
+  border-top: 1px solid rgb(var(--border-subtle));
   padding-top: 0.75rem;
 }
 
 .shell-drawer {
-  background: rgb(var(--canvas));
+  background: rgb(var(--canvas) / 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-right: 1px solid rgb(var(--border-default));
 }
 
 .nav-link {
   position: relative;
+  isolation: isolate;
+  transition: color var(--dur-fast) ease;
 }
 
-.nav-link:hover {
-  background: rgb(var(--surface-raised) / 0.5);
+/* Hover/active fill lives on a pseudo-element so it can scale in. */
+.nav-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgb(var(--surface-raised) / 0.6);
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-spring);
+}
+
+.nav-link:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.nav-icon {
+  transition: transform var(--dur) var(--ease-spring), color var(--dur-fast) ease;
+}
+
+.nav-link:hover .nav-icon {
+  transform: translateX(2px) scale(1.12);
 }
 
 .nav-active {
-  background: rgb(var(--surface-raised) / 0.7);
   color: rgb(var(--slate-50));
-  box-shadow: inset 2px 0 0 rgb(var(--brand-400));
 }
 
-.nav-active svg {
+.nav-active::before {
+  opacity: 1;
+  transform: scale(1);
+  background:
+    linear-gradient(90deg, rgb(var(--brand-500) / 0.18), rgb(var(--brand-alt-500) / 0.08) 70%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(var(--brand-400) / 0.18);
+}
+
+/* Glowing indicator bar that grows in on the active item. */
+.nav-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgb(var(--brand-400)), rgb(var(--brand-alt-400)));
+  box-shadow: 0 0 12px rgb(var(--brand-400) / 0.8);
+  animation: nav-indicator-in 420ms var(--ease-spring) backwards;
+}
+
+@keyframes nav-indicator-in {
+  from { transform: scaleY(0); opacity: 0; }
+}
+
+.nav-active .nav-icon {
   color: rgb(var(--brand-400));
+  filter: drop-shadow(0 0 6px rgb(var(--brand-400) / 0.6));
+}
+
+.theme-toggle-icon {
+  transition: transform 600ms var(--ease-spring);
+}
+
+.theme-toggle-icon.is-light {
+  transform: rotate(360deg);
+}
+
+.account-chip {
+  border: 1px solid rgb(var(--border-subtle));
+  background: rgb(var(--surface) / 0.55);
+  transition: border-color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+}
+
+.account-chip:hover {
+  border-color: rgb(var(--brand-400) / 0.35);
+  background: rgb(var(--surface-raised) / 0.6);
+}
+
+.account-avatar {
+  background: linear-gradient(135deg, rgb(var(--brand-500)), rgb(var(--brand-alt-500)) 60%, rgb(var(--brand-pink-500)));
+  box-shadow: 0 0 0 2px rgb(var(--canvas)), 0 0 0 3px rgb(var(--brand-400) / 0.4);
+}
+
+.scrim-enter-active {
+  transition: opacity var(--dur) var(--ease-out);
+}
+
+.scrim-leave-active {
+  transition: opacity 180ms var(--ease-in);
+}
+
+.scrim-enter-from,
+.scrim-leave-to {
+  opacity: 0;
 }
 </style>

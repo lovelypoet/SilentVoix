@@ -83,7 +83,7 @@ onBeforeUnmount(() => {
   <Transition name="modal-scrim">
     <div
       v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-6"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4 py-6"
       @click.self="close"
     >
       <Transition name="modal-panel" appear>
@@ -92,7 +92,7 @@ onBeforeUnmount(() => {
           role="dialog"
           aria-modal="true"
           :aria-labelledby="titleId"
-          class="w-full rounded-2xl border border-[rgb(var(--border-default))] bg-[rgb(var(--surface-raised))] p-6 shadow-2xl relative"
+          class="modal-panel w-full rounded-2xl border border-[rgb(var(--border-default))] bg-[rgb(var(--surface-raised))] p-6 shadow-2xl relative"
           :class="maxWidth"
         >
           <button
@@ -128,14 +128,32 @@ onBeforeUnmount(() => {
 }
 
 .modal-panel-enter-active {
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity 260ms var(--ease-out), transform 420ms var(--ease-spring);
 }
 .modal-panel-leave-active {
-  transition: opacity 140ms ease, transform 140ms ease;
+  transition: opacity 160ms var(--ease-in), transform 160ms var(--ease-in);
 }
-.modal-panel-enter-from,
+.modal-panel-enter-from {
+  opacity: 0;
+  transform: translateY(18px) scale(0.94);
+}
 .modal-panel-leave-to {
   opacity: 0;
-  transform: translateY(8px) scale(0.98);
+  transform: translateY(6px) scale(0.98);
+}
+
+.modal-panel {
+  box-shadow: 0 40px 80px -30px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(var(--brand-400) / 0.06);
+}
+
+/* Brand gradient hairline across the top edge. */
+.modal-panel::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(var(--brand-400)), rgb(var(--brand-alt-400)), transparent);
 }
 </style>

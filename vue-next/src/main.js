@@ -92,4 +92,29 @@ const syncScrollBehaviour = () => {
 syncScrollBehaviour()
 prefersReducedMotion.addEventListener('change', syncScrollBehaviour)
 
+/*
+ * Cursor spotlight for `.panel` surfaces (see style.css). One delegated,
+ * rAF-throttled listener writes the pointer position into --mx/--my on the
+ * panel under the cursor; the radial glow itself is pure CSS. Skipped for
+ * touch-only devices, where there is no hover to follow.
+ */
+if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+  let pending = null
+  document.addEventListener(
+    'pointermove',
+    (event) => {
+      if (pending) return
+      pending = requestAnimationFrame(() => {
+        pending = null
+        const panel = event.target instanceof Element ? event.target.closest('.panel') : null
+        if (!panel) return
+        const rect = panel.getBoundingClientRect()
+        panel.style.setProperty('--mx', `${event.clientX - rect.left}px`)
+        panel.style.setProperty('--my', `${event.clientY - rect.top}px`)
+      })
+    },
+    { passive: true }
+  )
+}
+
 app.mount('#app')

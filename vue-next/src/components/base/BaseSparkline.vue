@@ -59,6 +59,8 @@ const geometry = computed(() => {
   >
     <path :d="geometry.areaPath" :fill="accent" fill-opacity="0.1" stroke="none" />
     <path
+      class="sparkline-line"
+      pathLength="1"
       :d="geometry.linePath"
       fill="none"
       stroke="rgb(var(--slate-500))"
@@ -66,6 +68,29 @@ const geometry = computed(() => {
       stroke-linecap="round"
       stroke-linejoin="round"
     />
-    <circle :cx="geometry.end.x" :cy="geometry.end.y" r="4.5" :fill="accent" stroke="rgb(var(--surface))" stroke-width="2" />
+    <circle class="sparkline-dot" :cx="geometry.end.x" :cy="geometry.end.y" r="4.5" :fill="accent" stroke="rgb(var(--surface))" stroke-width="2" />
   </svg>
 </template>
+
+<style scoped>
+/* Line draws itself left-to-right on mount, then the "now" dot pops in. */
+.sparkline-line {
+  stroke-dasharray: 1;
+  animation: sparkline-draw 900ms var(--ease-out) backwards;
+}
+
+.sparkline-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sparkline-dot 420ms var(--ease-spring) 700ms backwards;
+}
+
+@keyframes sparkline-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes sparkline-dot {
+  from { transform: scale(0); }
+}
+</style>

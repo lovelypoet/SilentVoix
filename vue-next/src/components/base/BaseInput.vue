@@ -68,8 +68,8 @@ const describedById = computed(() => {
       :placeholder="placeholder"
       :aria-describedby="describedById"
       :aria-invalid="error ? 'true' : undefined"
-      class="bg-[rgb(var(--surface))] border rounded-lg px-3.5 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus-visible:border-brand-500 focus-visible:ring-1 focus-visible:ring-brand-500 transition-colors duration-150"
-      :class="error ? 'border-danger-500' : 'border-[rgb(var(--border-default))]'"
+      class="bg-[rgb(var(--surface))] border rounded-lg px-3.5 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus-visible:border-brand-500 focus-visible:ring-4 focus-visible:ring-brand-500/15 transition-[border-color,box-shadow] duration-200"
+      :class="error ? 'border-danger-500' : 'border-[rgb(var(--border-default))] hover:border-slate-600'"
       @input="$emit('update:modelValue', $event.target.value)"
     />
     <p

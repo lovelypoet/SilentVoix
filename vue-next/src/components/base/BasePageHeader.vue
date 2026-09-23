@@ -59,8 +59,8 @@ defineEmits(['back'])
       <div v-if="eyebrow" class="eyebrow mb-2" :class="`eyebrow-${eyebrowTone}`">
         <span class="eyebrow-dot"></span>{{ eyebrow }}
       </div>
-      <h1 class="text-xl font-medium tracking-tight text-slate-100 sm:text-2xl">{{ title }}</h1>
-      <p v-if="description" class="mt-1 text-sm text-slate-400">{{ description }}</p>
+      <h1 class="text-gradient text-2xl font-semibold tracking-tight sm:text-3xl">{{ title }}</h1>
+      <p v-if="description" class="mt-1.5 text-sm text-slate-400">{{ description }}</p>
     </div>
     <div class="hidden md:block" aria-hidden="true"></div>
   </div>
@@ -69,8 +69,8 @@ defineEmits(['back'])
     <div v-if="eyebrow" class="eyebrow mb-2 justify-center" :class="`eyebrow-${eyebrowTone}`">
       <span class="eyebrow-dot"></span>{{ eyebrow }}
     </div>
-    <h1 class="text-xl font-medium tracking-tight text-slate-100 sm:text-2xl">{{ title }}</h1>
-    <p v-if="description" class="mt-1 text-sm text-slate-400">{{ description }}</p>
+    <h1 class="text-gradient text-2xl font-semibold tracking-tight sm:text-3xl">{{ title }}</h1>
+    <p v-if="description" class="mt-1.5 text-sm text-slate-400">{{ description }}</p>
   </div>
 
   <div v-else class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -78,8 +78,8 @@ defineEmits(['back'])
       <div v-if="eyebrow" class="eyebrow mb-2" :class="`eyebrow-${eyebrowTone}`">
         <span class="eyebrow-dot"></span>{{ eyebrow }}
       </div>
-      <h1 class="text-xl font-medium tracking-tight text-slate-100 sm:text-2xl">{{ title }}</h1>
-      <p v-if="description" class="mt-1 text-sm text-slate-400">{{ description }}</p>
+      <h1 class="text-gradient text-2xl font-semibold tracking-tight sm:text-3xl">{{ title }}</h1>
+      <p v-if="description" class="mt-1.5 text-sm text-slate-400">{{ description }}</p>
     </div>
     <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2">
       <slot name="actions" />

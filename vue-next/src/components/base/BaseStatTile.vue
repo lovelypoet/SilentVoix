@@ -54,8 +54,15 @@ const deltaTone = computed(() => {
   <BaseCard class="flex flex-col gap-3 stat-tile">
     <div class="flex items-start justify-between">
       <div class="flex items-center gap-2.5">
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" :style="{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }">
-          <component :is="icon" size="16" weight="bold" />
+        <span
+          class="stat-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+          :style="{
+            background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 26%, transparent), color-mix(in srgb, ${accent} 6%, transparent))`,
+            boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accent} 30%, transparent), 0 0 18px -4px color-mix(in srgb, ${accent} 55%, transparent)`,
+            color: accent
+          }"
+        >
+          <component :is="icon" size="17" weight="bold" aria-hidden="true" />
         </span>
         <p class="stat-label">{{ label }}</p>
       </div>
@@ -63,7 +70,9 @@ const deltaTone = computed(() => {
     </div>
 
     <div class="flex items-end justify-between gap-2">
-      <p class="stat-value">{{ value }}</p>
+      <Transition name="stat-swap" mode="out-in">
+        <p :key="value" class="stat-value">{{ value }}</p>
+      </Transition>
       <div
         v-if="delta"
         class="mb-0.5 flex items-center gap-1 text-xs font-medium"
@@ -80,3 +89,32 @@ const deltaTone = computed(() => {
     </div>
   </BaseCard>
 </template>
+
+<style scoped>
+.stat-icon {
+  transition: transform var(--dur) var(--ease-spring);
+}
+
+.stat-tile:hover .stat-icon {
+  transform: rotate(-8deg) scale(1.1);
+}
+
+/* Live values tick over with a short vertical slide instead of snapping. */
+.stat-swap-enter-active {
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+}
+
+.stat-swap-leave-active {
+  transition: opacity 120ms var(--ease-in), transform 120ms var(--ease-in);
+}
+
+.stat-swap-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.stat-swap-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+</style>
