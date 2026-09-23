@@ -32,6 +32,7 @@ from contextlib import asynccontextmanager
 import logging
 import asyncio
 import os
+import mimetypes
 
 # Improved logging configuration
 logging.basicConfig(
@@ -128,6 +129,15 @@ app.include_router(audio_files_routes.router)
 app.include_router(predict_integrated_routes.router)
 app.include_router(model_feedback_routes.router)
 app.include_router(job_routes.router)
+
+# Static media, mirroring backend/main.py. TTS routes return /static/tts/<file> URLs.
+# Slim images ship no /etc/mime.types, so .webp would go out as text/plain and be
+# blocked by the nosniff header.
+mimetypes.add_type("image/webp", ".webp")
+app.mount("/static/tts", StaticFiles(directory=settings.TTS_CACHE_DIR), name="tts")
+_PICS_DIR = os.path.join(settings.BASE_DIR, "pics")
+if os.path.isdir(_PICS_DIR):
+    app.mount("/pics", StaticFiles(directory=_PICS_DIR), name="pics")
 
 @app.get("/health")
 async def health_check():

@@ -9,6 +9,8 @@ from collections import deque
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from fastapi import HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import sys
 
@@ -133,6 +135,20 @@ def create_error_response(
             "status_code": error.status_code
         })
         status_code = error.status_code
+    elif isinstance(error, RequestValidationError):
+        # Malformed request body/query: a client error, not a server fault.
+        errors = jsonable_encoder(error.errors())
+        message = "; ".join(
+            f"{'.'.join(str(p) for p in e.get('loc', ()))}: {e.get('msg')}" for e in errors
+        ) or "Invalid request"
+        error_response.update({
+            "error_code": "VALIDATION_ERROR",
+            "message": message,
+            "detail": message,
+            "errors": errors,
+            "status_code": 422
+        })
+        status_code = 422
     elif isinstance(error, HTTPException):
         error_response.update({
             "error_code": "HTTP_ERROR",

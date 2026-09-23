@@ -25,6 +25,7 @@ from contextlib import asynccontextmanager
 import logging
 import asyncio
 import os
+import mimetypes
 from routes.auth_routes import ensure_default_users
 
 # Improved logging configuration
@@ -116,6 +117,10 @@ app.include_router(fusion_preprocess_routes.router)
 app.include_router(early_fusion_routes.router)
 app.include_router(predict_integrated_routes.router)
 app.include_router(model_feedback_routes.router)
+
+# Slim images ship no /etc/mime.types, so .webp would go out as text/plain and be
+# blocked by the nosniff header.
+mimetypes.add_type("image/webp", ".webp")
 
 # Mount models directory for static files if needed
 app.mount("/models", StaticFiles(directory=settings.DATA_DIR), name="models")
