@@ -6,6 +6,7 @@ import api from '../services/api'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import LoginGalaxyBackground from '../components/LoginGalaxyBackground.vue'
+import AuthBackLink from '../components/AuthBackLink.vue'
 
 const router = useRouter()
 
@@ -48,9 +49,12 @@ const handleRegister = async () => {
 <template>
   <div class="min-h-screen register-page flex items-center justify-center p-4">
     <LoginGalaxyBackground />
-    <div class="register-card bg-[rgb(var(--surface))] border border-[rgb(var(--border-default))] p-8 rounded-xl w-full max-w-md shadow-2xl">
+    <AuthBackLink />
+    <div class="register-card auth-card-enter bg-[rgb(var(--surface))] border border-[rgb(var(--border-default))] p-8 rounded-xl w-full max-w-md shadow-2xl">
       <div class="flex flex-col items-center text-center mb-8">
-        <span class="brand-orbit mb-4"><span></span></span>
+        <RouterLink to="/" class="focus-ring auth-home-mark mb-4" aria-label="SilentVoix home">
+          <span class="brand-orbit"><span></span></span>
+        </RouterLink>
         <h1 class="text-xl font-medium tracking-tight text-slate-100">Create Account</h1>
         <p class="text-sm text-slate-400 mt-1">Join SilentVoix</p>
       </div>
@@ -122,5 +126,26 @@ const handleRegister = async () => {
 .register-card {
   position: relative;
   z-index: 2;
+}
+/* Card rises in over the galaxy; brand mark doubles as a home link. */
+.auth-card-enter {
+  animation: auth-card-in 700ms var(--ease-out) backwards;
+}
+
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+}
+
+.auth-home-mark {
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: transform var(--dur) var(--ease-spring);
+}
+
+.auth-home-mark:hover {
+  transform: scale(1.12);
 }
 </style>

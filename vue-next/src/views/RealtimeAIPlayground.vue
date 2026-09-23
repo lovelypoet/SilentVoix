@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { PhCamera, PhCpu, PhWaveform, PhVideoCamera, PhCaretRight } from '@phosphor-icons/vue'
+import { PhCamera, PhCpu, PhWaveform, PhVideoCamera, PhCaretRight, PhPlay, PhStop, PhSlidersHorizontal } from '@phosphor-icons/vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import BaseBtn from '../components/base/BaseBtn.vue'
 import BasePageHeader from '../components/base/BasePageHeader.vue'
@@ -107,7 +107,7 @@ onUnmounted(() => {
         </div>
       </div>
       <PhCaretRight size="14" weight="bold" class="pipeline-arrow" aria-hidden="true" />
-      <div class="pipeline-rail"></div>
+      <div class="pipeline-rail" :class="{ 'is-flowing': store.isLive }"></div>
       <div class="flex min-w-[8.5rem] items-center gap-2.5">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-alt-500/10 text-brand-alt-400">
           <PhCpu size="15" weight="bold" aria-hidden="true" />
@@ -118,7 +118,7 @@ onUnmounted(() => {
         </div>
       </div>
       <PhCaretRight size="14" weight="bold" class="pipeline-arrow" aria-hidden="true" />
-      <div class="pipeline-rail"></div>
+      <div class="pipeline-rail" :class="{ 'is-flowing': store.isLive }"></div>
       <div class="flex min-w-[8.5rem] items-center gap-2.5">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-pink-500/10 text-brand-pink-400">
           <PhWaveform size="15" weight="bold" aria-hidden="true" />
@@ -133,13 +133,23 @@ onUnmounted(() => {
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <!-- Viewport + signal output -->
       <div class="space-y-6 lg:min-w-0">
-        <BaseCard class="!p-3 sm:!p-4">
+        <BaseCard class="viewport-card !p-3 sm:!p-4" :class="{ 'is-live': store.isLive }">
           <div class="flex flex-wrap items-center justify-between gap-2 px-1 pb-3">
-            <div class="flex items-center gap-2">
-              <PhVideoCamera size="17" weight="bold" class="text-brand-400" aria-hidden="true" />
+            <div class="flex items-center gap-3">
+              <span class="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">
+                <PhVideoCamera size="17" weight="bold" aria-hidden="true" />
+              </span>
               <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-200">Live Viewport</h2>
+              <Transition name="live-pill">
+                <span v-if="store.isLive" class="live-pill" role="status">
+                  <span class="live-pill-dot" aria-hidden="true"></span>
+                  Live
+                </span>
+              </Transition>
             </div>
-            <BaseBtn :variant="store.isLive ? 'secondary' : 'primary'" @click="toggleLive">
+            <BaseBtn :variant="store.isLive ? 'danger' : 'primary'" :aria-pressed="store.isLive" @click="toggleLive">
+              <PhStop v-if="store.isLive" size="16" weight="fill" aria-hidden="true" />
+              <PhPlay v-else size="16" weight="fill" aria-hidden="true" />
               {{ store.isLive ? 'Stop Live' : 'Start Live' }}
             </BaseBtn>
           </div>
@@ -165,43 +175,40 @@ onUnmounted(() => {
         <BaseCard>
           <div class="flex flex-col gap-6">
             <div>
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-200 mb-3">Active Model</h2>
+              <h2 class="card-title mb-3">Active Model</h2>
               <ModelSelector />
             </div>
-            <div class="border-t border-slate-800 pt-6">
+            <div class="border-t border-[rgb(var(--border-subtle))] pt-6">
               <FusionControls :fusion-logic="engine.fusionLogic" />
             </div>
-            <div class="border-t border-slate-800 pt-6">
-              <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Display</h2>
+            <div class="border-t border-[rgb(var(--border-subtle))] pt-6">
+              <h2 class="card-title mb-1">
+                <PhSlidersHorizontal size="15" weight="bold" class="text-slate-400" aria-hidden="true" />
+                Display
+              </h2>
               <p class="text-xs text-slate-500 mb-3">Viewport rendering — takes effect on the next frame.</p>
               <div class="space-y-2.5">
-                <label class="flex items-center justify-between cursor-pointer">
+                <label class="setting-row">
                   <span class="text-sm text-slate-300">Mirror camera</span>
                   <button
                     type="button"
                     role="switch"
                     :aria-checked="mirrorCamera"
                     aria-label="Mirror camera"
-                    class="focus-ring relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                    :class="mirrorCamera ? 'bg-brand-500' : 'bg-slate-700'"
+                    class="focus-ring switch"
                     @click="mirrorCamera = !mirrorCamera"
-                  >
-                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="mirrorCamera ? 'translate-x-6' : 'translate-x-1'"></span>
-                  </button>
+                  ></button>
                 </label>
-                <label class="flex items-center justify-between cursor-pointer">
+                <label class="setting-row">
                   <span class="text-sm text-slate-300">Hand landmarks</span>
                   <button
                     type="button"
                     role="switch"
                     :aria-checked="showLandmarks"
                     aria-label="Show hand landmarks"
-                    class="focus-ring relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                    :class="showLandmarks ? 'bg-brand-500' : 'bg-slate-700'"
+                    class="focus-ring switch"
                     @click="showLandmarks = !showLandmarks"
-                  >
-                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="showLandmarks ? 'translate-x-6' : 'translate-x-1'"></span>
-                  </button>
+                  ></button>
                 </label>
               </div>
             </div>
@@ -213,3 +220,68 @@ onUnmounted(() => {
     <MediaPipeGestureTest />
   </div>
 </template>
+
+<style scoped>
+.viewport-card {
+  transition: box-shadow 600ms var(--ease-out);
+}
+
+/* The whole viewport card picks up a soft brand glow while inference runs. */
+.viewport-card.is-live {
+  box-shadow: 0 0 0 1px rgb(var(--brand-400) / 0.25), 0 30px 70px -30px rgb(var(--brand-500) / 0.55);
+}
+
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(var(--brand-pink-300));
+  background: rgb(var(--brand-pink-500) / 0.12);
+  border: 1px solid rgb(var(--brand-pink-400) / 0.35);
+}
+
+.live-pill-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  background: rgb(var(--brand-pink-400));
+  box-shadow: 0 0 8px rgb(var(--brand-pink-400));
+  animation: eyebrow-glow 1.2s ease-in-out infinite;
+}
+
+.live-pill-enter-active {
+  transition: opacity 240ms var(--ease-out), scale 360ms var(--ease-spring);
+}
+
+.live-pill-leave-active {
+  transition: opacity 140ms var(--ease-in), scale 140ms var(--ease-in);
+}
+
+.live-pill-enter-from,
+.live-pill-leave-to {
+  opacity: 0;
+  scale: 0.6;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0 -0.75rem;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease;
+}
+
+.setting-row:hover {
+  background: rgb(var(--surface-raised) / 0.5);
+}
+</style>

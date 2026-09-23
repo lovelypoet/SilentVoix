@@ -68,7 +68,9 @@ const router = createRouter({
             path: '/dataset-aligner',
             name: 'dataset-aligner',
             component: () => import('../views/DatasetAligner.vue'),
-            meta: { requiresAuth: true, layout: 'fullscreen', allowedRoles: ['editor', 'admin'] }
+            // `bleed`: the view manages its own full-viewport (h-screen) frame,
+            // so App.vue adds no padding/backdrop/entrance animation around it.
+            meta: { requiresAuth: true, layout: 'fullscreen', bleed: true, allowedRoles: ['editor', 'admin'] }
         },
         {
             path: '/fusion/late-module',
