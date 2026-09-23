@@ -70,7 +70,8 @@ Test-suite caveats: `backend/tests/test_runtime_contracts.py` imports `routes.pl
 Docker:
 
 ```bash
-docker compose up -d                                     # canonical stack (api/ + postgres + celery + monitoring)
+docker compose up -d --build                             # full stack: nginx FE on :5173, api/, celery, postgres (auto-migrated), mongo, redis, all sidecars
+docker compose --profile monitoring up -d                # + prometheus/grafana/celery-exporter
 docker compose -f docker-compose.dev.yml up -d            # dev stack (backend/ + mongo)
 USE_RUNTIME_SERVICES=true USE_WORKER_LIBRARY=true \
   docker compose -f docker-compose.dev.yml --profile runtime-split up -d --build

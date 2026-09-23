@@ -1,0 +1,19 @@
+# Build context for api/, ml-*/ and worker-*/ images is the repo root.
+# Keep AI/, api/, services/, workers/, db/ and the sidecar folders; drop the rest.
+.git
+.github
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/venv
+**/.venv
+**/.env
+vue-next
+backend
+storage
+logs
+**/*.log
+docs
+tests

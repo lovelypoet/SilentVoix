@@ -1,98 +1,158 @@
+# SilentVoix / V-Hand — full stack in one command.
+#
+#   docker compose up -d --build            # frontend + api + databases + inference sidecars
+#   docker compose --profile monitoring up -d   # ...plus Prometheus / Grafana / celery-exporter
+#
+# Open http://localhost:5173 (override with FRONTEND_PORT). The frontend is an nginx
+# build of vue-next/ that proxies /api, /ws and /static/tts to the api service, so the
+# browser only ever talks to one origin.
+#
+# Secrets and overrides are read from ./backend/.env and ./.env (both optional);
+# values in `environment:` below win over the env files for container wiring.
+
+x-app-env-files: &app-env-files
+  - path: ./backend/.env
+    required: false
+  - path: ./.env
+    required: false
+
+x-app-env: &app-env
+  MONGO_URI: mongodb://mongo:27017
+  DB_NAME: ${DB_NAME:-sign_glove}
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-signglove}
+  REDIS_URL: redis://redis:6379/0
+  MODEL_LIBRARY_DIR: /app/storage/models
+  PYTHONUNBUFFERED: "1"
+
+x-python-healthcheck: &python-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 5
+  start_period: 20s
+
 services:
+  # ---------------------------------------------------------------- frontend
   frontend:
-    build: 
+    build:
       context: ./vue-next
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
 
+  # ---------------------------------------------------------------- backend
   api:
-    build: 
+    build:
       context: .
       dockerfile: api/Dockerfile
-    env_file:
-      - ./backend/.env
-    privileged: true
+    image: silentvoix-api
+    env_file: *app-env-files
+    environment:
+      <<: *app-env
+      TTS_PROVIDER: gtts
+      BACKEND_BASE_URL: http://localhost:8000
+      SERIAL_PORT_SINGLE: /dev/ttyACM0
+      USE_RUNTIME_SERVICES: ${USE_RUNTIME_SERVICES:-true}
+      ML_TENSORFLOW_URL: http://ml-tensorflow:8091
+      ML_PYTORCH_URL: http://ml-pytorch:8092
+      USE_WORKER_LIBRARY: ${USE_WORKER_LIBRARY:-true}
+      WORKER_LIBRARY_URL: http://worker-library:8093
+      USE_EARLY_FUSION_WORKER: ${USE_EARLY_FUSION_WORKER:-true}
+      EARLY_FUSION_WORKER_URL: http://worker-early-fusion:8095
+      USE_FUSION_PREPROCESS_WORKER: ${USE_FUSION_PREPROCESS_WORKER:-true}
+      FUSION_PREPROCESS_WORKER_URL: http://worker-fusion-preprocess:8094
     ports:
       - "8000:8000"
+    # Root + host /dev give the api access to a USB-serial glove (ttyACM*/ttyUSB*).
+    # The WebSocket glove path (/ws/stream) does not need either.
     user: "0:0"
+    privileged: true
     device_cgroup_rules:
       - "c 166:* rmw"
       - "c 188:* rmw"
-    environment:
-      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017}
-      - DB_NAME=${DB_NAME:-sign_glove}
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/signglove
-      - TTS_PROVIDER=gtts
-      - BACKEND_BASE_URL=http://localhost:8000
-      - SERIAL_PORT_SINGLE=/dev/ttyACM0
-      - REDIS_URL=redis://redis:6379/0
-      - USE_RUNTIME_SERVICES=true
-      - MODEL_LIBRARY_DIR=/app/storage/models
-      - ML_TENSORFLOW_URL=http://ml-tensorflow:8091
-      - ML_PYTORCH_URL=http://ml-pytorch:8092
-      - WORKER_LIBRARY_URL=http://worker-library:8093
-      - EARLY_FUSION_WORKER_URL=http://worker-early-fusion:8095
-      - FUSION_PREPROCESS_WORKER_URL=http://worker-fusion-preprocess:8094
+    volumes:
+      - /dev:/dev
+      - ./storage:/app/storage
+      - ./backend/pics:/app/pics:ro
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       mongo:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       ml-tensorflow:
         condition: service_started
       ml-pytorch:
         condition: service_started
       worker-library:
         condition: service_started
-      postgres:
-        condition: service_healthy
-    volumes:
-      - /dev:/dev
-      - ./storage:/app/storage
+      worker-early-fusion:
+        condition: service_started
+      worker-fusion-preprocess:
+        condition: service_started
+    restart: unless-stopped
 
-  worker:
-    build: 
+  # One-shot: bring the Postgres schema to head before api/worker start.
+  migrate:
+    image: silentvoix-api
+    build:
       context: .
       dockerfile: api/Dockerfile
-    command: celery -A workers.tasks.celery_app worker --loglevel=info
+    env_file: *app-env-files
+    environment:
+      <<: *app-env
+    command: alembic -c db/alembic.ini upgrade head
     healthcheck:
       disable: true
-    env_file:
-      - ./backend/.env
-    environment:
-      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017}
-      - DB_NAME=${DB_NAME:-sign_glove}
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/signglove
-      - REDIS_URL=redis://redis:6379/0
-      - PYTHONUNBUFFERED=1
-      - MODEL_LIBRARY_DIR=/app/storage/models
     depends_on:
-      api:
-        condition: service_started
-      redis:
-        condition: service_started
-      mongo:
-        condition: service_healthy
       postgres:
         condition: service_healthy
+    restart: "no"
+
+  worker:
+    image: silentvoix-api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    env_file: *app-env-files
+    environment:
+      <<: *app-env
+    command: celery -A workers.tasks.celery_app worker --loglevel=info
+    user: "0:0"
+    healthcheck:
+      disable: true
     volumes:
       - ./storage:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
+  # ---------------------------------------------------------------- databases
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-signglove}
     ports:
-      - "6379:6379"
+      - "5432:5432"
     volumes:
-      - redis_data:/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-        test: ["CMD", "redis-cli", "ping"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
   mongo:
     image: mongo:7
@@ -102,27 +162,28 @@ services:
       - mongo_data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 10s
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=signglove
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- inference sidecars
+  # The api passes absolute model paths (/app/storage/models/<id>/model.<ext>), so every
+  # sidecar that loads models mounts ./storage at the same path.
   ml-tensorflow:
     build:
       context: .
@@ -130,15 +191,14 @@ services:
     ports:
       - "8091:8091"
     environment:
-      - LEGACY_TFLITE_MODEL_PATH=/app/AI/gesture_model.tflite
+      LEGACY_TFLITE_MODEL_PATH: /app/AI/gesture_model.tflite
     volumes:
-      - ./AI:/app/AI
-      - ./storage:/app/storage
+      - ./AI:/app/AI:ro
+      - ./storage:/app/storage:ro
     healthcheck:
+      <<: *python-healthcheck
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8091/health', timeout=5)"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+    restart: unless-stopped
 
   ml-pytorch:
     build:
@@ -147,12 +207,11 @@ services:
     ports:
       - "8092:8092"
     volumes:
-      - ./storage:/app/storage
+      - ./storage:/app/storage:ro
     healthcheck:
+      <<: *python-healthcheck
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8092/health', timeout=5)"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+    restart: unless-stopped
 
   worker-library:
     build:
@@ -161,21 +220,16 @@ services:
     ports:
       - "8093:8093"
     environment:
-      - MODEL_LIBRARY_DIR=/app/storage/models
+      MODEL_LIBRARY_DIR: /app/storage/models
+      WORKER_RECONCILE_INTERVAL_SEC: "300"
+      WORKER_RECONCILE_PRUNE_MISSING: "false"
+      WORKER_RECONCILE_APPLY_ON_STARTUP: "true"
     volumes:
       - ./storage:/app/storage
     healthcheck:
+      <<: *python-healthcheck
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8093/health', timeout=5)"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  worker-early-fusion:
-    build:
-      context: .
-      dockerfile: worker-early-fusion/Dockerfile
-    ports:
-      - "8095:8095"
+    restart: unless-stopped
 
   worker-fusion-preprocess:
     build:
@@ -183,13 +237,42 @@ services:
       dockerfile: worker-fusion-preprocess/Dockerfile
     ports:
       - "8094:8094"
+    environment:
+      FUSION_PREPROCESS_JOB_DIR: /app/storage/fusion_preprocess_jobs
+    volumes:
+      - ./storage:/app/storage
+    healthcheck:
+      <<: *python-healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8094/health', timeout=5)"]
+    restart: unless-stopped
 
+  worker-early-fusion:
+    build:
+      context: .
+      dockerfile: worker-early-fusion/Dockerfile
+    ports:
+      - "8095:8095"
+    environment:
+      EARLY_FUSION_SEQUENCE_LENGTH: "30"
+      EARLY_FUSION_FEATURE_DIM: "74"
+      EARLY_FUSION_LABELS: rest,hello,thank_you,yes,no,bye
+      EARLY_FUSION_SENSOR_ORDER: imu_flex
+      EARLY_FUSION_MODEL_PATH: ${EARLY_FUSION_MODEL_PATH:-/app/AI/sign_lstm_model.keras}
+    volumes:
+      - ./AI:/app/AI:ro
+    healthcheck:
+      <<: *python-healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8095/health', timeout=5)"]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- monitoring (opt-in)
   prometheus:
     image: prom/prometheus:latest
+    profiles: ["monitoring"]
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -197,21 +280,22 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    profiles: ["monitoring"]
     ports:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
 
   celery-exporter:
     image: danihodovic/celery-exporter:latest
+    profiles: ["monitoring"]
     ports:
       - "9808:9808"
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      CE_BROKER_URL: redis://redis:6379/0
     depends_on:
       - redis
       - worker
