@@ -12,7 +12,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
-    "model:emotion": "node scripts/fetch-emotion-model.js"
+    "model:emotion": "node scripts/fetch-emotion-model.js",
+    "model:asl": "python3 scripts/export_asl_model.py"
   },
   "dependencies": {
     "@mediapipe/camera_utils": "^0.3.1675466862",

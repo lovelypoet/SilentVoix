@@ -105,6 +105,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/asl',
+            name: 'asl',
+            component: () => import('../views/AslStudio.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/gesture-insights',
             name: 'gesture-insights',
             component: () => import('../views/GestureInsights.vue'),

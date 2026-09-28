@@ -128,13 +128,15 @@ Vue 3 + Pinia, no TypeScript. `src/stores/playgroundStore.js` holds playground s
 
 `src/views/EmotionStudio.vue` (`/emotion`) is the one inference path that never touches the backend: MediaPipe `face_landmarker` finds the face and the `emotion-ferplus-8` ONNX CNN classifies it via `onnxruntime-web`, both in-tab. Pure logic lives in `src/composables/ai/emotionModel.js` (labels, softmax, crop geometry, EMA smoothing — unit tested), runtime wiring in `src/composables/ai/useFaceEmotion.js`. The 35 MB `.onnx` is gitignored and resolved local-then-CDN; `npm run model:emotion` vendors it into `public/models/emotion/`, `VITE_EMOTION_MODEL_URL` overrides. There is no `api/`/`backend/` counterpart to mirror. `vite.config.js` must keep `onnxruntime-web` in `optimizeDeps.exclude`, or dev-mode pre-bundling breaks its `.wasm` resolution and ORT fails with a wasm "magic number" error (`vite build` is unaffected). See `docs/emotion_recognition.md` — the FER+ class order and the "do not normalise the 0-255 input" rule are both load-bearing.
 
+`src/views/AslStudio.vue` (`/asl`) is a second backend-free path: HandLandmarker (2 hands) → sliding window of 126-float frames → the 77-sign CNN+BiLSTM from HF `namratha2412/asl-improved-recognition` (ONNX via `onnxruntime-web`) → browser `speechSynthesis`. The HF repo ships only a `state_dict`; `vue-next/scripts/export_asl_model.py` (`npm run model:asl`, needs torch+onnx) reconstructs the architecture and writes the gitignored `public/models/asl/asl-improved.onnx`, and there is no CDN fallback. The input contract (raw MediaPipe coords, not wrist-relative; slot 0 = hand labelled "Left" on the unmirrored frame) was inferred from the checkpoint's BatchNorm stats and is documented in `src/composables/ai/aslModel.js`.
+
 Two gotchas: modality is inferred from the model's `input_dim` when metadata is missing (11 or 22 ⇒ `sensor`, else `cv`), and `vite.config.js` proxies `/api`, `/ws`, `/auth`, `/static/tts`, `/pics` to `http://backend:8080` — a **Docker service name**. Running `npm run dev` on the host requires setting `VITE_API_URL` (e.g. `http://localhost:8000`) or editing the proxy target.
 
 ## Configuration
 
 All settings live in `api/core/settings.py` / `backend/core/settings.py` (pydantic-settings, `extra='ignore'`, so unknown env vars are silently dropped). `env.example` is the reference; `api/` reads `.env` at the repo root, the dev compose backend reads `backend/.env`. `AUTO_SEED_DEFAULT_USERS` seeds admin/editor/guest accounts on startup — keep it off in production.
 
-Frontend-only route: `/emotion` (Emotion Studio) calls no API except the shared TTS route.
+Frontend-only routes: `/emotion` (Emotion Studio) calls no API except the shared TTS route; `/asl` (ASL Studio) calls none.
 
 Route prefixes: `/auth`, `/gestures`, `/predict`, `/predict/integrated`, `/early-fusion`, `/fusion-preprocess`, `/model-library` (+ `/model-library/feedback`), `/jobs`, `/admin`, `/admin/csv-library`, `/dashboard`, `/capture-controls`, `/audio-files`, `/sync`, `/utils`, `/api/voice`, `/ws`, plus `/health` and `/metrics`.
 

@@ -9,6 +9,7 @@ import {
   PhStack,
   PhTable,
   PhSmiley,
+  PhHandWaving,
   PhSpeakerHigh,
   PhUser,
   PhInfo,
@@ -87,6 +88,7 @@ const navSections = computed(() => [
     items: [
       { to: '/training', label: 'Training', icon: PhBarbell },
       { to: '/emotion', label: 'Emotion Studio', icon: PhSmiley },
+      { to: '/asl', label: 'ASL Studio', icon: PhHandWaving },
       { to: '/voice', label: 'Voice Studio', icon: PhSpeakerHigh }
     ]
   },

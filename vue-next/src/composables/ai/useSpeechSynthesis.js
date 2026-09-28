@@ -36,9 +36,24 @@ import { ref } from 'vue'
 
 const TAG = '[GestureTTS]'
 const START_TIMEOUT_MS = 1500
+// Network voices (e.g. "Microsoft ... Online (Natural)", localService=false)
+// fetch audio before onstart fires, routinely taking >1.5s. Treating that as
+// "dropped" cancels a healthy utterance mid-fetch ("interrupted") and retries,
+// so they get a longer start budget.
+const REMOTE_START_TIMEOUT_MS = 6000
 const END_TIMEOUT_MS = 8000
 
 const voicesReady = () => window.speechSynthesis.getVoices().length > 0
+
+// Prefer an on-device voice for the language (starts instantly, works offline);
+// fall back to any voice for it. null lets the browser use its default.
+const pickVoice = (lang) => {
+  const voices = window.speechSynthesis.getVoices()
+  const base = lang.split('-')[0]
+  const matches = voices.filter((v) => v.lang === lang)
+  const loose = matches.length ? matches : voices.filter((v) => v.lang?.split('-')[0] === base)
+  return loose.find((v) => v.localService) || loose[0] || null
+}
 
 const waitForVoices = (timeoutMs = 1000) => new Promise((resolve) => {
   if (voicesReady()) {
@@ -77,6 +92,9 @@ export function useSpeechSynthesis() {
   const speakOnce = (text, lang) => new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = lang
+    const voice = pickVoice(lang)
+    if (voice) utterance.voice = voice
+    const startTimeoutMs = voice && !voice.localService ? REMOTE_START_TIMEOUT_MS : START_TIMEOUT_MS
     let started = false
 
     utterance.onstart = () => {
@@ -84,6 +102,7 @@ export function useSpeechSynthesis() {
       clearTimeout(startTimer)
       console.log(`${TAG} onstart:`, text)
       status.value = 'speaking'
+      lastError.value = ''
 
       // Chrome has a well-known bug where a long-running utterance gets
       // silently paused (e.g. after ~15s or a focus change). A periodic
@@ -123,10 +142,10 @@ export function useSpeechSynthesis() {
     // ever starting it: nothing fires at all, not even onerror.
     startTimer = setTimeout(() => {
       if (started) return
-      console.warn(`${TAG} onstart never fired within ${START_TIMEOUT_MS}ms, treating as dropped:`, text)
+      console.warn(`${TAG} onstart never fired within ${startTimeoutMs}ms, treating as dropped:`, text)
       clearWatchdogs()
       resolve(false)
-    }, START_TIMEOUT_MS)
+    }, startTimeoutMs)
 
     window.speechSynthesis.speak(utterance)
   })

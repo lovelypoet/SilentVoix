@@ -37,5 +37,5 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# Vendored model weights (fetched by `npm run model:emotion`)
+# Vendored model weights (`npm run model:emotion`, `npm run model:asl`)
 public/models/
