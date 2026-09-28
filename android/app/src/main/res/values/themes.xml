@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window-level theme only; Material 3 styling will come from Compose's MaterialTheme. -->
+    <style name="Theme.SilentVoix" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
